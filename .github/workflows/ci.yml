@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -19,5 +22,5 @@ jobs:
         run: go test ./... -race
       - name: Lint
         run: |
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1
           golangci-lint run
