@@ -10,5 +10,8 @@ export const queryKeys = {
   /** Fingerprint of finding IDs (order-preserving) for batched trust activity buckets. */
   trustActivityBuckets: (scanId: string | null, idsKey: string) =>
     ["trust-activity-buckets", scanId, idsKey] as const,
-  diff: (oldScanId: string | null, newScanId: string | null) => ["diff", oldScanId, newScanId] as const
+  diff: (oldScanId: string | null, newScanId: string | null) => ["diff", oldScanId, newScanId] as const,
+  runtimeStatus: () => ["runtime-status"] as const,
+  scanRunStatus: () => ["scan-run-status"] as const,
+  scanRunHistory: () => ["scan-run-history"] as const
 };

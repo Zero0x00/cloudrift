@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../api/client";
 import { queryKeys } from "../api/queryKeys";
 import type { FindingsQueryParams } from "../api/types";
@@ -144,6 +144,48 @@ export function useDiffQuery() {
     queryKey: queryKeys.diff(oldScanId, selectedScanId),
     queryFn: () => apiClient.getDiff(oldScanId as string, selectedScanId as string),
     enabled: Boolean(oldScanId && selectedScanId)
+  });
+}
+
+export function useRuntimeStatusQuery() {
+  return useQuery({
+    queryKey: queryKeys.runtimeStatus(),
+    queryFn: () => apiClient.getRuntimeStatus(),
+    staleTime: 30_000
+  });
+}
+
+export function useValidateProfileMutation() {
+  return useMutation({
+    mutationFn: (profile: string) => apiClient.validateProfile(profile)
+  });
+}
+
+export function useStartScanMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: apiClient.startScan,
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: queryKeys.scanRunStatus() });
+      await qc.invalidateQueries({ queryKey: queryKeys.scanRunHistory() });
+      await qc.invalidateQueries({ queryKey: queryKeys.scans() });
+    }
+  });
+}
+
+export function useScanRunStatusQuery(pollMs = 3000) {
+  return useQuery({
+    queryKey: queryKeys.scanRunStatus(),
+    queryFn: () => apiClient.getScanRunStatus(),
+    refetchInterval: pollMs
+  });
+}
+
+export function useScanRunHistoryQuery(pollMs = 5000) {
+  return useQuery({
+    queryKey: queryKeys.scanRunHistory(),
+    queryFn: () => apiClient.getScanRunHistory(),
+    refetchInterval: pollMs
   });
 }
 

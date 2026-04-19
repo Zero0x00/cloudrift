@@ -8,10 +8,9 @@ import (
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wsjson"
 
-	"cloudrift/internal/api/schema"
 )
 
-func ScanProgressWS() http.HandlerFunc {
+func ScanProgressWS(control *scanControlCenter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Restrict cross-origin WS handshakes to loopback dashboard hosts. The progress
 		// stream carries no secrets, but wildcard origins are unnecessary attack surface.
@@ -28,14 +27,11 @@ func ScanProgressWS() http.HandlerFunc {
 		}
 		defer conn.Close(websocket.StatusNormalClosure, "ok")
 
-		event := schema.ScanProgressEvent{
-			EventType:         "progress",
-			Stage:             "idle",
-			Message:           "scan progress stream is connected",
-			CompletedAccounts: 0,
-			TotalAccounts:     0,
-			Timestamp:         time.Now().UTC(),
+		event := control.CurrentProgressEvent()
+		if event.Message == "" {
+			event.Message = "scan progress stream is connected"
 		}
+		event.Timestamp = time.Now().UTC()
 		_ = wsjson.Write(context.Background(), conn, event)
 	}
 }

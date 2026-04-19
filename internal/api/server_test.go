@@ -12,7 +12,7 @@ func TestNewRouter_MountsAPIAndStatic(t *testing.T) {
 	static := fstest.MapFS{
 		"index.html": &fstest.MapFile{Data: []byte("<html>ok</html>")},
 	}
-	router := NewRouter(t.TempDir(), static)
+	router := NewRouter(t.TempDir(), "", static)
 
 	apiReq := httptest.NewRequest(http.MethodGet, "/api/scans", nil)
 	apiRR := httptest.NewRecorder()

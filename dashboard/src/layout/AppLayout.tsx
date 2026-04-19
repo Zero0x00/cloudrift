@@ -5,6 +5,7 @@ import { useScanContext } from "../hooks/useScanContext";
 
 const staticNavItems = [
   { to: "/overview", label: "Overview", preserveSearch: false },
+  { to: "/scan-control", label: "Scan Control", preserveSearch: false },
   { to: "/findings", label: "Findings", preserveSearch: true },
   { to: "/triage", label: "Triage", preserveSearch: true },
   { to: "/accounts", label: "Accounts", preserveSearch: false },

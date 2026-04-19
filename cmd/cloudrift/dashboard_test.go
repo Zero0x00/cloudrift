@@ -42,12 +42,14 @@ func TestDashboardCommandInvokesStartServer(t *testing.T) {
 	var (
 		gotPort     int
 		gotOutput   string
+		gotConfig   string
 		gotStaticFS fs.FS
 	)
 	orig := dashboardStart
-	dashboardStart = func(port int, outputDir string, staticFS fs.FS) error {
+	dashboardStart = func(port int, outputDir, configPath string, staticFS fs.FS) error {
 		gotPort = port
 		gotOutput = outputDir
+		gotConfig = configPath
 		gotStaticFS = staticFS
 		return nil
 	}
@@ -65,6 +67,9 @@ func TestDashboardCommandInvokesStartServer(t *testing.T) {
 	}
 	if gotOutput != "/tmp/cloudrift-out" {
 		t.Fatalf("output dir: got %q", gotOutput)
+	}
+	if gotConfig != "" {
+		t.Fatalf("expected empty config path by default, got %q", gotConfig)
 	}
 	if gotStaticFS == nil {
 		t.Fatal("expected non-nil static fs")

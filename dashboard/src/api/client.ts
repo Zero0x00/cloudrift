@@ -4,8 +4,14 @@ import type {
   FindingDetailResponse,
   FindingsListResponse,
   FindingsQueryParams,
+  RuntimeStatusResponse,
+  ScanRunHistoryResponse,
   ScanListResponse,
-  ScanSummaryResponse
+  ScanRunStatusResponse,
+  ScanStartRequest,
+  ScanStartResponse,
+  ScanSummaryResponse,
+  ValidateProfileResponse
 } from "./types";
 import { ApiRequestError, parseAPIErrorBody } from "./httpError";
 
@@ -25,9 +31,14 @@ function makeQueryString(
   return raw ? `?${raw}` : "";
 }
 
-async function fetchJSON<T>(path: string): Promise<T> {
+async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
-    headers: { Accept: "application/json" }
+    ...init,
+    headers: {
+      Accept: "application/json",
+      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      ...(init?.headers ?? {})
+    }
   });
 
   if (!response.ok) {
@@ -68,5 +79,26 @@ export const apiClient = {
     return fetchJSON<DiffResponse>(
       `/diff${makeQueryString({ old: oldScanId, new: newScanId })}`
     );
+  },
+  getRuntimeStatus(): Promise<RuntimeStatusResponse> {
+    return fetchJSON<RuntimeStatusResponse>("/runtime/status");
+  },
+  validateProfile(profile: string): Promise<ValidateProfileResponse> {
+    return fetchJSON<ValidateProfileResponse>("/runtime/validate-profile", {
+      method: "POST",
+      body: JSON.stringify({ profile })
+    });
+  },
+  startScan(req: ScanStartRequest): Promise<ScanStartResponse> {
+    return fetchJSON<ScanStartResponse>("/scan/start", {
+      method: "POST",
+      body: JSON.stringify(req)
+    });
+  },
+  getScanRunStatus(): Promise<ScanRunStatusResponse> {
+    return fetchJSON<ScanRunStatusResponse>("/scan/status");
+  },
+  getScanRunHistory(): Promise<ScanRunHistoryResponse> {
+    return fetchJSON<ScanRunHistoryResponse>("/scan/history");
   }
 };

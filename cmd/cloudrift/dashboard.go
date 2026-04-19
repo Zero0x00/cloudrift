@@ -57,7 +57,7 @@ func newDashboardCommand(cfgPath *string) *cobra.Command {
 			if scanID != "" {
 				fmt.Fprintf(cmd.OutOrStdout(), "Default scan context (browser open URL): scan_id=%q\n", scanID)
 			}
-			return dashboardStart(port, outputDir, staticFS)
+			return dashboardStart(port, outputDir, *cfgPath, staticFS)
 		},
 	}
 	cmd.Flags().IntVar(&port, "port", port, "HTTP listen port")

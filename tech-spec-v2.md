@@ -988,7 +988,82 @@ storage model has no Neo4j dependency and this must stay true through v0.2.0.
 
 ---
 
-## 14. Open Source Launch
+## 15. Improvised Scan Control Center (Safe Runtime-Orchestrated Scans)
+
+### Why this exists
+
+Operators need to launch scans from the dashboard while maintaining strict secret hygiene:
+
+- UI can choose profile/module/provider flags.
+- Backend resolves credentials from AWS shared config, environment, role-based providers, and configured secret env vars.
+- UI and persisted app config **must never carry raw AWS/OpenAI secret values**.
+
+### Safe control APIs (no secret payloads)
+
+- `GET /api/runtime/status`
+  - Returns safe runtime state only:
+    - available AWS profile names
+    - default profile
+    - booleans for OpenAI, Neo4j, Slack alerting, email alerting configuration
+  - Explicitly excludes raw secret values.
+  - Note: empty profile discovery does **not** imply auth is impossible; ambient AWS credential sources
+    (instance role, task role, env chain) may still be valid.
+
+- `POST /api/runtime/validate-profile`
+  - Input: `{ "profile": "name" }`
+  - Backend-only profile resolution and caller-identity validation.
+  - Returns safe operator message (`ok`, `profile`, `message`) without leaking internal auth details.
+
+- `POST /api/scan/start`
+  - Input:
+    - `profile`
+    - `module` (`all|orphaned_edge|external_access`)
+    - `no_http`
+    - `neo4j`
+    - optional `provider` (bounded allowlist: `openai|local`)
+  - Starts scan asynchronously; returns accepted run envelope (`run_id`, status, message).
+  - Preserves existing scan engine behavior (scan artifact writer remains canonical).
+
+- `GET /api/scan/status`
+  - Current run status snapshot (safe operator fields only).
+
+- `GET /api/scan/progress` (WebSocket)
+  - Emits safe progress event using current control-center state.
+  - No credentials or secrets in stream.
+
+### Frontend Scan Control Center
+
+New dashboard page `/scan-control`:
+
+- profile selector
+- module selector
+- flags (`no_http`, `neo4j`)
+- optional provider selector (only if already supported)
+- configured/not-configured badges
+- profile validation button
+- start scan button
+- live run status/progress panel (poll + websocket message)
+- explicit note on current limitation: single active run model (latest run state shared across tabs/users)
+
+### Security invariants
+
+1. No raw AWS/OpenAI credentials in UI forms.
+2. No plaintext secret persistence in frontend state, URL params, or API responses.
+3. Backend emits capability/status booleans only.
+4. Profile errors are sanitized to operator-safe messages.
+5. Existing CLI behavior remains intact.
+
+### Test coverage focus
+
+- runtime status excludes secret values
+- invalid/missing profiles handled clearly
+- run-status endpoint returns safe state (idle/running/failed/completed)
+- websocket still serves progress event
+- no regression to existing scans/findings/dashboard APIs
+
+---
+
+## 16. Open Source Launch
 
 **Before v0.1.0:**
 - Write companion blog post: real findings from a real org (anonymized).

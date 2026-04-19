@@ -135,3 +135,68 @@ export interface FindingsQueryParams {
   claimability?: string;
   search?: string;
 }
+
+export interface RuntimeStatusResponse {
+  aws_profiles: string[];
+  default_profile: string;
+  openai_configured: boolean;
+  neo4j_configured: boolean;
+  slack_configured: boolean;
+  email_configured: boolean;
+}
+
+export interface ValidateProfileRequest {
+  profile: string;
+}
+
+export interface ValidateProfileResponse {
+  ok: boolean;
+  profile: string;
+  message: string;
+}
+
+export interface ScanStartRequest {
+  profile: string;
+  module: string;
+  no_http: boolean;
+  neo4j: boolean;
+  provider?: string;
+}
+
+export interface ScanStartResponse {
+  run_id: string;
+  status: string;
+  message: string;
+}
+
+export interface ScanRunStatusResponse {
+  run_id: string;
+  status: string;
+  stage: string;
+  message: string;
+  scan_id?: string;
+  profile?: string;
+  module?: string;
+  no_http: boolean;
+  neo4j: boolean;
+  provider?: string;
+  started_at?: string;
+  finished_at?: string;
+  last_updated_at?: string;
+}
+
+export interface ScanRunHistoryItem {
+  run_id: string;
+  started_at?: string;
+  finished_at?: string;
+  status: string;
+  profile?: string;
+  module?: string;
+  no_http: boolean;
+  neo4j: boolean;
+  message: string;
+}
+
+export interface ScanRunHistoryResponse {
+  items: ScanRunHistoryItem[];
+}

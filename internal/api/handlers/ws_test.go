@@ -11,7 +11,7 @@ import (
 )
 
 func TestScanProgressWSHandshakeAndEvent(t *testing.T) {
-	srv := httptest.NewServer(ScanProgressWS())
+	srv := httptest.NewServer(ScanProgressWS(NewScanControlCenter(t.TempDir(), "")))
 	defer srv.Close()
 
 	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http")
