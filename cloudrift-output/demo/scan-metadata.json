@@ -1,0 +1,14 @@
+{
+  "scan_id": "demo",
+  "timestamp": "2026-04-18T18:00:00Z",
+  "account_ids": [
+    "111111111111",
+    "222222222222",
+    "333333333333"
+  ],
+  "tool_version": "0.1.0",
+  "finding_count": 18,
+  "critical_count": 2,
+  "high_count": 4,
+  "total_monthly_cost_usd": 2847.32
+}

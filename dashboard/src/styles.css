@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Default (light): no .dark on <html>. Dark: ThemeProvider adds class "dark". */
+:root {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  @apply m-0 min-h-screen bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+a {
+  @apply text-inherit no-underline;
+}
+
+#root {
+  @apply min-h-screen;
+}

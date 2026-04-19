@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cloudrift audit role for organization accounts
+
+Parameters:
+  ManagementAccountId:
+    Type: String
+  ExternalId:
+    Type: String
+
+Resources:
+  CloudriftAuditRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CloudriftAuditRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${ManagementAccountId}:role/CloudriftExecutionRole
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref ExternalId
+      Policies:
+        - PolicyName: CloudriftAuditPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - organizations:ListAccounts
+                  - organizations:ListTagsForResource
+                  - route53:ListHostedZones
+                  - route53:ListResourceRecordSets
+                  - cloudfront:ListDistributions
+                  - s3:ListAllMyBuckets
+                  - s3:GetBucketLocation
+                  - s3:GetBucketWebsite
+                  - sts:AssumeRole
+                Resource: "*"

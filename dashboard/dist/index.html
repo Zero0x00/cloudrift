@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cloudrift Dashboard</title>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("cloudrift-dashboard-theme");
+          var dark = t !== "light";
+          document.documentElement.classList.toggle("dark", dark);
+          document.documentElement.style.colorScheme = dark ? "dark" : "light";
+        } catch (e) {
+          document.documentElement.classList.add("dark");
+          document.documentElement.style.colorScheme = "dark";
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-7mAwcUnW.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CDWCN5UJ.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

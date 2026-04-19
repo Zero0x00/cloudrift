@@ -1,0 +1,355 @@
+package handlers
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+
+	"cloudrift/internal/api/schema"
+	"cloudrift/internal/models"
+	"cloudrift/internal/scans"
+)
+
+func ListScans(outputDir string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		items, err := buildSortedScanListItems(outputDir)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "scan_list_error", "failed to list scans", nil)
+			return
+		}
+
+		writeJSON(w, http.StatusOK, schema.ScanListResponse{
+			Items:      items,
+			TotalItems: len(items),
+		})
+	}
+}
+
+func GetScanSummary(outputDir string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		scanID, ok := scanIDFromPath(outputDir, chi.URLParam(r, "id"))
+		if !ok {
+			writeError(w, http.StatusBadRequest, "invalid_scan_id", "invalid scan id", nil)
+			return
+		}
+
+		meta, findings, err := scans.LoadScanArtifacts(outputDir, scanID)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				writeError(w, http.StatusNotFound, "scan_not_found", "scan not found", map[string]any{"scan_id": scanID})
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "scan_load_error", "failed to load scan artifacts", nil)
+			return
+		}
+
+		writeJSON(w, http.StatusOK, summarizeScan(scanID, meta, findings))
+	}
+}
+
+func ListAccounts(outputDir string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		scanID, ok := scanIDFromPath(outputDir, chi.URLParam(r, "id"))
+		if !ok {
+			writeError(w, http.StatusBadRequest, "invalid_scan_id", "invalid scan id", nil)
+			return
+		}
+		_, findings, err := scans.LoadScanArtifacts(outputDir, scanID)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				writeError(w, http.StatusNotFound, "scan_not_found", "scan not found", map[string]any{"scan_id": scanID})
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "scan_load_error", "failed to load scan artifacts", nil)
+			return
+		}
+
+		items := aggregateAccounts(findings)
+		writeJSON(w, http.StatusOK, schema.AccountsBreakdownResponse{Items: items})
+	}
+}
+
+func DiffScans(outputDir string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		oldScan, okOld := scanIDFromPath(outputDir, r.URL.Query().Get("old"))
+		newScan, okNew := scanIDFromPath(outputDir, r.URL.Query().Get("new"))
+		if !okOld || !okNew {
+			writeError(w, http.StatusBadRequest, "invalid_diff_params", "old and new query params are required", nil)
+			return
+		}
+
+		_, oldFindings, err := scans.LoadScanArtifacts(outputDir, oldScan)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				writeError(w, http.StatusNotFound, "scan_not_found", "old scan not found", map[string]any{"scan_id": oldScan})
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "scan_load_error", "failed to load old scan artifacts", nil)
+			return
+		}
+		_, newFindings, err := scans.LoadScanArtifacts(outputDir, newScan)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				writeError(w, http.StatusNotFound, "scan_not_found", "new scan not found", map[string]any{"scan_id": newScan})
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "scan_load_error", "failed to load new scan artifacts", nil)
+			return
+		}
+
+		newItems, resolvedItems, unchanged := diffFindings(oldFindings, newFindings)
+		writeJSON(w, http.StatusOK, schema.DiffResponse{
+			OldScanID:        oldScan,
+			NewScanID:        newScan,
+			NewFindings:      newItems,
+			ResolvedFindings: resolvedItems,
+			UnchangedCount:   unchanged,
+		})
+	}
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+func writeError(w http.ResponseWriter, status int, code, msg string, details map[string]any) {
+	writeJSON(w, status, schema.APIErrorResponse{
+		Error:   msg,
+		Code:    code,
+		Details: details,
+	})
+}
+
+func scanIDFromPath(outputDir, scanID string) (string, bool) {
+	id, err := scans.ResolveScanDirectoryName(outputDir, scanID)
+	if err != nil || id == "" {
+		return "", false
+	}
+	return id, true
+}
+
+// buildSortedScanListItems returns scans in deterministic newest-first order:
+// primary key timestamp DESC, secondary key scan_id ASC (stable tie-break).
+func buildSortedScanListItems(outputDir string) ([]schema.ScanListItem, error) {
+	scanIDs, err := scans.ListScanIDs(outputDir)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]schema.ScanListItem, 0, len(scanIDs))
+	for _, scanID := range scanIDs {
+		meta, findings, err := scans.LoadScanArtifacts(outputDir, scanID)
+		if err != nil {
+			// Skip malformed scan directories safely.
+			continue
+		}
+		items = append(items, mapScanListItem(scanID, meta, findings))
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].Timestamp.Equal(items[j].Timestamp) {
+			return items[i].ScanID < items[j].ScanID
+		}
+		return items[i].Timestamp.After(items[j].Timestamp)
+	})
+	return items, nil
+}
+
+func mapScanListItem(scanID string, meta *models.ScanSnapshot, findings []models.Finding) schema.ScanListItem {
+	item := schema.ScanListItem{
+		ScanID:       scanID,
+		Timestamp:    meta.Timestamp,
+		AccountIDs:   append([]string(nil), meta.AccountIDs...),
+		FindingCount: len(findings),
+	}
+	if item.Timestamp.IsZero() {
+		item.Timestamp = time.Unix(0, 0).UTC()
+	}
+	for _, f := range findings {
+		switch strings.ToLower(string(f.Severity)) {
+		case "critical":
+			item.CriticalCount++
+		case "high":
+			item.HighCount++
+		}
+		item.TotalMonthlyCostUSD += f.MonthlyRiskCost
+	}
+	sort.Strings(item.AccountIDs)
+	return item
+}
+
+func summarizeScan(scanID string, meta *models.ScanSnapshot, findings []models.Finding) schema.ScanSummaryResponse {
+	resp := schema.ScanSummaryResponse{
+		ScanID:       scanID,
+		FindingCount: len(findings),
+	}
+	for _, f := range findings {
+		resp.TotalMonthlyDirectCostUSD += f.MonthlyDirectCost
+		resp.TotalMonthlyRiskCostUSD += f.MonthlyRiskCost
+		switch strings.ToLower(string(f.Severity)) {
+		case "critical":
+			resp.CriticalCount++
+		case "high":
+			resp.HighCount++
+		case "medium":
+			resp.MediumCount++
+		default:
+			// LowCount is the residual bucket: anything not critical/high/medium (including
+			// explicit "low", empty, or other severities). Dashboard copy may say "low / info"
+			// to signal it is not a dedicated INFO field from the API.
+			resp.LowCount++
+		}
+		switch strings.ToLower(string(f.Claimability)) {
+		case "reclaimable":
+			resp.ReclaimableCount++
+		case "dangling":
+			resp.DanglingCount++
+		case "broken":
+			resp.BrokenCount++
+		case "edge_obscured":
+			resp.EdgeObscuredCount++
+		}
+		switch strings.ToLower(string(f.Module)) {
+		case "external_access":
+			resp.ExternalAccessCount++
+		case "orphaned_edge":
+			resp.OrphanedEdgeCount++
+		}
+	}
+	if meta != nil && meta.FindingCount > 0 && resp.FindingCount == 0 {
+		resp.FindingCount = meta.FindingCount
+	}
+	return resp
+}
+
+func aggregateAccounts(findings []models.Finding) []schema.AccountBreakdownItem {
+	type row struct {
+		item        schema.AccountBreakdownItem
+		topSeverity int
+		topRisk     float64
+		topID       string
+	}
+	byAccount := map[string]*row{}
+	for _, f := range findings {
+		acct := f.AccountID
+		if acct == "" {
+			acct = "unknown"
+		}
+		entry, ok := byAccount[acct]
+		if !ok {
+			entry = &row{
+				item: schema.AccountBreakdownItem{
+					AccountID:   acct,
+					AccountName: f.AccountName,
+					OUPath:      f.OUPath,
+					Team:        f.Team,
+				},
+			}
+			byAccount[acct] = entry
+		}
+		entry.item.FindingCount++
+		entry.item.TotalMonthlyDirectCostUSD += f.MonthlyDirectCost
+		entry.item.TotalMonthlyRiskCostUSD += f.MonthlyRiskCost
+		switch strings.ToLower(string(f.Severity)) {
+		case "critical":
+			entry.item.CriticalCount++
+		case "high":
+			entry.item.HighCount++
+		}
+		score := severityRank(f.Severity)
+		if score > entry.topSeverity || (score == entry.topSeverity && (f.MonthlyRiskCost > entry.topRisk || (f.MonthlyRiskCost == entry.topRisk && f.ID < entry.topID))) {
+			entry.topSeverity = score
+			entry.topRisk = f.MonthlyRiskCost
+			entry.topID = f.ID
+			entry.item.TopFinding = f.Title
+		}
+	}
+
+	accounts := make([]schema.AccountBreakdownItem, 0, len(byAccount))
+	for _, item := range byAccount {
+		accounts = append(accounts, item.item)
+	}
+	sort.Slice(accounts, func(i, j int) bool {
+		return accounts[i].AccountID < accounts[j].AccountID
+	})
+	return accounts
+}
+
+func diffFindings(oldFindings, newFindings []models.Finding) ([]schema.FindingListItem, []schema.FindingListItem, int) {
+	oldIndex := map[string]models.Finding{}
+	for _, finding := range oldFindings {
+		oldIndex[diffIdentity(finding)] = finding
+	}
+	newIndex := map[string]models.Finding{}
+	for _, finding := range newFindings {
+		newIndex[diffIdentity(finding)] = finding
+	}
+
+	var newItems []schema.FindingListItem
+	var resolved []schema.FindingListItem
+	unchanged := 0
+
+	for key, finding := range newIndex {
+		if _, ok := oldIndex[key]; ok {
+			unchanged++
+			continue
+		}
+		newItems = append(newItems, toFindingListItem(finding))
+	}
+	for key, finding := range oldIndex {
+		if _, ok := newIndex[key]; ok {
+			continue
+		}
+		resolved = append(resolved, toFindingListItem(finding))
+	}
+	sortFindingItems(newItems)
+	sortFindingItems(resolved)
+	return newItems, resolved, unchanged
+}
+
+func diffIdentity(f models.Finding) string {
+	return strings.ToLower(strings.TrimSpace(f.Title)) + "|" + strings.ToLower(strings.TrimSpace(f.AffectedARN))
+}
+
+func parsePagination(r *http.Request) (page int, pageSize int, err error) {
+	page = 1
+	pageSize = 50
+	const maxPageSize = 200
+
+	if raw := strings.TrimSpace(r.URL.Query().Get("page")); raw != "" {
+		page, err = strconv.Atoi(raw)
+		if err != nil || page < 1 {
+			return 0, 0, errors.New("page must be a positive integer")
+		}
+	}
+	if raw := strings.TrimSpace(r.URL.Query().Get("page_size")); raw != "" {
+		pageSize, err = strconv.Atoi(raw)
+		if err != nil || pageSize < 1 {
+			return 0, 0, errors.New("page_size must be a positive integer")
+		}
+	}
+	if pageSize > maxPageSize {
+		pageSize = maxPageSize
+	}
+	return page, pageSize, nil
+}
+
+func severityRank(s models.Severity) int {
+	switch strings.ToLower(string(s)) {
+	case "critical":
+		return 4
+	case "high":
+		return 3
+	case "medium":
+		return 2
+	default:
+		return 1
+	}
+}

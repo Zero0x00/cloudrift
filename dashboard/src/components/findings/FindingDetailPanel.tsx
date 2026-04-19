@@ -1,0 +1,113 @@
+import type { ReactNode } from "react";
+import { formatQueryError } from "../../api/httpError";
+import type { FindingDetailItem } from "../../api/types";
+import { formatAdminEvalStateLabel, formatDaysSinceUsedLabel } from "../../lib/trustLabels";
+import { StatePanel } from "../StatePanel";
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="border-t border-slate-200 pt-4 first:border-t-0 first:pt-0 dark:border-t-slate-800">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</h4>
+      <div className="mt-2 text-sm text-slate-800 dark:text-slate-200">{children}</div>
+    </div>
+  );
+}
+
+function TrustBlock({ trust }: { trust: NonNullable<FindingDetailItem["trust"]> }) {
+  const rows: [string, string | number | boolean | undefined][] = [
+    ["Role ARN", trust.role_arn],
+    ["Role name", trust.role_name],
+    ["External principal", trust.external_principal],
+    ["Principal type", trust.principal_type],
+    ["External account", trust.external_account_id],
+    ["Last used", formatDaysSinceUsedLabel(trust.days_since_used)],
+    ["Activity status", trust.activity_status],
+    ["Verdict", trust.verdict],
+    ["Reason", trust.reason],
+    ["Admin evaluation", formatAdminEvalStateLabel(trust.admin_eval_state)],
+    ["Unknown vendor", trust.unknown_vendor !== undefined ? String(trust.unknown_vendor) : undefined]
+  ];
+  const visible = rows.filter(([, v]) => v !== undefined && v !== "");
+
+  if (visible.length === 0) {
+    return <p className="text-slate-500">No trust metadata populated.</p>;
+  }
+
+  return (
+    <dl className="grid gap-2 sm:grid-cols-2">
+      {visible.map(([k, v]) => (
+        <div key={k}>
+          <dt className="text-xs text-slate-500">{k}</dt>
+          <dd className="mt-0.5 font-mono text-xs text-slate-800 dark:text-slate-200 break-all">{String(v)}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/** Pretty-printed JSON: keeps nested structure readable; flattening keys would lose fidelity. */
+function EvidenceBlock({ evidence }: { evidence: Record<string, unknown> }) {
+  const keys = Object.keys(evidence);
+  if (keys.length === 0) {
+    return <p className="text-slate-500">No evidence object on this finding.</p>;
+  }
+  return (
+    <pre className="max-h-64 overflow-auto rounded border border-slate-300 bg-slate-100 p-3 font-mono text-xs text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+      {JSON.stringify(evidence, null, 2)}
+    </pre>
+  );
+}
+
+export function FindingDetailPanelContent({ item }: { item: FindingDetailItem }) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.title}</p>
+        <p className="mt-1 font-mono text-xs text-slate-500 break-all">{item.id}</p>
+      </div>
+      {item.impact ? (
+        <Section title="Impact">
+          <p className="whitespace-pre-wrap text-slate-700 dark:text-slate-300">{item.impact}</p>
+        </Section>
+      ) : null}
+      {item.recommendation ? (
+        <Section title="Recommendation">
+          <p className="whitespace-pre-wrap text-slate-700 dark:text-slate-300">{item.recommendation}</p>
+        </Section>
+      ) : null}
+      {item.remediation_command ? (
+        <Section title="Remediation command">
+          <pre className="overflow-x-auto rounded border border-slate-300 bg-slate-100 p-3 font-mono text-xs text-emerald-900 dark:border-slate-800 dark:bg-slate-950 dark:text-emerald-200/90">
+            {item.remediation_command}
+          </pre>
+        </Section>
+      ) : null}
+      {item.trust ? (
+        <Section title="Trust (external access)">
+          <TrustBlock trust={item.trust} />
+        </Section>
+      ) : null}
+      {item.evidence && Object.keys(item.evidence).length > 0 ? (
+        <Section title="Evidence">
+          <EvidenceBlock evidence={item.evidence} />
+        </Section>
+      ) : null}
+    </div>
+  );
+}
+
+export function FindingDetailPanelLoading() {
+  return (
+    <div className="py-6 text-center text-sm text-slate-500" role="status">
+      Loading finding detail…
+    </div>
+  );
+}
+
+export function FindingDetailPanelError({ error }: { error: unknown }) {
+  return (
+    <StatePanel intent="error" title="Failed to load finding detail">
+      <pre className="whitespace-pre-wrap font-sans text-xs">{formatQueryError(error)}</pre>
+    </StatePanel>
+  );
+}
