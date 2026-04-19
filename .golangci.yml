@@ -1,0 +1,57 @@
+run:
+  timeout: 5m
+  issues-exit-code: 1
+
+linters:
+  disable-all: true
+  enable:
+    # 🔐 Core security
+    - gosec
+    - errcheck
+    - staticcheck
+
+    # ☁️ Reliability (prevents security bugs)
+    - govet
+    - ineffassign
+    - bodyclose
+
+    # 📦 Supply chain / dependency hygiene
+    - depguard
+
+    # ⚡ Code quality (high signal only)
+    - revive
+    - misspell
+
+linters-settings:
+  gosec:
+    severity: medium
+    confidence: medium
+    excludes:
+      - G104 # ignore unchecked errors in some cases (tune later)
+
+  depguard:
+    rules:
+      main:
+        deny:
+          - pkg: "crypto/md5"
+            desc: "MD5 is insecure"
+          - pkg: "crypto/sha1"
+            desc: "SHA1 is deprecated"
+          - pkg: "math/rand"
+            desc: "Use crypto/rand for security-sensitive code"
+
+  revive:
+    rules:
+      - name: var-naming
+      - name: error-return
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gosec
+
+output:
+  formats:
+    - format: colored-line-number
