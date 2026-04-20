@@ -29,14 +29,14 @@ jobs:
       
       - name: Test
         run: go test ./... -race
-
-      - name: Debug module
-        run: |
-          pwd
-          ls -la
-          go env GOMOD
       
-    #  - name: Lint
-    #    uses: golangci/golangci-lint-action@v6
-    #    with:
-    #      version: v1.59.1
+      - name: Force module resolution (critical)
+        run: |
+          go clean -modcache
+          go mod download
+      
+      - name: Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.59.1
+          args: --timeout=5m --modules-download-mode=mod --build-tags=''
