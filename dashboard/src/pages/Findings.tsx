@@ -15,6 +15,7 @@ import {
 } from "../components/findings/FindingDetailPanel";
 import { InterimHeuristicIndicator } from "../components/InterimHeuristicIndicator";
 import { PageHeader } from "../components/PageHeader";
+import { SafeExternalLink } from "../components/SafeExternalLink";
 import { SeverityBadge } from "../components/SeverityBadge";
 import { ScanRequired } from "../components/ScanRequired";
 import { StatePanel } from "../components/StatePanel";
@@ -354,10 +355,23 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
         header: "Finding",
         cell: ({ row }) => {
           const hint = findingInlineHint(row.original);
+          const hostname = row.original.hostname?.trim() ?? "";
           return (
             <div>
               <div className="font-medium text-slate-800 dark:text-slate-200">{row.original.title?.trim() || "—"}</div>
-              <div className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">{displayTarget(row.original.hostname, row.original.affected_arn)}</div>
+              <div className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">
+                {hostname ? (
+                  <SafeExternalLink
+                    href={hostname}
+                    className="text-cyan-700 underline decoration-cyan-400/60 underline-offset-2 hover:text-cyan-800 dark:text-cyan-300 dark:hover:text-cyan-200"
+                    fallback={displayTarget(row.original.hostname, row.original.affected_arn)}
+                  >
+                    {hostname}
+                  </SafeExternalLink>
+                ) : (
+                  displayTarget(row.original.hostname, row.original.affected_arn)
+                )}
+              </div>
               {row.original.hostname?.trim() ? (
                 <div className="mt-0.5 font-mono text-[11px] text-slate-500 break-all">{shortenArn(row.original.affected_arn, 36, 24)}</div>
               ) : null}

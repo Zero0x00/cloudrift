@@ -52,4 +52,22 @@ func TestStaticRouter_ServesAsset(t *testing.T) {
 	}
 }
 
+func TestRouter_SetsSecurityHeaders(t *testing.T) {
+	router := NewRouter(t.TempDir(), "", fstest.MapFS{
+		"index.html": &fstest.MapFile{Data: []byte("<html>ok</html>")},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	if rr.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatalf("missing X-Content-Type-Options header")
+	}
+	if rr.Header().Get("X-Frame-Options") != "DENY" {
+		t.Fatalf("missing X-Frame-Options header")
+	}
+	if rr.Header().Get("Content-Security-Policy") == "" {
+		t.Fatalf("missing Content-Security-Policy header")
+	}
+}
+
 var _ fs.FS = fstest.MapFS{}

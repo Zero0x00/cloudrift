@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -351,26 +352,17 @@ func neo4jConfigured(cfg *config.Config) bool {
 }
 
 func discoverAWSProfiles() []string {
-	paths := []string{}
-	if cfg := strings.TrimSpace(os.Getenv("AWS_CONFIG_FILE")); cfg != "" {
-		paths = append(paths, cfg)
-	} else if home, err := os.UserHomeDir(); err == nil {
-		paths = append(paths, filepath.Join(home, ".aws", "config"))
-	}
-	if creds := strings.TrimSpace(os.Getenv("AWS_SHARED_CREDENTIALS_FILE")); creds != "" {
-		paths = append(paths, creds)
-	} else if home, err := os.UserHomeDir(); err == nil {
-		paths = append(paths, filepath.Join(home, ".aws", "credentials"))
-	}
+	paths := awsProfileFilePaths()
 
 	seen := map[string]struct{}{}
 	for _, p := range paths {
-		b, err := os.ReadFile(p)
+		f, err := os.Open(p)
 		if err != nil {
 			continue
 		}
-		lines := strings.Split(string(b), "\n")
-		for _, ln := range lines {
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			ln := scanner.Text()
 			ln = strings.TrimSpace(ln)
 			if !strings.HasPrefix(ln, "[") || !strings.HasSuffix(ln, "]") {
 				continue
@@ -384,6 +376,7 @@ func discoverAWSProfiles() []string {
 			}
 			seen[section] = struct{}{}
 		}
+		_ = f.Close()
 	}
 	out := make([]string, 0, len(seen))
 	for k := range seen {
@@ -391,6 +384,44 @@ func discoverAWSProfiles() []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+func awsProfileFilePaths() []string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil
+	}
+	base := filepath.Join(home, ".aws")
+	paths := []string{
+		filepath.Join(base, "config"),
+		filepath.Join(base, "credentials"),
+	}
+	if cfg, ok := safeAWSConfigPathFromEnv("AWS_CONFIG_FILE", base); ok {
+		paths[0] = cfg
+	}
+	if creds, ok := safeAWSConfigPathFromEnv("AWS_SHARED_CREDENTIALS_FILE", base); ok {
+		paths[1] = creds
+	}
+	return paths
+}
+
+func safeAWSConfigPathFromEnv(envName, allowedDir string) (string, bool) {
+	raw := strings.TrimSpace(os.Getenv(envName))
+	if raw == "" {
+		return "", false
+	}
+	clean := filepath.Clean(raw)
+	if clean == "" {
+		return "", false
+	}
+	if !filepath.IsAbs(clean) {
+		return "", false
+	}
+	rel, err := filepath.Rel(allowedDir, clean)
+	if err != nil || rel == "." || strings.HasPrefix(rel, "..") {
+		return "", false
+	}
+	return clean, true
 }
 
 func exportScanToNeo4j(ctx context.Context, cfg *config.Config, scanPath string) error {

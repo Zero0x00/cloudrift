@@ -117,8 +117,12 @@ func DiffScans(outputDir string) http.HandlerFunc {
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+	enc := json.NewEncoder(w)
+	// Keep HTML escaping explicitly enabled for defensive JSON output encoding.
+	enc.SetEscapeHTML(true)
+	_ = enc.Encode(v)
 }
 
 func writeError(w http.ResponseWriter, status int, code, msg string, details map[string]any) {

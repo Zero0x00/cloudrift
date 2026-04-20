@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -87,12 +88,34 @@ func tryOpenDashboard(port int, scanID string) {
 }
 
 func openURL(target string) error {
+	u, err := url.Parse(target)
+	if err != nil {
+		return fmt.Errorf("invalid dashboard URL: %w", err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("refusing to open non-http URL scheme %q", u.Scheme)
+	}
+	host := strings.TrimSpace(u.Hostname())
+	if host == "" {
+		return fmt.Errorf("dashboard URL host is empty")
+	}
+	ip := net.ParseIP(host)
+	if ip != nil && !ip.IsLoopback() {
+		return fmt.Errorf("refusing to open non-loopback URL host %q", host)
+	}
+	if ip == nil && !strings.EqualFold(host, "localhost") {
+		return fmt.Errorf("refusing to open non-localhost URL host %q", host)
+	}
+
 	switch runtime.GOOS {
 	case "darwin":
+		// #nosec G204 -- command and argument vector are fixed; target was parsed and restricted above.
 		return exec.Command("open", target).Start()
 	case "windows":
+		// #nosec G204 -- command and argument vector are fixed; target was parsed and restricted above.
 		return exec.Command("rundll32", "url.dll,FileProtocolHandler", target).Start()
 	default:
+		// #nosec G204 -- command and argument vector are fixed; target was parsed and restricted above.
 		return exec.Command("xdg-open", target).Start()
 	}
 }

@@ -113,3 +113,9 @@ func TestScanIDFlagParses(t *testing.T) {
 		t.Fatalf("scan-id: %q err=%v", s, err)
 	}
 }
+
+func TestOpenURLRejectsNonLocalhost(t *testing.T) {
+	if err := openURL("http://example.com"); err == nil {
+		t.Fatal("expected error for non-localhost URL")
+	}
+}
