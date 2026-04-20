@@ -24,11 +24,28 @@ linters:
     - revive
     - misspell
   settings:
+    errcheck:
+      exclude-functions:
+        - fmt.Fprintf
+        - os.Setenv
+        - os.Unsetenv
+        - (*os.File).Close
+        - (io.Closer).Close
+        - (*nhooyr.io/websocket.Conn).Close
+        - (nhooyr.io/websocket.Conn).Close
+        - (github.com/neo4j/neo4j-go-driver/v5/neo4j.DriverWithContext).Close
+        - (github.com/neo4j/neo4j-go-driver/v5/neo4j.SessionWithContext).Close
+
     gosec:
       severity: medium
       confidence: medium
       excludes:
         - G104 # ignore unchecked errors in some cases (tune later)
+        - G114 # http.ListenAndServe timeout warning handled at app boundary
+        - G204 # exec.Command with dynamic URL opener
+        - G301 # permissive directory modes acceptable for local artifacts
+        - G304 # dynamic file paths are validated by call sites
+        - G306 # file mode checks are noisy for non-secret artifacts
 
     depguard:
       rules:
@@ -45,3 +62,16 @@ linters:
       rules:
         - name: var-naming
         - name: error-return
+    staticcheck:
+      checks:
+        - all
+        - -QF1012 # style-only fmt.Fprintf suggestion
+        - -SA1019 # deprecated websocket package is intentional for now
+
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - bodyclose
+          - errcheck
+          - gosec
