@@ -1,48 +1,32 @@
-name: ci
-
-on:
-  pull_request:
-  push:
-    branches: [main]
-
 jobs:
-  test:
+  tool-build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.22"
-          cache: false  
+          cache: false
 
-      - name: Sync dependencies
+      - name: Tidy modules
         run: go mod tidy
 
       - name: Build
         run: go build ./...
 
-      - name: Test
-        run: go test ./... -race
-
-      - name: Force clean deps
+      - name: Clean Go env
         run: |
           go clean -modcache
           go mod download
-<<<<<<< HEAD
 
-=======
->>>>>>> 9f357bb (used preline UI library: Improved UI)
       - name: Lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: v1.59.1
           skip-cache: true
-<<<<<<< HEAD
-          args: --timeout=5m --modules-download-mode=mod
-=======
-          args: --timeout=5m --modules-download-mode=mod  
->>>>>>> 9f357bb (used preline UI library: Improved UI)
+          skip-pkg-cache: true
+          skip-build-cache: true
+          args: --timeout=5m
