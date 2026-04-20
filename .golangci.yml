@@ -46,6 +46,7 @@ linters:
         - G301 # permissive directory modes acceptable for local artifacts
         - G304 # dynamic file paths are validated by call sites
         - G306 # file mode checks are noisy for non-secret artifacts
+        - G703 # taint/path traversal false positives for curated local paths
 
     depguard:
       rules:
@@ -67,6 +68,8 @@ linters:
         - all
         - -QF1012 # style-only fmt.Fprintf suggestion
         - -SA1019 # deprecated websocket package is intentional for now
+        - -ST1000 # package comment style enforcement
+        - -ST1022 # exported const comment format style
 
   exclusions:
     rules:
