@@ -32,10 +32,17 @@ jobs:
         run: |
           go clean -modcache
           go mod download
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9f357bb (used preline UI library: Improved UI)
       - name: Lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: v1.59.1
           skip-cache: true
+<<<<<<< HEAD
           args: --timeout=5m --modules-download-mode=mod
+=======
+          args: --timeout=5m --modules-download-mode=mod  
+>>>>>>> 9f357bb (used preline UI library: Improved UI)
