@@ -10,8 +10,8 @@ const PROVIDER_OPTIONS = ["", "openai", "local"] as const;
 
 function statusTone(ok: boolean): string {
   return ok
-    ? "border-emerald-600/60 bg-emerald-900/20 text-emerald-200"
-    : "border-slate-700 bg-slate-900/60 text-slate-300";
+    ? "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700/60 dark:bg-emerald-950/20 dark:text-emerald-200"
+    : "border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300";
 }
 
 export function ScanControlCenterPage() {
@@ -126,7 +126,7 @@ export function ScanControlCenterPage() {
             <Badge title="AWS profiles" ok={profiles.length > 0} detail={`${profiles.length} found`} />
           </div>
           {profiles.length === 0 ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2 dark:border-amber-900/50 dark:bg-amber-950/25">
+            <div className="hs-card-soft border-amber-200 bg-amber-50/90 px-3 py-2 dark:border-amber-900/50 dark:bg-amber-950/25">
               <p className="cr-body text-amber-950 dark:text-amber-100/95">
                 No named AWS profiles were detected. Ambient credentials (instance role, SSO, or env vars) may still work—use{" "}
                 <strong>Validate profile</strong> or <strong>Start scan</strong> to confirm.
@@ -134,7 +134,7 @@ export function ScanControlCenterPage() {
             </div>
           ) : null}
           {socketFailed ? (
-            <div className="rounded-lg border border-slate-200 bg-slate-50/90 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/60">
+            <div className="hs-card-soft px-3 py-2">
               <p className="cr-helper">
                 Live progress channel is unavailable. Scans can still run; status and history continue to refresh via API polling.
               </p>
@@ -144,13 +144,13 @@ export function ScanControlCenterPage() {
             If no local profiles are listed, ambient AWS auth may still work (instance role, container/task role, or env-based credentials).
           </p>
 
-          <div className="rounded-lg border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+          <div className="hs-filter-bar">
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <Field label="AWS profile">
                 <select
                   value={state.profile}
                   onChange={(e) => patch({ profile: e.target.value })}
-                  className="w-full rounded-md border border-slate-700 bg-white px-2 py-2 text-sm text-slate-800 dark:bg-slate-950 dark:text-slate-200"
+                  className="hs-select"
                 >
                   <option value="">(ambient default chain)</option>
                   {profiles.map((p) => (
@@ -165,7 +165,7 @@ export function ScanControlCenterPage() {
                 <select
                   value={state.moduleName}
                   onChange={(e) => patch({ moduleName: e.target.value as (typeof MODULE_OPTIONS)[number] })}
-                  className="w-full rounded-md border border-slate-700 bg-white px-2 py-2 text-sm text-slate-800 dark:bg-slate-950 dark:text-slate-200"
+                  className="hs-select"
                 >
                   {MODULE_OPTIONS.map((m) => (
                     <option key={m} value={m}>
@@ -179,7 +179,7 @@ export function ScanControlCenterPage() {
                 <select
                   value={state.provider}
                   onChange={(e) => patch({ provider: e.target.value as (typeof PROVIDER_OPTIONS)[number] })}
-                  className="w-full rounded-md border border-slate-700 bg-white px-2 py-2 text-sm text-slate-800 dark:bg-slate-950 dark:text-slate-200"
+                  className="hs-select"
                 >
                   {PROVIDER_OPTIONS.map((p) => (
                     <option key={p || "default"} value={p}>
@@ -190,12 +190,14 @@ export function ScanControlCenterPage() {
               </Field>
 
               <Field label="Flags">
-                <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                  <input type="checkbox" checked={state.noHTTP} onChange={(e) => patch({ noHTTP: e.target.checked })} />
+                <div className="space-y-2">
+                <label className="hs-toggle-inline">
+                  <input className="hs-checkbox" type="checkbox" checked={state.noHTTP} onChange={(e) => patch({ noHTTP: e.target.checked })} />
                   no-http
                 </label>
-                <label className="mt-2 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                <label className="hs-toggle-inline">
                   <input
+                    className="hs-checkbox"
                     type="checkbox"
                     checked={state.neo4j}
                     onChange={(e) => patch({ neo4j: e.target.checked })}
@@ -203,6 +205,7 @@ export function ScanControlCenterPage() {
                   />
                   neo4j export
                 </label>
+                </div>
               </Field>
             </div>
 
@@ -211,7 +214,7 @@ export function ScanControlCenterPage() {
                 type="button"
                 onClick={() => validateProfile.mutate(state.profile)}
                 disabled={validateProfile.isPending}
-                className="rounded-md border border-cyan-700 bg-cyan-900/25 px-3 py-2 text-sm text-cyan-100 disabled:opacity-50"
+                className="hs-btn-primary"
               >
                 Validate profile
               </button>
@@ -227,7 +230,7 @@ export function ScanControlCenterPage() {
                   })
                 }
                 disabled={isRunning || startScan.isPending}
-                className="rounded-md border border-emerald-700 bg-emerald-900/25 px-3 py-2 text-sm text-emerald-100 disabled:opacity-50"
+                className="hs-btn-success"
               >
                 {isRunning ? "Scan running…" : "Start scan"}
               </button>
@@ -248,7 +251,7 @@ export function ScanControlCenterPage() {
             {startScan.isError ? <p className="mt-3 text-sm text-rose-300">{formatQueryError(startScan.error)}</p> : null}
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white/90 p-4 dark:border-slate-800 dark:bg-slate-900/80">
+          <div className="hs-card p-4">
             <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Run status</h3>
             <dl className="mt-3 grid gap-2 text-sm md:grid-cols-2">
               <Stat label="State" value={scanStatus.data?.status || "idle"} />
@@ -260,7 +263,7 @@ export function ScanControlCenterPage() {
             </dl>
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white/90 p-4 dark:border-slate-800 dark:bg-slate-900/80">
+          <div className="hs-card p-4">
             <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Recent runs</h3>
             {history.isLoading ? (
               <p className="mt-3 text-sm text-slate-500">Loading recent runs…</p>
@@ -269,7 +272,7 @@ export function ScanControlCenterPage() {
             ) : historyItems.length === 0 ? (
               <p className="mt-3 text-sm text-slate-500">No recent runs recorded yet.</p>
             ) : (
-              <div className="mt-3 overflow-x-auto">
+              <div className="hs-table-wrap mt-3">
                 <table className="w-full min-w-[52rem] border-collapse text-left text-xs">
                   <thead className="border-b border-slate-200 dark:border-slate-800">
                     <tr className="text-slate-500">
@@ -291,10 +294,10 @@ export function ScanControlCenterPage() {
                           <span
                             className={`rounded px-1.5 py-0.5 text-[11px] ${
                               item.status === "completed"
-                                ? "bg-emerald-900/40 text-emerald-200"
+                                ? "hs-badge border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-700/60 dark:bg-emerald-900/40 dark:text-emerald-200"
                                 : item.status === "failed"
-                                ? "bg-rose-900/40 text-rose-200"
-                                : "bg-slate-800 text-slate-200"
+                                ? "hs-badge border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-700/60 dark:bg-rose-900/40 dark:text-rose-200"
+                                : "hs-badge-neutral"
                             }`}
                           >
                             {item.status}
@@ -325,7 +328,7 @@ export function ScanControlCenterPage() {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <label className="cr-kpi-label mb-1 block">{label}</label>
+      <label className="hs-label">{label}</label>
       {children}
     </div>
   );
@@ -333,7 +336,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 function Badge({ title, ok, detail }: { title: string; ok: boolean; detail?: string }) {
   return (
-    <div className={`rounded-lg border px-3 py-2 text-sm ${statusTone(ok)}`}>
+    <div className={`hs-card-soft border px-3 py-2 text-sm ${statusTone(ok)}`}>
       <p className="font-medium">{title}</p>
       <p className="text-xs opacity-90">{detail || (ok ? "Configured" : "Not configured")}</p>
     </div>

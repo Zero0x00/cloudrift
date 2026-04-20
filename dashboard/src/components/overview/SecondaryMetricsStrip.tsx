@@ -23,7 +23,7 @@ function MiniKpi({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-lg border border-slate-200 border-l-4 bg-white/90 px-3 py-3 text-left text-sm shadow-sm transition hover:border-cyan-300/70 hover:shadow dark:border-slate-800 dark:bg-slate-900/75 dark:hover:border-cyan-700/50 ${border[tone]}`}
+      className={`hs-kpi-card px-3 py-3 text-sm ${border[tone]}`}
     >
       <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
       <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900 dark:text-slate-100">{value}</p>

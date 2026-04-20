@@ -142,7 +142,7 @@ function ExecutiveLayout({
   goToExternalEntities: (params: Record<string, string>) => void;
 }) {
   return (
-    <div className="space-y-6">
+    <div className="hs-section space-y-6">
       <ExecutiveSummaryStrip
         summary={summary}
         onOpenCritical={() => goToFindings({ severity: "critical", page: "1" })}
@@ -189,7 +189,7 @@ function HighSignalLayout({
   goToExternalEntities: (params: Record<string, string>) => void;
 }) {
   return (
-    <div className="space-y-6">
+    <div className="hs-section space-y-6">
       <HighRiskCombinationStrip
         summary={summary}
         onOpenReclaimable={() => goToFindings({ claimability: "reclaimable", page: "1" })}
@@ -234,8 +234,8 @@ function HighSignalLayout({
             }
           />
         ) : (
-          <div className="rounded-lg border border-dashed border-slate-300 p-6 dark:border-slate-700">
-            <p className="cr-section-title">Top external entities</p>
+          <div className="hs-card-soft border-dashed border-slate-300 p-6 dark:border-slate-700">
+            <p className="hs-section-title">Top external entities</p>
             <p className="cr-helper mt-2">No high-signal external preview for this scan.</p>
           </div>
         )}
@@ -272,17 +272,17 @@ function OperationsLayout({
   goToExternalEntities: (params: Record<string, string>) => void;
 }) {
   return (
-    <div className="space-y-6">
+    <div className="hs-section space-y-6">
       <OperationsScanSummaryCard scanId={selectedScanId} />
 
-      <div className="rounded-lg border border-slate-200 bg-white/90 p-4 dark:border-slate-800 dark:bg-slate-900/80">
+      <div className="hs-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="cr-section-title !normal-case !tracking-normal text-sm text-slate-800 dark:text-slate-200">
             Top risky accounts
           </h3>
           <Link
             to={selectedScanId ? `/accounts?scan_id=${encodeURIComponent(selectedScanId)}` : "/accounts"}
-            className="cr-chip rounded-md border border-slate-300 bg-white px-2.5 py-1.5 font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            className="hs-btn-default cr-chip px-2.5 py-1.5 font-medium"
           >
             Open Accounts
           </Link>
@@ -346,7 +346,7 @@ function OpsNextLink({ title, detail, onClick }: { title: string; detail: string
     <button
       type="button"
       onClick={onClick}
-      className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-left transition hover:border-cyan-300 hover:bg-cyan-50/60 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-cyan-700 dark:hover:bg-cyan-950/25"
+      className="hs-card-soft px-3 py-3 text-left transition hover:border-cyan-300 hover:bg-cyan-50/60 dark:hover:border-cyan-700 dark:hover:bg-cyan-950/25"
     >
       <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</p>
       <p className="cr-helper mt-1">{detail}</p>
@@ -364,7 +364,7 @@ function FocusPanel({
   goToTrust: (params: Record<string, string>) => void;
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white/90 p-5 dark:border-slate-800 dark:bg-slate-900/80">
+    <div className="hs-card p-5">
       <h3 className="cr-section-title">Investigation shortcuts</h3>
       <p className="cr-helper mt-1">Structured trust filters on Findings (aligned with summary rollups).</p>
       <div className="mt-4 grid gap-3 md:grid-cols-3">
@@ -406,7 +406,7 @@ function FocusPanelItem({
       type="button"
       title={tooltip}
       onClick={onClick}
-      className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-left transition hover:border-cyan-300 hover:bg-cyan-50/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60 dark:border-slate-700 dark:bg-slate-900/70 dark:hover:border-cyan-600 dark:hover:bg-cyan-950/30"
+      className="hs-card-soft rounded-md px-3 py-3 text-left transition hover:border-cyan-300 hover:bg-cyan-50/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60 dark:hover:border-cyan-600 dark:hover:bg-cyan-950/30"
     >
       <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</p>
       <p className="cr-helper mt-1">{detail}</p>

@@ -22,7 +22,7 @@ export function OperationsScanSummaryCard({ scanId }: { scanId: string | null })
   const scanHref = scanId ? `/scan-control?scan_id=${encodeURIComponent(scanId)}` : "/scan-control";
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white/90 p-4 dark:border-slate-800 dark:bg-slate-900/80">
+    <div className="hs-card p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <IconScan className="text-slate-500 dark:text-slate-400" />
@@ -71,7 +71,7 @@ export function OperationsScanSummaryCard({ scanId }: { scanId: string | null })
       ) : historyItems.length === 0 ? (
         <p className="cr-helper mt-4">No run history yet. Start a scan from Scan Control.</p>
       ) : (
-        <div className="mt-4 overflow-x-auto rounded-md border border-slate-200 dark:border-slate-800">
+      <div className="hs-table-wrap mt-4 rounded-md">
           <table className="cr-table w-full min-w-[36rem] border-collapse text-left">
             <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/90">
               <tr className="cr-kpi-label">

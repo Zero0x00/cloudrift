@@ -29,7 +29,7 @@ const staticNavItems: {
 
 function navClassName(isActive: boolean): string {
   return [
-    "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition",
+    "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition",
     isActive
       ? "bg-cyan-500/10 text-cyan-800 ring-1 ring-cyan-500/30 dark:bg-cyan-500/15 dark:text-cyan-200 dark:ring-cyan-400/40"
       : "text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
@@ -64,7 +64,7 @@ export function AppLayout({ children }: PropsWithChildren) {
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      <aside className="flex w-full shrink-0 flex-col border-b border-slate-200 bg-white/95 dark:border-slate-800 dark:bg-slate-900/95 md:w-56 md:border-b-0 md:border-r">
+      <aside className="flex w-full shrink-0 flex-col border-b border-slate-200 bg-white/95 dark:border-slate-800 dark:bg-slate-900/95 md:w-60 md:border-b-0 md:border-r">
         <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
           <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-cyan-500 dark:bg-cyan-400" />
           <h1 className="text-sm font-semibold uppercase tracking-wide text-slate-800 dark:text-slate-100">

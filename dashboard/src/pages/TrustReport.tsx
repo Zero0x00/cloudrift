@@ -146,15 +146,15 @@ export function TrustReportPage() {
         </StatePanel>
       ) : query.data ? (
         <>
-          <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-900/50 lg:flex-row lg:flex-wrap lg:items-end">
+          <div className="hs-filter-bar">
             <div>
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">
+              <label className="hs-label">
                 Severity
               </label>
               <select
                 value={state.severity}
                 onChange={(e) => patch({ severity: e.target.value, page: 1 })}
-                className="w-full min-w-[8rem] rounded-md border border-slate-700 bg-white px-2 py-1.5 dark:bg-slate-950 text-sm text-slate-800 dark:text-slate-200"
+                className="hs-select w-full min-w-[8rem]"
               >
                 {SEVERITY_OPTIONS.map((v) => (
                   <option key={v || "all"} value={v}>
@@ -164,7 +164,7 @@ export function TrustReportPage() {
               </select>
             </div>
             <div className="min-w-[16rem] flex-1">
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">
+              <label className="hs-label">
                 Search
               </label>
               <input
@@ -172,20 +172,18 @@ export function TrustReportPage() {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Principal, ARN, title, account…"
-                className="w-full rounded-md border border-slate-700 bg-white px-2 py-1.5 dark:bg-slate-950 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                className="hs-input"
               />
-              {searchInput.trim() !== debouncedSearch ? (
-                <p className="mt-1 text-[11px] text-slate-500">Debouncing…</p>
-              ) : null}
+              {searchInput.trim() !== debouncedSearch ? <p className="mt-1 cr-helper">Debouncing…</p> : null}
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">
+              <label className="hs-label">
                 Page size
               </label>
               <select
                 value={state.pageSize}
                 onChange={(e) => patch({ pageSize: Number(e.target.value) as 25 | 50 | 100, page: 1 })}
-                className="rounded-md border border-slate-700 bg-white px-2 py-1.5 dark:bg-slate-950 text-sm text-slate-800 dark:text-slate-200"
+                className="hs-select"
               >
                 {PAGE_SIZE_OPTIONS.map((n) => (
                   <option key={n} value={n}>
@@ -195,13 +193,13 @@ export function TrustReportPage() {
               </select>
             </div>
             <div title="Structured: evidence.verdict === stale_review_now. Independent of permission tier and admin_like.">
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">
+              <label className="hs-label">
                 Trust stale
               </label>
-              <label className="flex cursor-pointer items-center gap-2 rounded-md border border-slate-700 bg-white px-2 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-200">
+              <label className="hs-toggle-card cursor-pointer">
                 <input
                   type="checkbox"
-                  className="rounded border-slate-600"
+                  className="hs-checkbox"
                   checked={state.trustStale}
                   onChange={(e) => patch({ trustStale: e.target.checked, page: 1 })}
                 />
@@ -209,13 +207,13 @@ export function TrustReportPage() {
               </label>
             </div>
             <div title="Capability flag: permission_visibility.capabilities.admin_like. Distinct from privileged tier — neither implies the other; overlap is possible.">
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">
+              <label className="hs-label">
                 Admin-like (flag)
               </label>
-              <label className="flex cursor-pointer items-center gap-2 rounded-md border border-slate-700 bg-white px-2 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-200">
+              <label className="hs-toggle-card cursor-pointer">
                 <input
                   type="checkbox"
-                  className="rounded border-slate-600"
+                  className="hs-checkbox"
                   checked={state.adminLike}
                   onChange={(e) => patch({ adminLike: e.target.checked, page: 1 })}
                 />
@@ -223,13 +221,13 @@ export function TrustReportPage() {
               </label>
             </div>
             <div title="Backend permission tier: permission_visibility.classification (e.g. privileged, admin). Not the admin_like capability — use both filters if you need overlap logic.">
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">
+              <label className="hs-label">
                 Permission tier
               </label>
               <select
                 value={state.trustClassification}
                 onChange={(e) => patch({ trustClassification: e.target.value, page: 1 })}
-                className="w-full min-w-[9rem] rounded-md border border-slate-700 bg-white px-2 py-1.5 dark:bg-slate-950 text-sm text-slate-800 dark:text-slate-200"
+                className="hs-select w-full min-w-[9rem]"
               >
                 <option value="">Any</option>
                 <option value="admin">admin</option>
@@ -240,7 +238,7 @@ export function TrustReportPage() {
               </select>
             </div>
             <div className="min-w-[10rem]">
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">
+              <label className="hs-label">
                 Principal type
               </label>
               <input
@@ -248,19 +246,19 @@ export function TrustReportPage() {
                 value={state.principalType}
                 onChange={(e) => patch({ principalType: e.target.value, page: 1 })}
                 placeholder="oidc, aws_account…"
-                className="w-full rounded-md border border-slate-700 bg-white px-2 py-1.5 dark:bg-slate-950 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                className="hs-input"
               />
             </div>
           </div>
 
-          <p className="text-xs text-slate-500">
+          <p className="hs-helper-block">
             Table columns marked * remain expand/detail-backed or title heuristics; list filtering uses structured evidence
             fields above.
             <span className="ml-2 inline-flex align-middle">
               <InterimHeuristicIndicator label="interim" className="align-middle" />
             </span>
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="hs-helper-block">
             Permission visibility (capabilities, confidence, analysis status, reasons) is primary in expanded detail. A
             compact permission tier may appear beside a row only when that finding’s detail is already in the client
             cache (e.g. after expand or activity chart sampling) — no extra list-only fetches.
@@ -273,22 +271,22 @@ export function TrustReportPage() {
             pageTotalItems={totalItems}
           />
 
-          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+          <div className="hs-table-wrap">
             <table className="w-full min-w-[64rem] border-collapse text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-100/95 dark:border-b-slate-800 dark:bg-slate-100/95 dark:bg-slate-950/95">
                 <tr>
-                  <th className="w-10 px-2 py-3" />
-                  <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Severity</th>
-                  <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Role (ARN)</th>
-                  <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Account</th>
-                  <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Principal*</th>
-                  <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Type*</th>
-                  <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Ext acct*</th>
-                  <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Days*</th>
-                  <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Verdict*</th>
-                  <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Admin*</th>
-                  <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Vendor*</th>
-                  <th className="px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Risk / mo</th>
+                  <th className="w-10 px-2 py-2" />
+                  <th className="hs-table-head">Severity</th>
+                  <th className="hs-table-head">Role (ARN)</th>
+                  <th className="hs-table-head">Account</th>
+                  <th className="hs-table-head">Principal*</th>
+                  <th className="hs-table-head">Type*</th>
+                  <th className="hs-table-head">Ext acct*</th>
+                  <th className="hs-table-head">Days*</th>
+                  <th className="hs-table-head">Verdict*</th>
+                  <th className="hs-table-head">Admin*</th>
+                  <th className="hs-table-head">Vendor*</th>
+                  <th className="hs-table-head">Risk / mo</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800/90">
@@ -323,10 +321,10 @@ export function TrustReportPage() {
               </tbody>
             </table>
           </div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-600">* Populated from expanded finding detail (trust block), not the list endpoint.</p>
+          <p className="cr-helper">* Populated from expanded finding detail (trust block), not the list endpoint.</p>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-slate-500">
+          <div className="hs-pagination">
+            <p className="hs-pagination-meta">
               Page <span className="tabular-nums text-slate-700 dark:text-slate-300">{query.data.pagination.page}</span> of{" "}
               <span className="tabular-nums text-slate-700 dark:text-slate-300">{totalPages}</span>
               <span className="mx-2 text-slate-500 dark:text-slate-600">·</span>
@@ -337,7 +335,7 @@ export function TrustReportPage() {
                 type="button"
                 disabled={state.page <= 1 || query.isFetching}
                 onClick={() => patch({ page: Math.max(1, state.page - 1) })}
-                className="rounded-md border border-slate-700 bg-white px-3 py-1.5 text-sm text-slate-800 dark:bg-slate-900 dark:text-slate-200 disabled:opacity-40"
+                className="hs-btn-default px-3 py-1.5 text-sm"
               >
                 Previous
               </button>
@@ -345,7 +343,7 @@ export function TrustReportPage() {
                 type="button"
                 disabled={state.page >= totalPages || query.isFetching}
                 onClick={() => patch({ page: state.page + 1 })}
-                className="rounded-md border border-slate-700 bg-white px-3 py-1.5 text-sm text-slate-800 dark:bg-slate-900 dark:text-slate-200 disabled:opacity-40"
+                className="hs-btn-default px-3 py-1.5 text-sm"
               >
                 Next
               </button>
@@ -407,11 +405,11 @@ function TrustTableRow({
         <div>{shortenArn(item.affected_arn, 20, 16)}</div>
         <div className="mt-1 flex flex-wrap items-center gap-1">
           <CachedPermissionTierChip scanId={scanId} findingId={item.id} />
-          <span className="rounded-full border border-slate-300/80 bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+          <span className="hs-chip-compact border-slate-300/80 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
             {activity}
           </span>
           <span
-            className={`rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${
+            className={`hs-chip-compact ${
               adminSignal === "Admin-like"
                 ? "border-rose-300/80 bg-rose-100 text-rose-800 dark:border-rose-700/80 dark:bg-rose-900/30 dark:text-rose-200"
                 : "border-slate-300/80 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
@@ -420,7 +418,7 @@ function TrustTableRow({
             {adminSignal}
           </span>
           {highRiskCombination ? (
-            <span className="rounded-full border border-amber-300/80 bg-amber-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-amber-900 dark:border-amber-700/70 dark:bg-amber-900/35 dark:text-amber-200">
+            <span className="hs-chip-compact border-amber-300/80 bg-amber-100 text-amber-900 dark:border-amber-700/70 dark:bg-amber-900/35 dark:text-amber-200">
               High-risk combo
             </span>
           ) : null}

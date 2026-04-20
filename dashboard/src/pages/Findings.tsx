@@ -468,13 +468,13 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
         </StatePanel>
       ) : pageItems.length > 0 || (!isLoading && isSuccess) ? (
         <>
-          <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-900/50 lg:flex-row lg:flex-wrap lg:items-end">
+          <div className="hs-filter-bar">
             {!triage ? (
               <FilterField label="Severity">
                 <select
                   value={state.severity}
                   onChange={(e) => patch({ severity: e.target.value, page: 1 })}
-                  className="w-full min-w-[8rem] rounded-md border border-slate-700 bg-white px-2 py-1.5 dark:bg-slate-950 text-sm text-slate-800 dark:text-slate-200"
+                  className="hs-select w-full min-w-[8rem]"
                 >
                   {SEVERITY_OPTIONS.map((v) => (
                     <option key={v || "all"} value={v}>
@@ -485,7 +485,7 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
               </FilterField>
             ) : (
               <FilterField label="Severity">
-                <div className="rounded-md border border-slate-700 bg-slate-100 px-2 py-2 text-xs text-slate-700 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-300">
+                <div className="hs-card-soft rounded-lg px-2 py-2 text-xs text-slate-700 dark:text-slate-300">
                   Critical + high (fixed)
                 </div>
               </FilterField>
@@ -494,7 +494,7 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
               <select
                 value={state.module}
                 onChange={(e) => patch({ module: e.target.value, page: 1 })}
-                className="w-full min-w-[10rem] rounded-md border border-slate-700 bg-white px-2 py-1.5 dark:bg-slate-950 text-sm text-slate-800 dark:text-slate-200"
+                className="hs-select w-full min-w-[10rem]"
               >
                 {MODULE_OPTIONS.map((v) => (
                   <option key={v || "all"} value={v}>
@@ -507,7 +507,7 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
               <select
                 value={state.accountId}
                 onChange={(e) => patch({ accountId: e.target.value, page: 1 })}
-                className="w-full min-w-[12rem] rounded-md border border-slate-700 bg-white px-2 py-1.5 dark:bg-slate-950 text-sm text-slate-800 dark:text-slate-200"
+                className="hs-select w-full min-w-[12rem]"
                 disabled={accountsQuery.isLoading}
               >
                 <option value="">All accounts</option>
@@ -522,7 +522,7 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
               <select
                 value={state.claimability}
                 onChange={(e) => patch({ claimability: e.target.value, page: 1 })}
-                className="w-full min-w-[10rem] rounded-md border border-slate-700 bg-white px-2 py-1.5 dark:bg-slate-950 text-sm text-slate-800 dark:text-slate-200"
+                className="hs-select w-full min-w-[10rem]"
               >
                 {CLAIM_OPTIONS.map((v) => (
                   <option key={v || "all"} value={v}>
@@ -537,10 +537,10 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
                   label="Trust stale"
                   hint="Structured filter: evidence.verdict === stale_review_now. Unrelated to permission tier or admin_like."
                 >
-                  <label className="flex cursor-pointer items-center gap-2 rounded-md border border-slate-700 bg-white px-2 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-200">
+                  <label className="hs-toggle-card cursor-pointer">
                     <input
                       type="checkbox"
-                      className="rounded border-slate-600"
+                      className="hs-checkbox"
                       checked={state.trustStale}
                       onChange={(e) => patch({ trustStale: e.target.checked, page: 1 })}
                     />
@@ -551,10 +551,10 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
                   label="Admin-like (capability)"
                   hint="Stronger signal: permission_visibility.capabilities.admin_like. Distinct from privileged tier — a role can be one, both, or neither. Does not imply trust_classification=privileged."
                 >
-                  <label className="flex cursor-pointer items-center gap-2 rounded-md border border-slate-700 bg-white px-2 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-200">
+                  <label className="hs-toggle-card cursor-pointer">
                     <input
                       type="checkbox"
-                      className="rounded border-slate-600"
+                      className="hs-checkbox"
                       checked={state.adminLike}
                       onChange={(e) => patch({ adminLike: e.target.checked, page: 1 })}
                     />
@@ -568,7 +568,7 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
                   <select
                     value={state.trustClassification}
                     onChange={(e) => patch({ trustClassification: e.target.value, page: 1 })}
-                    className="w-full min-w-[9rem] rounded-md border border-slate-700 bg-white px-2 py-1.5 dark:bg-slate-950 text-sm text-slate-800 dark:text-slate-200"
+                  className="hs-select w-full min-w-[9rem]"
                   >
                     <option value="">Any</option>
                     <option value="admin">admin</option>
@@ -584,7 +584,7 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
                     value={state.principalType}
                     onChange={(e) => patch({ principalType: e.target.value, page: 1 })}
                     placeholder="e.g. oidc, aws_account, saml"
-                    className="w-full min-w-[10rem] rounded-md border border-slate-700 bg-white px-2 py-1.5 dark:bg-slate-950 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                    className="hs-input w-full min-w-[10rem]"
                   />
                 </FilterField>
                 <FilterField
@@ -596,7 +596,7 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
                     value={state.externalPrincipal}
                     onChange={(e) => patch({ externalPrincipal: e.target.value, page: 1 })}
                     placeholder="ARN or unknown"
-                    className="w-full min-w-[12rem] rounded-md border border-slate-700 bg-white px-2 py-1.5 dark:bg-slate-950 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                    className="hs-input w-full min-w-[12rem]"
                   />
                 </FilterField>
                 <FilterField
@@ -608,7 +608,7 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
                     value={state.externalAccountId}
                     onChange={(e) => patch({ externalAccountId: e.target.value, page: 1 })}
                     placeholder="12-digit id or unknown"
-                    className="w-full min-w-[10rem] rounded-md border border-slate-700 bg-white px-2 py-1.5 dark:bg-slate-950 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                    className="hs-input w-full min-w-[10rem]"
                   />
                 </FilterField>
               </>
@@ -619,17 +619,15 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Title, ARN, account, hostname…"
-                className="w-full rounded-md border border-slate-700 bg-white px-2 py-1.5 dark:bg-slate-950 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                className="hs-input"
               />
-              {searchInput.trim() !== debouncedSearch ? (
-                <p className="mt-1 text-[11px] text-slate-500">Debouncing search…</p>
-              ) : null}
+              {searchInput.trim() !== debouncedSearch ? <p className="mt-1 cr-helper">Debouncing search…</p> : null}
             </FilterField>
             <FilterField label="Page size">
               <select
                 value={state.pageSize}
                 onChange={(e) => patch({ pageSize: Number(e.target.value) as (typeof PAGE_SIZE_OPTIONS)[number], page: 1 })}
-                className="rounded-md border border-slate-700 bg-white px-2 py-1.5 dark:bg-slate-950 text-sm text-slate-800 dark:text-slate-200"
+                className="hs-select"
               >
                 {PAGE_SIZE_OPTIONS.map((n) => (
                   <option key={n} value={n}>
@@ -640,10 +638,10 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
             </FilterField>
             {triage ? (
               <FilterField label="Layout">
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                <label className="hs-toggle-inline cursor-pointer">
                   <input
                     type="checkbox"
-                    className="rounded border-slate-600"
+                    className="hs-checkbox"
                     checked={state.groupByAccount}
                     onChange={(e) => patch({ groupByAccount: e.target.checked, page: 1 })}
                   />
@@ -667,16 +665,13 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
             groupByAccount={state.groupByAccount}
           />
 
-          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+          <div className="hs-table-wrap">
             <table className="w-full min-w-[56rem] border-collapse text-left text-sm">
               <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-100/95 backdrop-blur-sm dark:border-b-slate-800 dark:bg-slate-100/95 dark:bg-slate-950/95">
                 {table.getHeaderGroups().map((hg) => (
                   <tr key={hg.id}>
                     {hg.headers.map((header) => (
-                      <th
-                        key={header.id}
-                        className="whitespace-nowrap px-3 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500"
-                      >
+                      <th key={header.id} className="hs-table-head whitespace-nowrap">
                         {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                       </th>
                     ))}
@@ -699,8 +694,8 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
             </table>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-slate-500">
+          <div className="hs-pagination">
+            <p className="hs-pagination-meta">
               Page <span className="tabular-nums text-slate-700 dark:text-slate-300">{pagination.page}</span> of{" "}
               <span className="tabular-nums text-slate-700 dark:text-slate-300">{totalPages}</span>
               <span className="mx-2 text-slate-500 dark:text-slate-600">·</span>
@@ -711,7 +706,7 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
                 type="button"
                 disabled={state.page <= 1 || isFetching}
                 onClick={() => patch({ page: Math.max(1, state.page - 1) })}
-                className="rounded-md border border-slate-700 bg-white px-3 py-1.5 text-sm text-slate-800 dark:bg-slate-900 dark:text-slate-200 disabled:opacity-40"
+                className="hs-btn-default px-3 py-1.5 text-sm"
               >
                 Previous
               </button>
@@ -719,7 +714,7 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
                 type="button"
                 disabled={state.page >= totalPages || isFetching}
                 onClick={() => patch({ page: state.page + 1 })}
-                className="rounded-md border border-slate-700 bg-white px-3 py-1.5 text-sm text-slate-800 dark:bg-slate-900 dark:text-slate-200 disabled:opacity-40"
+                className="hs-btn-default px-3 py-1.5 text-sm"
               >
                 Next
               </button>
@@ -789,7 +784,7 @@ function FilterField({
 }) {
   return (
     <div className={className} title={hint}>
-      <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</label>
+      <label className="hs-label">{label}</label>
       {children}
     </div>
   );

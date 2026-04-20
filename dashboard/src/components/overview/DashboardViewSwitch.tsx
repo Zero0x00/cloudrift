@@ -16,7 +16,7 @@ export function DashboardViewSwitch({
 }) {
   return (
     <div
-      className="flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-slate-50/90 p-1.5 dark:border-slate-800 dark:bg-slate-900/50"
+      className="hs-card-soft flex flex-wrap gap-1.5 p-1.5"
       role="tablist"
       aria-label="Dashboard mode"
     >
@@ -30,10 +30,10 @@ export function DashboardViewSwitch({
             aria-selected={active}
             onClick={() => onChange(id)}
             className={[
-              "inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition",
+              "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition",
               active
                 ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700"
-                : "text-slate-600 hover:bg-white/70 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-slate-100"
+                : "text-slate-600 hover:bg-white/80 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-slate-100"
             ].join(" ")}
           >
             <Icon className="shrink-0 opacity-80" />

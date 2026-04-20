@@ -20,7 +20,7 @@ function ComboCard({
       type="button"
       title={tooltip}
       onClick={onClick}
-      className="rounded-lg border border-slate-200 bg-white/90 p-4 text-left shadow-sm transition hover:border-cyan-300/80 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60 dark:border-slate-800 dark:bg-slate-900/80 dark:hover:border-cyan-700/60"
+      className="hs-card w-full p-4 text-left transition hover:border-cyan-300/80 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60 dark:hover:border-cyan-700/60"
     >
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">{title}</p>
       <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-100">{value}</p>
@@ -91,7 +91,7 @@ export function HighRiskCombinationStrip({
         />
       </div>
       <div
-        className="mt-4 flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/40 sm:flex-row sm:items-center sm:justify-between"
+        className="hs-card-soft mt-4 flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
         title="Uses privileged permission tier only (not admin_like). Stale = trust verdict stale_review_now. Same AND as Findings URL."
       >
         <div>

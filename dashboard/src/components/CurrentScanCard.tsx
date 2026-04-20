@@ -20,7 +20,7 @@ export function CurrentScanCard() {
   const { selectedScanId, currentScan, scansQuery, isResolvingScan } = useScanContext();
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/60">
+    <div className="hs-card-soft p-3">
       <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
         <IconScan className="shrink-0 opacity-80" />
         <span className="cr-section-title !text-[11px] !normal-case !tracking-normal">Current scan</span>

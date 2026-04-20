@@ -58,11 +58,7 @@ export function DiffPage() {
         <StatePanel intent="empty" title="Empty response">The diff request succeeded but returned no payload.</StatePanel>
       ) : (
         <>
-          <div
-            className="flex flex-wrap items-baseline justify-between gap-3 rounded-lg border border-slate-300 bg-white/95 px-4 py-3 dark:border-slate-700 dark:bg-slate-950/80"
-            role="status"
-            aria-live="polite"
-          >
+          <div className="hs-card-soft flex flex-wrap items-baseline justify-between gap-3 px-4 py-3" role="status" aria-live="polite">
             <p className="text-sm text-slate-700 dark:text-slate-200">
               <span className="font-semibold text-amber-800 dark:text-amber-300">+{formatCount(newCount)}</span>
               <span className="text-slate-500"> new</span>
@@ -73,10 +69,10 @@ export function DiffPage() {
               <span className="font-semibold tabular-nums text-slate-800 dark:text-slate-100">{formatCount(unchanged)}</span>
               <span className="text-slate-500"> unchanged</span>
             </p>
-            <p className="text-xs text-slate-500">Title + ARN identity (API). Lists below use severity from each scan.</p>
+            <p className="cr-helper">Title + ARN identity (API). Lists below use severity from each scan.</p>
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-slate-50/95 p-4 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+          <div className="hs-card-soft p-4 text-sm text-slate-700 dark:text-slate-300">
             <p>
               <span className="text-slate-500">Old (baseline): </span>
               <code className="text-cyan-800 dark:text-cyan-200/90">{data.old_scan_id}</code>
@@ -84,11 +80,11 @@ export function DiffPage() {
               <span className="text-slate-500">New: </span>
               <code className="text-cyan-800 dark:text-cyan-200/90">{data.new_scan_id}</code>
             </p>
-            <p className="mt-2 text-xs text-slate-500">
+            <p className="mt-2 cr-helper">
               Identity for matching: finding title + affected ARN (per API). GET /api/diff?old=…&amp;new=…
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <label className="text-xs uppercase tracking-wide text-slate-500">Baseline</label>
+              <label className="hs-label !mb-0">Baseline</label>
               <select
                 value={oldScanIdFromUrl ?? ""}
                 onChange={(e) => {
@@ -101,7 +97,7 @@ export function DiffPage() {
                   }
                   setSearchParams(next, { replace: true });
                 }}
-                className="rounded-md border border-slate-700 bg-white px-2 py-1 text-xs text-slate-800 dark:bg-slate-950 dark:text-slate-200"
+                className="hs-select !w-auto !py-1 !text-xs"
               >
                 <option value="">Auto previous</option>
                 {baselineOptions.map((id) => (
@@ -113,6 +109,7 @@ export function DiffPage() {
               <label className="ml-3 inline-flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300">
                 <input
                   type="checkbox"
+                  className="hs-checkbox"
                   checked={showNew}
                   onChange={(e) => {
                     const next = new URLSearchParams(searchParams);
@@ -129,6 +126,7 @@ export function DiffPage() {
               <label className="inline-flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300">
                 <input
                   type="checkbox"
+                  className="hs-checkbox"
                   checked={showResolved}
                   onChange={(e) => {
                     const next = new URLSearchParams(searchParams);
@@ -184,8 +182,8 @@ export function DiffPage() {
 
 function DiffMetric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white/90 p-4 dark:border-slate-800 dark:bg-slate-900/85">
-      <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
+    <div className="hs-card p-4">
+      <p className="hs-section-title">{label}</p>
       <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-100">{formatCount(value)}</p>
     </div>
   );
@@ -204,8 +202,8 @@ function DiffSection({
 }) {
   return (
     <div>
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">{title}</h2>
-      <p className="mt-1 text-xs text-slate-500">{subtitle}</p>
+      <h2 className="hs-section-title !text-sm">{title}</h2>
+      <p className="mt-1 cr-helper">{subtitle}</p>
       <div className="mt-3 space-y-2">
         {items.map((item) => (
           <DiffFindingCard key={`${item.id}-${item.affected_arn}`} item={item} variant={variant} />

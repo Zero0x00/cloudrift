@@ -156,66 +156,69 @@ export function ExternalEntitiesPage() {
         </StatePanel>
       ) : query.data ? (
         <div className="space-y-4">
-          <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-900/50 md:flex-row md:flex-wrap md:items-end">
-            <label className="block min-w-[10rem] flex-1 text-xs font-medium text-slate-600 dark:text-slate-400">
-              Principal type
+          <div className="hs-filter-bar md:flex-row md:flex-wrap md:items-end">
+            <label className="block min-w-[10rem] flex-1">
+              <span className="hs-label">Principal type</span>
               <input
-                className="mt-1 w-full rounded-md border border-slate-700 bg-white px-2 py-1.5 text-sm dark:bg-slate-950"
+                className="hs-input w-full"
                 value={principalType}
                 onChange={(e) => patchParams({ page: 1, principal_type: e.target.value })}
                 placeholder="e.g. oidc or unknown"
               />
             </label>
-            <label className="block min-w-[12rem] flex-1 text-xs font-medium text-slate-600 dark:text-slate-400">
-              External principal (exact)
+            <label className="block min-w-[12rem] flex-1">
+              <span className="hs-label">External principal (exact)</span>
               <input
-                className="mt-1 w-full rounded-md border border-slate-700 bg-white px-2 py-1.5 text-sm dark:bg-slate-950"
+                className="hs-input w-full"
                 value={externalPrincipal}
                 onChange={(e) => patchParams({ page: 1, external_principal: e.target.value })}
                 placeholder="ARN or unknown"
               />
             </label>
-            <label className="block min-w-[10rem] flex-1 text-xs font-medium text-slate-600 dark:text-slate-400">
-              External account id
+            <label className="block min-w-[10rem] flex-1">
+              <span className="hs-label">External account id</span>
               <input
-                className="mt-1 w-full rounded-md border border-slate-700 bg-white px-2 py-1.5 text-sm dark:bg-slate-950"
+                className="hs-input w-full"
                 value={externalAccountId}
                 onChange={(e) => patchParams({ page: 1, external_account_id: e.target.value })}
                 placeholder="12-digit id or unknown"
               />
             </label>
-            <div className="flex w-full flex-wrap gap-3 text-xs text-slate-700 dark:text-slate-300 md:w-auto">
-              <label className="flex cursor-pointer items-center gap-2">
+            <div className="min-w-[12rem]">
+              <span className="hs-label">Signals</span>
+              <div className="flex w-full flex-wrap gap-3 md:w-auto">
+              <label className="hs-toggle-inline cursor-pointer">
                 <input
                   type="checkbox"
-                  className="rounded border-slate-600"
+                  className="hs-checkbox"
                   checked={hasStaleRole}
                   onChange={(e) => patchParams({ page: 1, has_stale_role: e.target.checked })}
                 />
                 Stale roles
               </label>
-              <label className="flex cursor-pointer items-center gap-2">
+              <label className="hs-toggle-inline cursor-pointer">
                 <input
                   type="checkbox"
-                  className="rounded border-slate-600"
+                  className="hs-checkbox"
                   checked={hasPrivilegedRole}
                   onChange={(e) => patchParams({ page: 1, has_privileged_role: e.target.checked })}
                 />
                 Privileged tier
               </label>
-              <label className="flex cursor-pointer items-center gap-2">
+              <label className="hs-toggle-inline cursor-pointer">
                 <input
                   type="checkbox"
-                  className="rounded border-slate-600"
+                  className="hs-checkbox"
                   checked={hasAdminLikeRole}
                   onChange={(e) => patchParams({ page: 1, has_admin_like_role: e.target.checked })}
                 />
                 Admin-like
               </label>
+              </div>
             </div>
             <button
               type="button"
-              className="rounded-md border border-slate-400 bg-white px-3 py-2 text-xs font-medium text-slate-800 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+              className="hs-btn-default text-xs"
               onClick={() =>
                 patchParams({
                   page: 1,
@@ -232,7 +235,7 @@ export function ExternalEntitiesPage() {
             </button>
           </div>
 
-          <p className="text-xs text-slate-600 dark:text-slate-400">
+          <p className="cr-helper">
             Showing {formatCount(entityItems.length)} of {formatCount(pagination?.total_items ?? 0)} entities
             {safeFilters.principal_type || safeFilters.external_principal || safeFilters.external_account_id
               ? " (filtered)"
@@ -245,62 +248,62 @@ export function ExternalEntitiesPage() {
               No rows match the current filters for this scan.
             </StatePanel>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white/90 dark:border-slate-800 dark:bg-slate-900/80">
+            <div className="hs-table-wrap">
             <table className="w-full min-w-[720px] border-collapse text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-200 text-[11px] uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                <tr className="border-b border-slate-200 dark:border-slate-700">
                   <th
-                    className="px-3 py-2 font-medium"
+                    className="hs-table-head font-medium"
                     title="From evidence.external_principal. Missing evidence renders as 'unknown' and may merge distinct unidentified principals."
                   >
                     External principal
                   </th>
                   <th
-                    className="px-3 py-2 font-medium"
+                    className="hs-table-head font-medium"
                     title="From evidence.principal_type (lower-cased). Missing evidence renders as 'unknown'."
                   >
                     Type
                   </th>
                   <th
-                    className="px-3 py-2 font-medium"
+                    className="hs-table-head font-medium"
                     title="From evidence.external_account_id. Missing evidence renders as 'unknown'."
                   >
                     Ext. account
                   </th>
-                  <th className="px-3 py-2 font-medium">Severity</th>
-                  <th className="px-3 py-2 font-medium">Risk / mo</th>
+                  <th className="hs-table-head font-medium">Severity</th>
+                  <th className="hs-table-head font-medium">Risk / mo</th>
                   <th
-                    className="px-3 py-2 text-center font-medium"
+                    className="hs-table-head text-center font-medium"
                     title="Distinct trusted roles in this entity bucket."
                   >
                     Roles
                   </th>
                   <th
-                    className="px-3 py-2 text-center font-medium"
+                    className="hs-table-head text-center font-medium"
                     title="Distinct internal accounts hosting those roles."
                   >
                     Accounts
                   </th>
                   <th
-                    className="px-3 py-2 text-center font-medium"
+                    className="hs-table-head text-center font-medium"
                     title="Count of DISTINCT trusted roles for this entity with verdict stale_review_now. Does NOT imply every role for this entity is stale."
                   >
                     Stale
                   </th>
                   <th
-                    className="px-3 py-2 text-center font-medium"
+                    className="hs-table-head text-center font-medium"
                     title="Count of DISTINCT trusted roles classified as privileged tier (permission_visibility.classification). AT LEAST one role hits the signal; others may not."
                   >
                     Priv.
                   </th>
                   <th
-                    className="px-3 py-2 text-center font-medium"
+                    className="hs-table-head text-center font-medium"
                     title="Count of DISTINCT trusted roles with permission_visibility.capabilities.admin_like. AT LEAST one role hits the signal; others may not."
                   >
                     Admin∼
                   </th>
-                  <th className="px-3 py-2 text-center font-medium">Findings</th>
-                  <th className="px-3 py-2 font-medium">Actions</th>
+                  <th className="hs-table-head text-center font-medium">Findings</th>
+                  <th className="hs-table-head font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -342,15 +345,15 @@ export function ExternalEntitiesPage() {
           )}
 
           {pagination && pagination.total_items > 0 ? (
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 dark:text-slate-400">
-              <span>
+            <div className="hs-pagination !text-xs">
+              <span className="hs-pagination-meta !text-xs">
                 Page {pagination.page} / {totalPages}
               </span>
               <div className="flex gap-2">
                 <button
                   type="button"
                   disabled={pagination.page <= 1}
-                  className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40 dark:border-slate-600"
+                  className="hs-btn-default px-2 py-1 text-xs"
                   onClick={() => patchParams({ page: pagination.page - 1 })}
                 >
                   Previous
@@ -358,7 +361,7 @@ export function ExternalEntitiesPage() {
                 <button
                   type="button"
                   disabled={pagination.page >= totalPages}
-                  className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40 dark:border-slate-600"
+                  className="hs-btn-default px-2 py-1 text-xs"
                   onClick={() => patchParams({ page: pagination.page + 1 })}
                 >
                   Next

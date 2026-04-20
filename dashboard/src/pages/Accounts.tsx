@@ -58,7 +58,7 @@ function AccountCard({ account }: { account: AccountBreakdownItem }) {
   const title = account.account_name?.trim() || account.account_id;
 
   return (
-    <article className="flex flex-col rounded-lg border border-slate-200 bg-white/90 p-5 dark:border-slate-800 dark:bg-slate-900/85 shadow-sm shadow-black/10">
+    <article className="hs-card flex flex-col p-5">
       <header className="border-b border-slate-200 pb-3 dark:border-b-slate-800/90">
         <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
         <p className="mt-1 font-mono text-xs text-slate-500">{account.account_id}</p>
@@ -85,7 +85,7 @@ function AccountCard({ account }: { account: AccountBreakdownItem }) {
       </dl>
 
       <div className="mt-4 border-t border-slate-200 pt-3 dark:border-t-slate-800/90">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Top finding</p>
+        <p className="hs-label !mb-0">Top finding</p>
         <p className="mt-1 text-sm text-slate-800 dark:text-slate-200">{account.top_finding?.trim() || "—"}</p>
       </div>
     </article>
@@ -105,7 +105,7 @@ function MetricDt({
 }) {
   return (
     <div>
-      <dt className="text-[11px] text-slate-500">{label}</dt>
+      <dt className="cr-kpi-label">{label}</dt>
       <dd
         className={`mt-0.5 tabular-nums ${emphasize ? "font-semibold text-rose-200/90" : "text-slate-800 dark:text-slate-200"} ${mono ? "font-mono text-xs" : ""}`}
       >

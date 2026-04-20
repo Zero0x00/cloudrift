@@ -42,7 +42,7 @@ export function SeverityDistribution({
   const maxRow = Math.max(...rows.map((r) => r.count), 1);
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white/80 p-5 dark:border-slate-800 dark:bg-slate-900/80">
+    <div className="hs-card p-5">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Risk distribution</h3>
       <p className="mt-1 text-[11px] text-slate-500">
         Severity counts from summary only — percentages are shares of total findings.
@@ -123,7 +123,7 @@ export function ModuleDistribution({
   const total = a + b;
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white/80 p-5 dark:border-slate-800 dark:bg-slate-900/80">
+    <div className="hs-card p-5">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Findings by module</h3>
       <p className="mt-1 text-[11px] text-slate-500">
         Finding counts by module. Monthly cost is not broken out per module in the summary API — see “Monthly
@@ -204,7 +204,7 @@ export function ClaimabilityDistribution({
   const total = rows.reduce((s, r) => s + r.count, 0);
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white/80 p-5 dark:border-slate-800 dark:bg-slate-900/80">
+    <div className="hs-card p-5">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Claimability breakdown</h3>
       <p className="mt-1 text-[11px] text-slate-500">Reclaimable, dangling, broken, and edge_obscured counts from summary.</p>
       {total === 0 ? (
@@ -272,7 +272,7 @@ export function DirectVsRiskCostSplit({ summary }: { summary: ScanSummaryRespons
   const totalUsd = direct + risk;
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white/80 p-5 dark:border-slate-800 dark:bg-slate-900/80">
+    <div className="hs-card p-5">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Monthly cost split</h3>
       <p className="mt-1 text-[11px] text-slate-500">
         total_monthly_direct_cost_usd vs total_monthly_risk_cost_usd from summary. Represents waste exposure at scan
