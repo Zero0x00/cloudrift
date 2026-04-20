@@ -10,30 +10,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: "1.24.6"
-          cache: false
+          cache: true
 
-      - name: Tidy modules
-        run: go mod tidy
+      - name: Download modules
+        run: go mod download
 
       - name: Build
         run: go build ./...
 
-      - name: Clean Go env
-        run: |
-          go clean -modcache
-          go mod download
+      - name: Test
+        run: go test ./...
 
       - name: Lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
-          version: v1.59.1
-          skip-cache: true
-          skip-pkg-cache: true
-          skip-build-cache: true
+          version: latest
           args: --timeout=5m
