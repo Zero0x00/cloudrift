@@ -51,7 +51,3 @@ issues:
       linters:
         - errcheck
         - gosec
-
-output:
-  formats:
-    - format: colored-line-number
