@@ -1,3 +1,10 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
 jobs:
   tool-build:
     runs-on: ubuntu-latest
@@ -8,7 +15,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.24.6"
           cache: false
 
       - name: Tidy modules
