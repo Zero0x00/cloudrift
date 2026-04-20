@@ -5,7 +5,7 @@ run:
   issues-exit-code: 1
 
 linters:
-  disable-all: true
+  default: none
   enable:
     # 🔐 Core security
     - gosec
@@ -23,33 +23,33 @@ linters:
     # ⚡ Code quality (high signal only)
     - revive
     - misspell
+  settings:
+    gosec:
+      severity: medium
+      confidence: medium
+      excludes:
+        - G104 # ignore unchecked errors in some cases (tune later)
 
-linters-settings:
-  gosec:
-    severity: medium
-    confidence: medium
-    excludes:
-      - G104 # ignore unchecked errors in some cases (tune later)
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: "crypto/md5"
+              desc: "MD5 is insecure"
+            - pkg: "crypto/sha1"
+              desc: "SHA1 is deprecated"
+            - pkg: "math/rand"
+              desc: "Use crypto/rand for security-sensitive code"
 
-  depguard:
-    rules:
-      main:
-        deny:
-          - pkg: "crypto/md5"
-            desc: "MD5 is insecure"
-          - pkg: "crypto/sha1"
-            desc: "SHA1 is deprecated"
-          - pkg: "math/rand"
-            desc: "Use crypto/rand for security-sensitive code"
-
-  revive:
-    rules:
-      - name: var-naming
-      - name: error-return
+    revive:
+      rules:
+        - name: var-naming
+        - name: error-return
 
 issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
-        - gosec
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+          - gosec
