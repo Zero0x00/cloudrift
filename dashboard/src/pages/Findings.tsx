@@ -13,6 +13,7 @@ import {
   FindingDetailPanelError,
   FindingDetailPanelLoading
 } from "../components/findings/FindingDetailPanel";
+import { InterimHeuristicIndicator } from "../components/InterimHeuristicIndicator";
 import { PageHeader } from "../components/PageHeader";
 import { SeverityBadge } from "../components/SeverityBadge";
 import { ScanRequired } from "../components/ScanRequired";
@@ -105,8 +106,40 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
     if (debouncedSearch) {
       p.search = debouncedSearch;
     }
+    if (state.trustStale) {
+      p.trust_stale = true;
+    }
+    if (state.adminLike) {
+      p.admin_like = true;
+    }
+    if (state.trustClassification.trim()) {
+      p.trust_classification = state.trustClassification.trim();
+    }
+    if (state.principalType.trim()) {
+      p.principal_type = state.principalType.trim();
+    }
+    if (state.externalPrincipal.trim()) {
+      p.external_principal = state.externalPrincipal.trim();
+    }
+    if (state.externalAccountId.trim()) {
+      p.external_account_id = state.externalAccountId.trim();
+    }
     return p;
-  }, [state.page, state.pageSize, state.severity, state.module, state.accountId, state.claimability, debouncedSearch]);
+  }, [
+    state.page,
+    state.pageSize,
+    state.severity,
+    state.module,
+    state.accountId,
+    state.claimability,
+    debouncedSearch,
+    state.trustStale,
+    state.adminLike,
+    state.trustClassification,
+    state.principalType,
+    state.externalPrincipal,
+    state.externalAccountId
+  ]);
 
   const triageBackendParams: FindingsQueryParams = useMemo(() => {
     const p: FindingsQueryParams = { page: 1, page_size: TRIAGE_FETCH_PAGE_SIZE };
@@ -122,8 +155,37 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
     if (debouncedSearch) {
       p.search = debouncedSearch;
     }
+    if (state.trustStale) {
+      p.trust_stale = true;
+    }
+    if (state.adminLike) {
+      p.admin_like = true;
+    }
+    if (state.trustClassification.trim()) {
+      p.trust_classification = state.trustClassification.trim();
+    }
+    if (state.principalType.trim()) {
+      p.principal_type = state.principalType.trim();
+    }
+    if (state.externalPrincipal.trim()) {
+      p.external_principal = state.externalPrincipal.trim();
+    }
+    if (state.externalAccountId.trim()) {
+      p.external_account_id = state.externalAccountId.trim();
+    }
     return p;
-  }, [state.module, state.accountId, state.claimability, debouncedSearch]);
+  }, [
+    state.module,
+    state.accountId,
+    state.claimability,
+    debouncedSearch,
+    state.trustStale,
+    state.adminLike,
+    state.trustClassification,
+    state.principalType,
+    state.externalPrincipal,
+    state.externalAccountId
+  ]);
 
   const defaultQuery = useFindingsListQuery(selectedScanId, listParams, {
     enabled: Boolean(selectedScanId) && !triage
@@ -222,7 +284,13 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
       state.module ||
       state.accountId ||
       state.claimability ||
-      debouncedSearch
+      debouncedSearch ||
+      state.trustStale ||
+      state.adminLike ||
+      state.trustClassification.trim() ||
+      state.principalType.trim() ||
+      state.externalPrincipal.trim() ||
+      state.externalAccountId.trim()
   );
 
   const clearPrefetchTimer = useCallback(() => {
@@ -294,9 +362,15 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
                 <div className="mt-0.5 font-mono text-[11px] text-slate-500 break-all">{shortenArn(row.original.affected_arn, 36, 24)}</div>
               ) : null}
               {hint ? (
-                <p className="mt-1 text-[11px] font-medium text-amber-900/90 dark:text-amber-200/85" title="Derived from list fields (module, claimability, title keywords)">
-                  {hint}
-                </p>
+                <div className="mt-1 inline-flex items-center gap-1.5">
+                  <p className="inline-flex rounded-full border border-amber-300/60 bg-amber-100/80 px-2 py-0.5 text-[11px] font-medium text-amber-900/90 dark:border-amber-700/70 dark:bg-amber-900/30 dark:text-amber-200/85">
+                    {hint}
+                  </p>
+                  <InterimHeuristicIndicator
+                    label="inferred"
+                    tooltip="Derived from list fields (module, claimability, title keywords). Interim heuristic, not authoritative."
+                  />
+                </div>
               ) : null}
             </div>
           );
@@ -362,7 +436,6 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
             ? "Critical and high severity only, merged and sorted by estimated monthly risk on this device. Pagination applies after merge. See banner for fetch limits."
             : "Server-paginated findings with filters from GET /api/scans/:id/findings. Detail loads from GET …/findings/:fid when expanded. Filters sync to the URL for sharing."
         }
-        scanId={selectedScanId}
       />
       {triage ? (
         <div
@@ -458,6 +531,88 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
                 ))}
               </select>
             </FilterField>
+            {!triage && state.module === "external_access" ? (
+              <>
+                <FilterField
+                  label="Trust stale"
+                  hint="Structured filter: evidence.verdict === stale_review_now. Unrelated to permission tier or admin_like."
+                >
+                  <label className="flex cursor-pointer items-center gap-2 rounded-md border border-slate-700 bg-white px-2 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-200">
+                    <input
+                      type="checkbox"
+                      className="rounded border-slate-600"
+                      checked={state.trustStale}
+                      onChange={(e) => patch({ trustStale: e.target.checked, page: 1 })}
+                    />
+                    Verdict stale_review_now
+                  </label>
+                </FilterField>
+                <FilterField
+                  label="Admin-like (capability)"
+                  hint="Stronger signal: permission_visibility.capabilities.admin_like. Distinct from privileged tier — a role can be one, both, or neither. Does not imply trust_classification=privileged."
+                >
+                  <label className="flex cursor-pointer items-center gap-2 rounded-md border border-slate-700 bg-white px-2 py-2 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-200">
+                    <input
+                      type="checkbox"
+                      className="rounded border-slate-600"
+                      checked={state.adminLike}
+                      onChange={(e) => patch({ adminLike: e.target.checked, page: 1 })}
+                    />
+                    admin_like flag
+                  </label>
+                </FilterField>
+                <FilterField
+                  label="Permission tier"
+                  hint="Backend coarse label: permission_visibility.classification (e.g. privileged, admin). Not the same as admin_like capability — compare both filters if you expected overlap."
+                >
+                  <select
+                    value={state.trustClassification}
+                    onChange={(e) => patch({ trustClassification: e.target.value, page: 1 })}
+                    className="w-full min-w-[9rem] rounded-md border border-slate-700 bg-white px-2 py-1.5 dark:bg-slate-950 text-sm text-slate-800 dark:text-slate-200"
+                  >
+                    <option value="">Any</option>
+                    <option value="admin">admin</option>
+                    <option value="privileged">privileged</option>
+                    <option value="scoped">scoped</option>
+                    <option value="limited">limited</option>
+                    <option value="unknown">unknown</option>
+                  </select>
+                </FilterField>
+                <FilterField label="Principal type">
+                  <input
+                    type="text"
+                    value={state.principalType}
+                    onChange={(e) => patch({ principalType: e.target.value, page: 1 })}
+                    placeholder="e.g. oidc, aws_account, saml"
+                    className="w-full min-w-[10rem] rounded-md border border-slate-700 bg-white px-2 py-1.5 dark:bg-slate-950 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                  />
+                </FilterField>
+                <FilterField
+                  label="External principal"
+                  hint="Exact evidence.external_principal (use unknown for missing). AND with other filters."
+                >
+                  <input
+                    type="text"
+                    value={state.externalPrincipal}
+                    onChange={(e) => patch({ externalPrincipal: e.target.value, page: 1 })}
+                    placeholder="ARN or unknown"
+                    className="w-full min-w-[12rem] rounded-md border border-slate-700 bg-white px-2 py-1.5 dark:bg-slate-950 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                  />
+                </FilterField>
+                <FilterField
+                  label="External account id"
+                  hint="Exact evidence.external_account_id (use unknown for missing)."
+                >
+                  <input
+                    type="text"
+                    value={state.externalAccountId}
+                    onChange={(e) => patch({ externalAccountId: e.target.value, page: 1 })}
+                    placeholder="12-digit id or unknown"
+                    className="w-full min-w-[10rem] rounded-md border border-slate-700 bg-white px-2 py-1.5 dark:bg-slate-950 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                  />
+                </FilterField>
+              </>
+            ) : null}
             <FilterField label="Search" className="min-w-[16rem] flex-1">
               <input
                 type="search"
@@ -505,6 +660,10 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
             accountId={state.accountId}
             claimability={state.claimability}
             search={debouncedSearch}
+            trustStale={state.trustStale}
+            adminLike={state.adminLike}
+            trustClassification={state.trustClassification}
+            principalType={state.principalType}
             groupByAccount={state.groupByAccount}
           />
 
@@ -581,12 +740,15 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
     return (
       <Fragment key={row.id}>
         <tr
-          className="bg-slate-50/80 hover:bg-slate-100 dark:bg-slate-50/90 dark:bg-slate-900/40 dark:hover:bg-slate-900/80"
+          className="group bg-slate-50/80 transition-colors hover:bg-slate-100 dark:bg-slate-50/90 dark:bg-slate-900/40 dark:hover:bg-slate-900/80"
           onPointerEnter={() => onRowPointerEnter(rowItem.id)}
           onPointerLeave={onRowPointerLeave}
         >
           {row.getVisibleCells().map((cell) => (
-            <td key={cell.id} className="px-3 py-3 align-top text-slate-700 dark:text-slate-300">
+            <td
+              key={cell.id}
+              className="px-3 py-3 align-top text-slate-700 transition-colors group-hover:text-slate-900 dark:text-slate-300 dark:group-hover:text-slate-100"
+            >
               {flexRender(cell.column.columnDef.cell, cell.getContext())}
             </td>
           ))}
@@ -594,15 +756,17 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
         {expandedId === rowItem.id ? (
           <tr className="bg-slate-100/80 dark:bg-slate-950/80">
             <td colSpan={columns.length} className="border-t border-slate-200 px-4 py-4 dark:border-t-slate-800">
-              {detailQuery.isLoading ? (
-                <FindingDetailPanelLoading />
-              ) : detailQuery.isError ? (
-                <FindingDetailPanelError error={detailQuery.error} />
-              ) : detailQuery.data?.item ? (
-                <FindingDetailPanelContent item={detailQuery.data.item} />
-              ) : (
-                <StatePanel intent="empty">No detail payload.</StatePanel>
-              )}
+              <div className="animate-fade-in">
+                {detailQuery.isLoading ? (
+                  <FindingDetailPanelLoading />
+                ) : detailQuery.isError ? (
+                  <FindingDetailPanelError error={detailQuery.error} />
+                ) : detailQuery.data?.item ? (
+                  <FindingDetailPanelContent item={detailQuery.data.item} />
+                ) : (
+                  <StatePanel intent="empty">No detail payload.</StatePanel>
+                )}
+              </div>
             </td>
           </tr>
         ) : null}
@@ -614,14 +778,17 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
 function FilterField({
   label,
   children,
-  className = ""
+  className = "",
+  hint
 }: {
   label: string;
   children: ReactNode;
   className?: string;
+  /** Shown as native tooltip on the field group (privileged vs admin_like clarity). */
+  hint?: string;
 }) {
   return (
-    <div className={className}>
+    <div className={className} title={hint}>
       <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</label>
       {children}
     </div>
@@ -635,6 +802,10 @@ function AppliedFiltersBar({
   accountId,
   claimability,
   search,
+  trustStale,
+  adminLike,
+  trustClassification,
+  principalType,
   groupByAccount
 }: {
   triage: boolean;
@@ -643,6 +814,10 @@ function AppliedFiltersBar({
   accountId: string;
   claimability: string;
   search: string;
+  trustStale: boolean;
+  adminLike: boolean;
+  trustClassification: string;
+  principalType: string;
   groupByAccount: boolean;
 }) {
   const chips: { label: string; value: string }[] = [];
@@ -660,6 +835,18 @@ function AppliedFiltersBar({
   }
   if (claimability) {
     chips.push({ label: "claimability", value: claimability });
+  }
+  if (trustStale) {
+    chips.push({ label: "trust_stale", value: "true" });
+  }
+  if (adminLike) {
+    chips.push({ label: "admin_like", value: "true" });
+  }
+  if (trustClassification.trim()) {
+    chips.push({ label: "trust_classification", value: trustClassification.trim() });
+  }
+  if (principalType.trim()) {
+    chips.push({ label: "principal_type", value: principalType.trim() });
   }
   if (search) {
     chips.push({ label: "search", value: search });

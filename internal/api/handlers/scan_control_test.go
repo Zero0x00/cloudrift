@@ -53,6 +53,9 @@ openai_api_key_env = "OPENAI_API_KEY"
 	if got["openai_configured"] != true {
 		t.Fatalf("expected openai_configured true, got %v", got["openai_configured"])
 	}
+	if _, ok := got["aws_profiles"].([]any); !ok {
+		t.Fatalf("expected aws_profiles as [] not null, got %#v", got["aws_profiles"])
+	}
 }
 
 func TestValidateProfileInvalidMissing(t *testing.T) {
@@ -90,6 +93,23 @@ func TestCurrentRunStatusIdle(t *testing.T) {
 	}
 	if !strings.Contains(rr.Body.String(), `"status":"idle"`) {
 		t.Fatalf("expected idle status, got %s", rr.Body.String())
+	}
+}
+
+func TestRunHistoryEmptyArrayWhenNoRuns(t *testing.T) {
+	cc := NewScanControlCenter(t.TempDir(), "")
+	req := httptest.NewRequest(http.MethodGet, "/api/scan/history", nil)
+	rr := httptest.NewRecorder()
+	cc.RunHistory().ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+	var raw map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &raw); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := raw["items"].([]any); !ok {
+		t.Fatalf("expected items [] not null, got %#v", raw["items"])
 	}
 }
 

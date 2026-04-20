@@ -10,7 +10,7 @@ func TestRootCommandContainsFoundationCommandsOnly(t *testing.T) {
 		got[cmd.Name()] = true
 	}
 
-	for _, required := range []string{"scan", "report", "query", "version", "dashboard"} {
+	for _, required := range []string{"scan", "report", "query", "version", "dashboard", "demo"} {
 		if !got[required] {
 			t.Fatalf("missing required command %q", required)
 		}

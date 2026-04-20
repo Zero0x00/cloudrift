@@ -8,15 +8,29 @@ import { useDiffQuery } from "../hooks/useDashboardQueries";
 import { useScanContext } from "../hooks/useScanContext";
 import { getPreviousScanIdForDiff } from "../lib/scanOrder";
 import { formatCount } from "../lib/format";
+import { useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 
 export function DiffPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { selectedScanId, scans } = useScanContext();
-  const query = useDiffQuery();
-  const oldScanId = getPreviousScanIdForDiff(scans, selectedScanId);
+  const defaultOldScanId = getPreviousScanIdForDiff(scans, selectedScanId);
+  const oldScanIdFromUrl = searchParams.get("old_scan_id");
+  const oldScanId = oldScanIdFromUrl ?? defaultOldScanId;
+  const showNew = searchParams.get("show_new") !== "0";
+  const showResolved = searchParams.get("show_resolved") !== "0";
+  const query = useDiffQuery(oldScanId, selectedScanId);
+
+  const baselineOptions = useMemo(
+    () => scans.filter((s) => s.scan_id !== selectedScanId).map((s) => s.scan_id),
+    [scans, selectedScanId]
+  );
 
   const data = query.data;
-  const newCount = data?.new_findings.length ?? 0;
-  const resolvedCount = data?.resolved_findings.length ?? 0;
+  const newFindings = data?.new_findings ?? [];
+  const resolvedFindings = data?.resolved_findings ?? [];
+  const newCount = newFindings.length;
+  const resolvedCount = resolvedFindings.length;
   const unchanged = data?.unchanged_count ?? 0;
   const noDrift = data && newCount === 0 && resolvedCount === 0;
 
@@ -25,7 +39,6 @@ export function DiffPage() {
       <PageHeader
         title="Diff"
         description="Compares the selected scan (new) to the chronologically previous scan in the newest-first list from GET /api/scans. Baseline = next row after the selected scan."
-        scanId={selectedScanId}
       />
       {!selectedScanId ? (
         <ScanRequired />
@@ -74,6 +87,62 @@ export function DiffPage() {
             <p className="mt-2 text-xs text-slate-500">
               Identity for matching: finding title + affected ARN (per API). GET /api/diff?old=…&amp;new=…
             </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <label className="text-xs uppercase tracking-wide text-slate-500">Baseline</label>
+              <select
+                value={oldScanIdFromUrl ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const next = new URLSearchParams(searchParams);
+                  if (v) {
+                    next.set("old_scan_id", v);
+                  } else {
+                    next.delete("old_scan_id");
+                  }
+                  setSearchParams(next, { replace: true });
+                }}
+                className="rounded-md border border-slate-700 bg-white px-2 py-1 text-xs text-slate-800 dark:bg-slate-950 dark:text-slate-200"
+              >
+                <option value="">Auto previous</option>
+                {baselineOptions.map((id) => (
+                  <option key={id} value={id}>
+                    {id}
+                  </option>
+                ))}
+              </select>
+              <label className="ml-3 inline-flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={showNew}
+                  onChange={(e) => {
+                    const next = new URLSearchParams(searchParams);
+                    if (e.target.checked) {
+                      next.delete("show_new");
+                    } else {
+                      next.set("show_new", "0");
+                    }
+                    setSearchParams(next, { replace: true });
+                  }}
+                />
+                Show new
+              </label>
+              <label className="inline-flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={showResolved}
+                  onChange={(e) => {
+                    const next = new URLSearchParams(searchParams);
+                    if (e.target.checked) {
+                      next.delete("show_resolved");
+                    } else {
+                      next.set("show_resolved", "0");
+                    }
+                    setSearchParams(next, { replace: true });
+                  }}
+                />
+                Show resolved
+              </label>
+            </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
@@ -89,16 +158,16 @@ export function DiffPage() {
             </StatePanel>
           ) : null}
 
-          {newCount > 0 ? (
-            <DiffSection variant="new" title="New findings" subtitle="Present in the new scan only." items={data.new_findings} />
+          {showNew && newCount > 0 ? (
+            <DiffSection variant="new" title="New findings" subtitle="Present in the new scan only." items={newFindings} />
           ) : null}
 
-          {resolvedCount > 0 ? (
+          {showResolved && resolvedCount > 0 ? (
             <DiffSection
               variant="resolved"
               title="Resolved findings"
               subtitle="Present in the baseline scan only."
-              items={data.resolved_findings}
+              items={resolvedFindings}
             />
           ) : null}
 

@@ -3,6 +3,7 @@ import { formatQueryError } from "../../api/httpError";
 import type { FindingDetailItem } from "../../api/types";
 import { formatAdminEvalStateLabel, formatDaysSinceUsedLabel } from "../../lib/trustLabels";
 import { StatePanel } from "../StatePanel";
+import { PermissionVisibilityPanel } from "../trust/PermissionVisibilityPanel";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -28,20 +29,31 @@ function TrustBlock({ trust }: { trust: NonNullable<FindingDetailItem["trust"]> 
     ["Unknown vendor", trust.unknown_vendor !== undefined ? String(trust.unknown_vendor) : undefined]
   ];
   const visible = rows.filter(([, v]) => v !== undefined && v !== "");
+  const hasPermissionVisibility = Boolean(trust.permission_visibility);
 
-  if (visible.length === 0) {
+  if (visible.length === 0 && !hasPermissionVisibility) {
     return <p className="text-slate-500">No trust metadata populated.</p>;
   }
 
   return (
-    <dl className="grid gap-2 sm:grid-cols-2">
-      {visible.map(([k, v]) => (
-        <div key={k}>
-          <dt className="text-xs text-slate-500">{k}</dt>
-          <dd className="mt-0.5 font-mono text-xs text-slate-800 dark:text-slate-200 break-all">{String(v)}</dd>
-        </div>
-      ))}
-    </dl>
+    <div className="space-y-4">
+      {visible.length > 0 ? (
+        <dl className="grid gap-2 sm:grid-cols-2">
+          {visible.map(([k, v]) => (
+            <div key={k}>
+              <dt className="text-xs text-slate-500">{k}</dt>
+              <dd className="mt-0.5 font-mono text-xs text-slate-800 dark:text-slate-200 break-all">{String(v)}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      <div className="rounded-md border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-900/40">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          Permission visibility
+        </p>
+        <PermissionVisibilityPanel permission={trust.permission_visibility} />
+      </div>
+    </div>
   );
 }
 

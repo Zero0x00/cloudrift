@@ -28,6 +28,7 @@ func apiRouter(outputDir, configPath string) http.Handler {
 	control := handlers.NewScanControlCenter(outputDir, configPath)
 	r.Get("/scans", handlers.ListScans(outputDir))
 	r.Get("/scans/{id}/summary", handlers.GetScanSummary(outputDir))
+	r.Get("/scans/{id}/external-entities", handlers.ListExternalEntities(outputDir))
 	r.Get("/scans/{id}/findings", handlers.ListFindings(outputDir))
 	r.Get("/scans/{id}/findings/{fid}", handlers.GetFinding(outputDir))
 	r.Get("/scans/{id}/accounts", handlers.ListAccounts(outputDir))

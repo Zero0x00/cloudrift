@@ -1,9 +1,8 @@
 import { useMemo } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../api/client";
 import { queryKeys } from "../api/queryKeys";
-import type { FindingsQueryParams } from "../api/types";
-import { getPreviousScanIdForDiff } from "../lib/scanOrder";
+import type { ExternalEntitiesQueryParams, FindingsQueryParams, ScanListItem } from "../api/types";
 import { useScanContext } from "./useScanContext";
 
 export type TrustActivityBuckets = {
@@ -91,6 +90,21 @@ export function useSummaryQuery() {
   });
 }
 
+/** Paginated external-entity aggregation (same source as summary.external_entity_count when unfiltered). */
+export function useExternalEntitiesQuery(
+  scanId: string | null,
+  params: ExternalEntitiesQueryParams,
+  options?: { enabled?: boolean }
+) {
+  const enabled = options?.enabled ?? Boolean(scanId);
+  return useQuery({
+    queryKey: queryKeys.externalEntities(scanId, params),
+    queryFn: () => apiClient.getExternalEntities(scanId as string, params),
+    enabled: Boolean(scanId) && enabled,
+    staleTime: 60_000
+  });
+}
+
 /** Paginated / filtered findings; params must be memoized in the caller for stable cache keys. */
 export function useFindingsListQuery(
   scanId: string | null,
@@ -134,16 +148,11 @@ export function useAccountsQuery() {
   });
 }
 
-export function useDiffQuery() {
-  const { scans, selectedScanId } = useScanContext();
-  const oldScanId = useMemo(
-    () => getPreviousScanIdForDiff(scans, selectedScanId),
-    [scans, selectedScanId]
-  );
+export function useDiffQuery(oldScanId: string | null, newScanId: string | null) {
   return useQuery({
-    queryKey: queryKeys.diff(oldScanId, selectedScanId),
-    queryFn: () => apiClient.getDiff(oldScanId as string, selectedScanId as string),
-    enabled: Boolean(oldScanId && selectedScanId)
+    queryKey: queryKeys.diff(oldScanId, newScanId),
+    queryFn: () => apiClient.getDiff(oldScanId as string, newScanId as string),
+    enabled: Boolean(oldScanId && newScanId)
   });
 }
 
@@ -187,5 +196,75 @@ export function useScanRunHistoryQuery(pollMs = 5000) {
     queryFn: () => apiClient.getScanRunHistory(),
     refetchInterval: pollMs
   });
+}
+
+/** Consecutive pairs from GET /api/scans (newest first) for GET /api/diff — capped to limit parallel requests. */
+export const SCAN_RISK_TREND_MAX_DIFFS = 4;
+
+export type ScanRiskTrendPoint = {
+  label: string;
+  newCount: number;
+  resolvedCount: number;
+  net: number;
+  isPending: boolean;
+  isError: boolean;
+};
+
+/**
+ * Builds diff-based trend points (new vs resolved vs net) for the newest scan transitions.
+ * Each point is one `old` → `new` diff in chronological order toward the latest scan in the list slice.
+ */
+export function useScanRiskTrendData(scansNewestFirst: ScanListItem[], enabled: boolean) {
+  const pairs = useMemo(() => {
+    if (!enabled || scansNewestFirst.length < 2) {
+      return [] as { oldId: string; newId: string; label: string }[];
+    }
+    const limit = Math.min(SCAN_RISK_TREND_MAX_DIFFS, scansNewestFirst.length - 1);
+    const out: { oldId: string; newId: string; label: string }[] = [];
+    for (let i = 0; i < limit; i++) {
+      const newer = scansNewestFirst[i];
+      const older = scansNewestFirst[i + 1];
+      if (!newer?.scan_id || !older?.scan_id) {
+        break;
+      }
+      const label = newer.timestamp?.slice(0, 10) ?? newer.scan_id.slice(0, 8);
+      out.push({ oldId: older.scan_id, newId: newer.scan_id, label });
+    }
+    return out;
+  }, [scansNewestFirst, enabled]);
+
+  const diffResults = useQueries({
+    queries: pairs.map((p) => ({
+      queryKey: queryKeys.diff(p.oldId, p.newId),
+      queryFn: () => apiClient.getDiff(p.oldId, p.newId),
+      enabled: enabled && pairs.length > 0,
+      staleTime: 120_000,
+      gcTime: 300_000
+    }))
+  });
+
+  const points: ScanRiskTrendPoint[] = useMemo(
+    () =>
+      pairs.map((p, i) => {
+        const r = diffResults[i];
+        const pending = Boolean(r?.isPending || r?.isLoading);
+        const err = Boolean(r?.isError);
+        const newCount = r?.data?.new_findings?.length ?? 0;
+        const resolvedCount = r?.data?.resolved_findings?.length ?? 0;
+        return {
+          label: p.label,
+          newCount,
+          resolvedCount,
+          net: newCount - resolvedCount,
+          isPending: pending,
+          isError: err
+        };
+      }),
+    [pairs, diffResults]
+  );
+
+  const isLoading = diffResults.some((r) => r.isPending || r.isLoading);
+
+  return { points, isLoading, pairCount: pairs.length };
 }
 

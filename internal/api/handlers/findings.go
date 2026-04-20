@@ -52,11 +52,21 @@ func ListFindings(outputDir string) http.HandlerFunc {
 		}
 
 		filters := schema.FindingsAppliedFilter{
-			Severity:     strings.TrimSpace(r.URL.Query().Get("severity")),
-			Module:       strings.TrimSpace(r.URL.Query().Get("module")),
-			AccountID:    strings.TrimSpace(r.URL.Query().Get("account_id")),
-			Claimability: strings.TrimSpace(r.URL.Query().Get("claimability")),
-			Search:       strings.TrimSpace(r.URL.Query().Get("search")),
+			Severity:              strings.TrimSpace(r.URL.Query().Get("severity")),
+			Module:                strings.TrimSpace(r.URL.Query().Get("module")),
+			AccountID:             strings.TrimSpace(r.URL.Query().Get("account_id")),
+			Claimability:          strings.TrimSpace(r.URL.Query().Get("claimability")),
+			Search:                strings.TrimSpace(r.URL.Query().Get("search")),
+			TrustClassification:   strings.TrimSpace(r.URL.Query().Get("trust_classification")),
+			PrincipalType:         strings.TrimSpace(r.URL.Query().Get("principal_type")),
+			ExternalPrincipal:     strings.TrimSpace(r.URL.Query().Get("external_principal")),
+			ExternalAccountID:     strings.TrimSpace(r.URL.Query().Get("external_account_id")),
+		}
+		if b := parseQueryBoolTrueOnly(r, "trust_stale"); b != nil {
+			filters.TrustStale = b
+		}
+		if b := parseQueryBoolTrueOnly(r, "admin_like"); b != nil {
+			filters.AdminLike = b
 		}
 		filtered := filterFindings(findings, filters)
 		total := len(filtered)
@@ -141,6 +151,25 @@ func filterFindings(findings []models.Finding, filters schema.FindingsAppliedFil
 			continue
 		}
 		if filters.Claimability != "" && !strings.EqualFold(string(finding.Claimability), filters.Claimability) {
+			continue
+		}
+		if filters.AdminLike != nil && *filters.AdminLike && !evidenceAdminLike(finding.Evidence) {
+			continue
+		}
+		if filters.TrustStale != nil && *filters.TrustStale && !evidenceTrustVerdictStale(finding.Evidence) {
+			continue
+		}
+		if filters.TrustClassification != "" &&
+			!strings.EqualFold(evidenceTrustClassification(finding.Evidence), filters.TrustClassification) {
+			continue
+		}
+		if filters.PrincipalType != "" && !principalTypeMatchesFilter(finding.Evidence, filters.PrincipalType) {
+			continue
+		}
+		if filters.ExternalPrincipal != "" && !externalPrincipalMatchesFilter(finding.Evidence, filters.ExternalPrincipal) {
+			continue
+		}
+		if filters.ExternalAccountID != "" && !externalAccountIDMatchesFilter(finding.Evidence, filters.ExternalAccountID) {
 			continue
 		}
 		if search != "" && !matchesSearch(finding, search) {
@@ -229,7 +258,76 @@ func toTrustDisplay(evidence map[string]any) *schema.TrustDisplay {
 	if v, ok := boolEvidence(evidence, "unknown_vendor"); ok {
 		td.UnknownVendor = &v
 	}
+	td.PermissionVisibility = toPermissionVisibilityDisplay(evidence["permission_visibility"])
 	return td
+}
+
+func toPermissionVisibilityDisplay(raw any) *schema.PermissionVisibilityDisplay {
+	m, ok := raw.(map[string]any)
+	if !ok || len(m) == 0 {
+		return nil
+	}
+	pv := &schema.PermissionVisibilityDisplay{
+		Classification: strEvidence(m, "classification"),
+		Confidence:     strEvidence(m, "confidence"),
+		AnalysisMode:   strEvidence(m, "analysis_mode"),
+		Reasons:        stringListEvidence(m, "reasons"),
+		Capabilities: schema.PermissionCapabilityFlags{
+			CanAssumeRole:     boolEvidenceDefault(m, "capabilities", "can_assume_role"),
+			IAMWriteAccess:    boolEvidenceDefault(m, "capabilities", "iam_write_access"),
+			S3WriteAccess:     boolEvidenceDefault(m, "capabilities", "s3_write_access"),
+			CloudFrontControl: boolEvidenceDefault(m, "capabilities", "cloudfront_control"),
+			AdminLike:         boolEvidenceDefault(m, "capabilities", "admin_like"),
+		},
+	}
+	if b, ok := boolEvidence(m, "policy_parse_ok"); ok {
+		pv.PolicyParseOK = &b
+	}
+	if b, ok := boolEvidence(m, "used_managed_policy_name_heuristics"); ok {
+		pv.UsedManagedPolicyNameHeuristics = &b
+	}
+	if b, ok := boolEvidence(m, "complex_policy_detected"); ok {
+		pv.ComplexPolicyDetected = &b
+	}
+	if b, ok := boolEvidence(m, "managed_policy_documents_inspected"); ok {
+		pv.ManagedPolicyDocumentsInspected = &b
+	}
+	return pv
+}
+
+func stringListEvidence(e map[string]any, key string) []string {
+	raw, ok := e[key]
+	if !ok || raw == nil {
+		return nil
+	}
+	switch t := raw.(type) {
+	case []string:
+		return append([]string(nil), t...)
+	case []any:
+		out := make([]string, 0, len(t))
+		for _, v := range t {
+			s, ok := v.(string)
+			if ok && strings.TrimSpace(s) != "" {
+				out = append(out, s)
+			}
+		}
+		return out
+	default:
+		return nil
+	}
+}
+
+func boolEvidenceDefault(e map[string]any, nestedKey, key string) bool {
+	raw, ok := e[nestedKey]
+	if !ok || raw == nil {
+		return false
+	}
+	nested, ok := raw.(map[string]any)
+	if !ok {
+		return false
+	}
+	v, ok := boolEvidence(nested, key)
+	return ok && v
 }
 
 func strEvidence(e map[string]any, key string) string {
@@ -266,6 +364,74 @@ func boolEvidence(e map[string]any, key string) (bool, bool) {
 	}
 	b, ok := v.(bool)
 	return b, ok
+}
+
+// parseQueryBoolTrueOnly returns a *bool only when the query is an affirmative boolean (filter active).
+func parseQueryBoolTrueOnly(r *http.Request, key string) *bool {
+	s := strings.TrimSpace(strings.ToLower(r.URL.Query().Get(key)))
+	switch s {
+	case "true", "1", "yes", "y":
+		v := true
+		return &v
+	default:
+		return nil
+	}
+}
+
+func evidenceTrustVerdictStale(evidence map[string]any) bool {
+	return strings.EqualFold(strings.TrimSpace(strEvidence(evidence, "verdict")), "stale_review_now")
+}
+
+func evidenceTrustClassification(evidence map[string]any) string {
+	pv, ok := evidence["permission_visibility"].(map[string]any)
+	if !ok || pv == nil {
+		return ""
+	}
+	return strings.TrimSpace(strEvidence(pv, "classification"))
+}
+
+func evidenceAdminLike(evidence map[string]any) bool {
+	pv, ok := evidence["permission_visibility"].(map[string]any)
+	if !ok || pv == nil {
+		return false
+	}
+	cap, ok := pv["capabilities"].(map[string]any)
+	if !ok || cap == nil {
+		return false
+	}
+	b, ok := boolEvidence(cap, "admin_like")
+	return ok && b
+}
+
+func evidencePrincipalType(evidence map[string]any) string {
+	return strings.TrimSpace(strEvidence(evidence, "principal_type"))
+}
+
+func principalTypeMatchesFilter(evidence map[string]any, wantRaw string) bool {
+	want := strings.TrimSpace(wantRaw)
+	got := evidencePrincipalType(evidence)
+	if strings.EqualFold(want, "unknown") {
+		return got == ""
+	}
+	return strings.EqualFold(got, want)
+}
+
+func externalPrincipalMatchesFilter(evidence map[string]any, wantRaw string) bool {
+	want := strings.TrimSpace(wantRaw)
+	got := strings.TrimSpace(strEvidence(evidence, "external_principal"))
+	if strings.EqualFold(want, "unknown") {
+		return got == ""
+	}
+	return strings.EqualFold(got, want)
+}
+
+func externalAccountIDMatchesFilter(evidence map[string]any, wantRaw string) bool {
+	want := strings.TrimSpace(wantRaw)
+	got := strings.TrimSpace(strEvidence(evidence, "external_account_id"))
+	if strings.EqualFold(want, "unknown") {
+		return got == ""
+	}
+	return strings.EqualFold(got, want)
 }
 
 func sortFindingItems(items []schema.FindingListItem) {

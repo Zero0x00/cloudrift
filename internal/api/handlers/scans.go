@@ -163,10 +163,14 @@ func buildSortedScanListItems(outputDir string) ([]schema.ScanListItem, error) {
 }
 
 func mapScanListItem(scanID string, meta *models.ScanSnapshot, findings []models.Finding) schema.ScanListItem {
+	accountIDs := append([]string(nil), meta.AccountIDs...)
+	if accountIDs == nil {
+		accountIDs = []string{}
+	}
 	item := schema.ScanListItem{
 		ScanID:       scanID,
 		Timestamp:    meta.Timestamp,
-		AccountIDs:   append([]string(nil), meta.AccountIDs...),
+		AccountIDs:   accountIDs,
 		FindingCount: len(findings),
 	}
 	if item.Timestamp.IsZero() {
@@ -187,8 +191,11 @@ func mapScanListItem(scanID string, meta *models.ScanSnapshot, findings []models
 
 func summarizeScan(scanID string, meta *models.ScanSnapshot, findings []models.Finding) schema.ScanSummaryResponse {
 	resp := schema.ScanSummaryResponse{
-		ScanID:       scanID,
-		FindingCount: len(findings),
+		ScanID:                        scanID,
+		FindingCount:                  len(findings),
+		ExternalPrincipalTypes:        []schema.ExternalPrincipalTypeCount{},
+		ExternalEntityByPrincipalType: []schema.ExternalEntityPrincipalTypeCount{},
+		ExternalEntitiesPreview:       []schema.ExternalEntityRow{},
 	}
 	for _, f := range findings {
 		resp.TotalMonthlyDirectCostUSD += f.MonthlyDirectCost
@@ -219,14 +226,59 @@ func summarizeScan(scanID string, meta *models.ScanSnapshot, findings []models.F
 		switch strings.ToLower(string(f.Module)) {
 		case "external_access":
 			resp.ExternalAccessCount++
+			if evidenceTrustVerdictStale(f.Evidence) {
+				resp.ExternalTrustStaleCount++
+			}
+			if strings.EqualFold(evidenceTrustClassification(f.Evidence), "privileged") {
+				resp.ExternalPrivilegedCount++
+			}
+			if evidenceAdminLike(f.Evidence) {
+				resp.ExternalAdminLikeCount++
+			}
+			if evidenceTrustVerdictStale(f.Evidence) && strings.EqualFold(evidenceTrustClassification(f.Evidence), "privileged") {
+				resp.ExternalStalePrivilegedCount++
+			}
 		case "orphaned_edge":
 			resp.OrphanedEdgeCount++
 		}
 	}
+	resp.ExternalPrincipalTypes = buildExternalPrincipalTypes(findings)
+	ec, withStale, withPriv, withAdmin, byPT, preview := summaryExternalEntityRollups(findings)
+	resp.ExternalEntityCount = ec
+	resp.ExternalEntitiesWithStaleRole = withStale
+	resp.ExternalEntitiesWithPrivilegedTier = withPriv
+	resp.ExternalEntitiesWithAdminLikeFlag = withAdmin
+	resp.ExternalEntityByPrincipalType = byPT
+	resp.ExternalEntitiesPreview = preview
 	if meta != nil && meta.FindingCount > 0 && resp.FindingCount == 0 {
 		resp.FindingCount = meta.FindingCount
 	}
 	return resp
+}
+
+func buildExternalPrincipalTypes(findings []models.Finding) []schema.ExternalPrincipalTypeCount {
+	counts := map[string]int{}
+	for _, f := range findings {
+		if !strings.EqualFold(string(f.Module), "external_access") {
+			continue
+		}
+		pt := strings.ToLower(strings.TrimSpace(evidencePrincipalType(f.Evidence)))
+		if pt == "" {
+			pt = "unknown"
+		}
+		counts[pt]++
+	}
+	out := make([]schema.ExternalPrincipalTypeCount, 0, len(counts))
+	for t, c := range counts {
+		out = append(out, schema.ExternalPrincipalTypeCount{PrincipalType: t, Count: c})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Count == out[j].Count {
+			return out[i].PrincipalType < out[j].PrincipalType
+		}
+		return out[i].Count > out[j].Count
+	})
+	return out
 }
 
 func aggregateAccounts(findings []models.Finding) []schema.AccountBreakdownItem {
@@ -292,8 +344,8 @@ func diffFindings(oldFindings, newFindings []models.Finding) ([]schema.FindingLi
 		newIndex[diffIdentity(finding)] = finding
 	}
 
-	var newItems []schema.FindingListItem
-	var resolved []schema.FindingListItem
+	newItems := make([]schema.FindingListItem, 0)
+	resolved := make([]schema.FindingListItem, 0)
 	unchanged := 0
 
 	for key, finding := range newIndex {

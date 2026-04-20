@@ -14,6 +14,12 @@ export type FindingsUrlState = {
   accountId: string;
   claimability: string;
   search: string;
+  trustStale: boolean;
+  adminLike: boolean;
+  trustClassification: string;
+  principalType: string;
+  externalPrincipal: string;
+  externalAccountId: string;
   /** Triage-only: group rows under account headings */
   groupByAccount: boolean;
 };
@@ -42,6 +48,12 @@ export function parseFindingsUrlState(params: URLSearchParams): FindingsUrlState
     accountId: params.get("account_id") ?? "",
     claimability: params.get("claimability") ?? "",
     search: params.get("search") ?? "",
+    trustStale: params.get("trust_stale") === "true",
+    adminLike: params.get("admin_like") === "true",
+    trustClassification: params.get("trust_classification") ?? "",
+    principalType: params.get("principal_type") ?? "",
+    externalPrincipal: params.get("external_principal") ?? "",
+    externalAccountId: params.get("external_account_id") ?? "",
     groupByAccount: params.get("group_by") === "account"
   };
 }
@@ -68,6 +80,16 @@ export function buildFindingsSearchParams(state: FindingsUrlState): URLSearchPar
   setParam(sp, "account_id", state.accountId, "");
   setParam(sp, "claimability", state.claimability, "");
   setParam(sp, "search", state.search, "");
+  if (state.trustStale) {
+    sp.set("trust_stale", "true");
+  }
+  if (state.adminLike) {
+    sp.set("admin_like", "true");
+  }
+  setParam(sp, "trust_classification", state.trustClassification, "");
+  setParam(sp, "principal_type", state.principalType, "");
+  setParam(sp, "external_principal", state.externalPrincipal, "");
+  setParam(sp, "external_account_id", state.externalAccountId, "");
   if (state.groupByAccount) {
     sp.set("group_by", "account");
   }
@@ -85,12 +107,52 @@ export function useFindingsUrlState() {
   const patch = useCallback(
     (partial: Partial<FindingsUrlState>) => {
       const next = { ...state, ...partial };
-      if (partial.page === undefined && (partial.severity !== undefined || partial.module !== undefined || partial.accountId !== undefined || partial.claimability !== undefined || partial.search !== undefined || partial.pageSize !== undefined)) {
+      if (
+        partial.page === undefined &&
+        (partial.severity !== undefined ||
+          partial.module !== undefined ||
+          partial.accountId !== undefined ||
+          partial.claimability !== undefined ||
+          partial.search !== undefined ||
+          partial.pageSize !== undefined ||
+          partial.trustStale !== undefined ||
+          partial.adminLike !== undefined ||
+          partial.trustClassification !== undefined ||
+          partial.principalType !== undefined ||
+          partial.externalPrincipal !== undefined ||
+          partial.externalAccountId !== undefined)
+      ) {
         next.page = 1;
       }
-      setSearchParams(buildFindingsSearchParams(next), { replace: true });
+      const merged = new URLSearchParams(searchParams);
+      const nextParams = buildFindingsSearchParams(next);
+      const managedKeys = [
+        "page",
+        "page_size",
+        "severity",
+        "module",
+        "account_id",
+        "claimability",
+        "search",
+        "trust_stale",
+        "admin_like",
+        "trust_classification",
+        "principal_type",
+        "external_principal",
+        "external_account_id",
+        "group_by"
+      ];
+      for (const k of managedKeys) {
+        merged.delete(k);
+      }
+      for (const [k, v] of nextParams.entries()) {
+        merged.set(k, v);
+      }
+      if (merged.toString() !== searchParams.toString()) {
+        setSearchParams(merged, { replace: true });
+      }
     },
-    [state, setSearchParams]
+    [state, searchParams, setSearchParams]
   );
 
   return { state, patch, searchParams };

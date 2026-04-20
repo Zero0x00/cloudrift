@@ -64,8 +64,9 @@ Notable sections:
 | Command | Description |
 |---------|-------------|
 | `cloudrift scan` | Creates a new scan directory under `--output-dir` / config with `scan-metadata.json` and `findings.json`. **Current implementation writes an empty findings list**; the scoring/collection stack lives in `internal/` and is used heavily in tests—see [docs/TECHNICAL.md §2](docs/TECHNICAL.md#2-codebase-structure). Optional **`--neo4j`** exports that scan’s artifacts to Neo4j (Phase 3 projection; JSON remains source of truth). |
+| `cloudrift demo generate` | Writes a **deterministic** demo scan under `./cloudrift-output/demo-<UTC-timestamp>/`: `findings.json` (mixed severities, orphaned-edge + `external_access`), `scan-metadata.json` (counts aligned with findings), `relationships.json` (including `TRUSTS`), and `assets/*.json`. Use **`--neo4j`** to run the same Neo4j export as `scan --neo4j` after generation. Output dir: **`--output-dir`** (defaults to config / `./cloudrift-output`). |
 | `cloudrift report` | Reads `findings.json` for `--scan-id` (default `latest`) and emits `table` (stdout), `json`, `csv`, or `markdown`. Explicit scan IDs must be **path-safe** (same rules as the API); see [docs/TECHNICAL.md — Scan IDs](docs/TECHNICAL.md#scan-id-resolution-and-path-safety). |
-| `cloudrift query` | Phase 3 **retrieval-only**: embeds natural-language text, runs `graph.RetrieveFindingContext` against Neo4j for `--scan-id`, prints hits + `OperatorNotes` / `EmptyHint` (no LLM synthesis). Requires Neo4j config, embeddings (OpenAI key), and an exported graph with vectors. See [docs/TECHNICAL.md](docs/TECHNICAL.md). |
+| `cloudrift query` | Phase 3 **retrieval-only**: embeds query text, runs hybrid vector retrieval against Neo4j for `--scan-id`, prints grounded hits plus operator notes / empty hints (**no LLM answer synthesis**). Requires Neo4j URI + credentials in config, **OpenAI** embedding key by default, vector index applied, and findings embedded in the graph. Flags: `--output-dir`, `--scan-id` (default `latest`), `--query` or positional text, `--format table|json`, `--top-k`, `--require-stored-embedding-identity`. Details: [docs/TECHNICAL.md — CLI query](docs/TECHNICAL.md#cli-cloudrift-query-phase-3). |
 | `cloudrift dashboard` | Serves REST API + embedded SPA on `--port` (default `8080`), reading scans from `--output-dir` or config. Flags: `--open`, optional `--scan-id` for the browser URL. |
 | `cloudrift version` | Prints version string. |
 
@@ -79,9 +80,36 @@ Notable sections:
 ./cloudrift dashboard --output-dir ./cloudrift-output --port 8080 --open
 ```
 
-Open `http://127.0.0.1:8080` (optional `?scan_id=<id>`). Pages include Overview, Findings, Accounts, Diff, and Trust report (`external_access`).
+Open `http://127.0.0.1:8080` (optional `?scan_id=<id>`). Routes:
+
+| Path | Purpose |
+|------|---------|
+| `/overview` | Product-style dashboard with in-page modes: **Executive Summary**, **High-Signal**, **Operations** (`?view=...`) and drilldowns into findings/trust/entities |
+| `/scan-control` | Start scans from the UI (profile/module/`no_http`/`neo4j`), validate AWS profile, runtime capability badges, run status + WebSocket progress (socket failure is non-fatal; polling remains active) |
+| `/findings` | Paginated findings table, filters (including **`external_principal`**, **`external_account_id`** for `external_access` drill-down) |
+| `/triage` | Findings view in triage mode (same data, alternate layout) |
+| `/accounts` | Per-account rollups |
+| `/diff` | Compare two scans |
+| `/trust-report` | Trust-focused view for `external_access` findings |
+| `/external-entities` | Entity-centric table: rollups matching `GET /api/scans/{id}/external-entities` |
 
 **Theme:** The SPA supports **light** and **dark** themes. Use the header control to toggle; preference is stored in the browser as `localStorage` key `cloudrift-dashboard-theme` (default **dark**). Rebuild UI assets after UI changes (`cd dashboard && npm run build`).
+
+**Navigation/state behavior:** The left sidebar is primary navigation. Dashboard mode (`view`) is preserved when navigating within `/overview`; entering Dashboard from non-dashboard routes defaults to Executive Summary. `scan_id` is preserved across app navigation.
+
+### Neo4j (optional graph)
+
+1. Run Neo4j 5+ with Bolt reachable from your machine; create a database user.
+2. Set **`[neo4j]`** in TOML: `uri`, `username`, `password_env` (env var name whose value is the password). Same config keys the CLI export uses (`internal/config`).
+3. Export: `cloudrift scan --neo4j` after a scan directory exists, or **`cloudrift demo generate --neo4j`** for a sample graph.
+4. **Viewing data:** open **Neo4j Browser** (or Neo4j Aura workspace) → connect with the same Bolt URI and credentials → run Cypher (examples):
+
+```cypher
+MATCH (s:ScanSnapshot) RETURN s.scan_id, s.finding_count LIMIT 25;
+MATCH (f:Finding) WHERE f.scan_id = $scan RETURN f.id, f.title, f.severity LIMIT 50;
+```
+
+Vectors: index name `finding_embeddings` (384 dimensions, cosine) per `internal/graph/schema.go`. If `query` returns index-missing hints, apply `graph.SchemaStatements()` DDL and re-export with embeddings populated.
 
 ---
 
@@ -92,13 +120,21 @@ All under `/api` — JSON in/out. Examples:
 ```http
 GET /api/scans
 GET /api/scans/{id}/summary
+GET /api/scans/{id}/external-entities?page=1&page_size=50
 GET /api/scans/{id}/findings?page=1&page_size=50&module=external_access
 GET /api/scans/{id}/findings/{fid}
 GET /api/scans/{id}/accounts
 GET /api/diff?old=older-scan&new=newer-scan
+GET /api/runtime/status
+POST /api/runtime/validate-profile
+POST /api/scan/start
+GET /api/scan/status
+GET /api/scan/history
 ```
 
-WebSocket: `GET /api/scan/progress` — stub stream; loopback origins only.
+WebSocket: `GET /api/scan/progress` — scan-control progress events (`stage`, `message`, optional `scan_id`); loopback origins only.
+
+**Response shape guarantee:** List-like response fields are emitted as stable empty arrays (`[]`) rather than `null` where practical (for example: `items`, `new_findings`, `resolved_findings`, `aws_profiles`, summary external-entity arrays, scan history items). Filter/meta objects remain present where modeled in envelopes.
 
 Details, examples, and error format: [docs/TECHNICAL.md — API](docs/TECHNICAL.md#3-api-documentation).
 
@@ -110,7 +146,9 @@ Details, examples, and error format: [docs/TECHNICAL.md — API](docs/TECHNICAL.
 cloudrift-output/
 └── <scan-id>/
     ├── scan-metadata.json
-    └── findings.json
+    ├── findings.json
+    ├── relationships.json    # optional; used by Neo4j export when present
+    └── assets/               # optional; *.json arrays of AssetNode
 ```
 
 The dashboard and API **only read** these artifacts.

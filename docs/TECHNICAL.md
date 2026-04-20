@@ -27,8 +27,8 @@ Teams lose track of DNS that points at deleted buckets, misconfigured distributi
 | Validators | DNS resolution, HTTP/TLS probing, fingerprinting error bodies |
 | Scorers | Risk/claimability (`orphaned_edge`), trust (`external_access`), static cost + optional CE merge |
 | Output | JSON findings, CSV/markdown/table, Excel (findings + cost summary + trust sheet) |
-| API | Read-only REST over scan directories; WebSocket stub for progress |
-| Dashboard | Vite/React SPA embedded in Go; TanStack Query; light/dark theme (`darkMode: class`); Overview, Findings, Accounts, Diff, Trust report |
+| API | Read-only REST over scan directories; scan-control HTTP + WebSocket progress for dashboard |
+| Dashboard | Vite/React SPA embedded in Go; TanStack Query; light/dark theme (`darkMode: class`); Overview, **Scan Control**, Findings (incl. triage), Accounts, Diff, Trust report, **External Entities** |
 | Phase 3 graph | Optional Neo4j projection (`cloudrift scan --neo4j`), `cloudrift query` retrieval over projected vectors; JSON scan files remain source of truth |
 
 ---
@@ -37,7 +37,7 @@ Teams lose track of DNS that points at deleted buckets, misconfigured distributi
 
 ```
 cloudrift/
-├── cmd/cloudrift/          # CLI entry: Cobra commands, scan/report/dashboard wiring
+├── cmd/cloudrift/          # CLI: scan, report, dashboard, query, demo generate, version
 ├── dashboard/              # React app (src/), embeds dist/ via dashboard/embed.go
 ├── internal/
 │   ├── api/                # HTTP router, handlers, JSON schema types
@@ -58,13 +58,15 @@ cloudrift/
 
 ### Entry points
 
-- **CLI**: `cmd/cloudrift/main.go` — `main()` registers `scan`, `report`, `version`, `dashboard`, `query`.
+- **CLI**: `cmd/cloudrift/main.go` — `main()` registers `scan`, `report`, `version`, `dashboard`, `query`, **`demo`** (see `cmd/cloudrift/demo.go`).
 - **HTTP**: `internal/api/server.go` — `NewRouter`, `StartServer`.
 - **Embedded UI**: `dashboard/embed.go` exposes `embed.FS` of built assets; `cmd/cloudrift/dashboard.go` serves `fs.Sub(Dist, "dist")`.
 
 ### Important relationship: library vs CLI `scan`
 
-The **`internal/`** packages implement a full pipeline (collectors → validators → scorers → output). **`runScan` in `cmd/cloudrift/main.go`** currently creates a scan directory with **empty `findings.json`** and metadata only. End-to-end scan orchestration in the CLI is a **documented gap**; tests and API/dashboard workflows assume **pre-populated** `findings.json` under `output_dir/<scan-id>/`.
+The **`internal/`** packages implement a full pipeline (collectors → validators → scorers → output). **`runScan` / `scanrun.Run`** (used by CLI `scan` and by the dashboard **Scan Control** start path) currently creates a scan directory with **empty `findings.json`** and metadata only. End-to-end population of findings from AWS in the default scan path is a **documented gap**; tests, demos, and UI workflows often rely on **pre-populated** `findings.json` under `output_dir/<scan-id>/`.
+
+**Demo bundle:** `cloudrift demo generate` writes a **deterministic** scan directory (`demo-<UTC-timestamp>`) with non-empty `findings.json`, `scan-metadata.json` (counts consistent with findings), `relationships.json`, and `assets/*.json`, suitable for dashboard and optional Neo4j export (`--neo4j`). This is fixture data, not live AWS collection.
 
 ---
 
@@ -105,6 +107,8 @@ Base URL: same host as the dashboard (default `http://0.0.0.0:8080`). JSON only 
 
 **Outputs:** `ScanListResponse` — `items[]` with `scan_id`, `timestamp`, `account_ids`, counts, `total_monthly_cost_usd`; `total_items`.
 
+**Shape stability:** `items` and each `items[].account_ids` serialize as arrays (`[]` when empty), not `null`.
+
 **Ordering:** Newest `timestamp` first; tie-break `scan_id` ascending.
 
 **Example:**
@@ -140,11 +144,35 @@ GET /api/scans HTTP/1.1
 
 **Outputs:** `ScanSummaryResponse` — counts by severity (including residual `low_count`), claimability buckets, module counts (`external_access`, `orphaned_edge`), direct/risk USD totals.
 
+**External entities (summary):** The same handler adds entity-centric rollups for `external_access`: total distinct entities (group key: `external_principal` × `principal_type` × `external_account_id` with empty dimensions normalized to `unknown`), counts of entities with stale / privileged / admin-like signals, breakdown by principal type, and a small preview list. These fields are derived with the **same aggregation** as `GET /api/scans/{id}/external-entities` (no filters).
+
+**Shape stability:** `external_principal_types`, `external_entity_by_principal_type`, and `external_entities_preview` are always present as arrays (`[]` when empty), not omitted/`null`.
+
 **Example:**
 
 ```http
 GET /api/scans/latest/summary HTTP/1.1
 ```
+
+---
+
+### GET `/api/scans/{id}/external-entities`
+
+**Purpose:** Paginated list of **aggregated external entities** from `external_access` findings only.
+
+**Aggregation key:** `(external_principal, principal_type, external_account_id)` from finding `evidence`, with empty/whitespace values normalized to **`unknown`** (distinct missing fields can collapse into one bucket).
+
+**Per-row metrics:** distinct trusted role count, distinct internal account count, highest severity, total risk USD, counts of findings in the bucket, and **distinct-role** counts for stale verdicts, `permission_visibility.classification == privileged`, and admin-like capability flags in evidence. Entity-level flags mean **at least one** trusted role in the bucket matches the signal, not that every role does.
+
+**Query parameters:**
+
+| Param | Description |
+|-------|-------------|
+| `page`, `page_size` | Same pagination rules as findings (max page size 200) |
+| `principal_type` | Filter by evidence principal type (`unknown` matches normalized unknown) |
+| `external_principal` | Exact match on normalized principal (or `unknown`) |
+| `external_account_id` | Exact match on normalized account id (or `unknown`) |
+| `has_stale_role`, `has_privileged_role`, `has_admin_like_role` | If present and true, require non-zero corresponding count |
 
 ---
 
@@ -163,6 +191,12 @@ GET /api/scans/latest/summary HTTP/1.1
 | `account_id` | Filter by account |
 | `claimability` | e.g. `reclaimable` |
 | `search` | Case-insensitive substring on id, title, ARN, account, hostname, team |
+| `trust_classification` | Trust / permission classification filter (see handler) |
+| `principal_type` | `external_access` evidence `principal_type` |
+| `external_principal` | Evidence `external_principal` (drill-down from entity views) |
+| `external_account_id` | Evidence `external_account_id` |
+| `trust_stale` | When `true`, stale trust signal |
+| `admin_like` | When `true`, admin-like permission visibility signal |
 
 **Outputs:** `FindingsListResponse` — `items`, `pagination`, `filters` echo.
 
@@ -210,6 +244,8 @@ GET /api/scans/20260418-120000/findings/abc123def456 HTTP/1.1
 
 **Outputs:** `DiffResponse` — `new_findings`, `resolved_findings`, `unchanged_count`.
 
+**Shape stability:** `new_findings` and `resolved_findings` are always arrays (`[]` when empty).
+
 **Example:**
 
 ```http
@@ -220,7 +256,7 @@ GET /api/diff?old=scan-a&new=scan-b HTTP/1.1
 
 ### GET `/api/scan/progress` (WebSocket)
 
-**Purpose:** Placeholder progress stream (connect + one JSON event). **Not** tied to live scan execution in-process.
+**Purpose:** Progress events for the **Scan Control Center**. Payload reflects the in-process scan control state (`internal/api/handlers/scan_control.go` → `CurrentProgressEvent`): stage, message, optional `scan_id` when a run has produced artifacts.
 
 **Security:** Handshake allows origins `http(s)://localhost:*` and `http(s)://127.0.0.1:*` only.
 
@@ -236,6 +272,26 @@ GET /api/diff?old=scan-a&new=scan-b HTTP/1.1
   "timestamp": "2026-04-18T12:00:00Z"
 }
 ```
+
+---
+
+### Scan Control Center (HTTP)
+
+Used by the dashboard route `/scan-control`. **No secrets** in responses (profiles are names only; OpenAI/Neo4j are boolean flags).
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/runtime/status` | AWS profile names, default profile, booleans for OpenAI key env set, Neo4j config present, optional alert envs |
+| `POST` | `/api/runtime/validate-profile` | Body: `{ "profile": "..." }` — STS `GetCallerIdentity` check; safe operator message |
+| `POST` | `/api/scan/start` | Body: `ScanStartRequest` — `profile`, `module` (`all\|orphaned_edge\|external_access`), `no_http`, `neo4j`, optional `provider` (`openai\|local`). Starts **`scanrun.Run`** asynchronously; optional Neo4j export after scan dir exists. **Single active run:** second start returns 409 while status is `running`. |
+| `GET` | `/api/scan/status` | Current run: `run_id`, `status`, `stage`, `message`, `scan_id` when known, timestamps |
+| `GET` | `/api/scan/history` | Recent completed/failed runs (bounded list) |
+
+**Note:** The started scan still produces **empty `findings.json`** today, same as CLI `scan`; Neo4j export runs only when requested and only projects files present under the scan directory.
+
+**Shape stability:** `runtime_status.aws_profiles` and `scan_history.items` are always arrays (`[]` when empty).
+
+**Frontend runtime handling:** Scan Control UI now has explicit `loading / error / empty-unconfigured / ready` render branches; progress socket failures are treated as non-fatal UX degradation (polling-based status remains primary).
 
 ---
 
@@ -298,7 +354,7 @@ flowchart LR
   API --> UI
 ```
 
-*Solid lines reflect the **intended** pipeline. Today, the CLI `scan` command writes an empty findings file; populating `DIR` is assumed via future wiring or external generation.*
+*Solid lines reflect the **intended** pipeline. Today, default `scan` / Scan Control still writes an empty `findings.json`; populating `DIR` uses tests, **`cloudrift demo generate`**, or external/manual artifact preparation until full orchestration is wired.*
 
 ---
 
@@ -362,6 +418,35 @@ There is **no database** in core Phase 1–2 flow. **Phase 3** adds an **optiona
 **Models:** `internal/models/finding.go` — severity, module (`orphaned_edge` | `external_access`), claimability, costs, evidence map, etc. `ScanSnapshot` holds scan-level metadata.
 
 **Graph writer embedding fields:** `mergeScanSnapshotStatement` in `internal/graph/writer.go` only sets `embedding_provider` / `embedding_model` / `embedding_dimensions` on `:ScanSnapshot` when the scan has a **full** embedding identity including a **non-empty model** string, so Neo4j never stores half-written metadata that retrieval would reject.
+
+### Demo dataset (`cloudrift demo generate`)
+
+**Purpose:** Supply a **consistent, non-random** scan directory for UI development, API tests, and optional graph export without AWS.
+
+**Layout:** `output_dir/demo-<UTC-timestamp>/` containing at minimum `scan-metadata.json` and `findings.json`; also `relationships.json` and `assets/*.json` when graph-style data is needed.
+
+**Schema expectations:**
+
+- **`findings.json`:** Array of `models.Finding`. Orphaned-edge rows use `module: orphaned_edge` and standard claimability values. `external_access` rows include `evidence` keys consumed by trust scoring and the dashboard: `role_arn`, `external_principal`, `principal_type`, `external_account_id`, `days_since_used`, `verdict`, `activity_status`, optional nested **`permission_visibility`** (see below).
+- **`scan-metadata.json`:** `models.ScanSnapshot` — `finding_count`, `critical_count`, `high_count`, and `total_monthly_cost_usd` should match a full pass over `findings.json` (the generator enforces this).
+- **`relationships.json`:** Array of `models.Relationship` (`POINTS_TO`, `FRONTS`, `USES_CERT`, `TRUSTS`, etc.).
+- **`assets/*.json`:** Each file is a JSON array of `models.AssetNode`; loader merges all `*.json` in lexical file-name order (`cmd/cloudrift/main.go` `loadAssets`).
+
+**Neo4j:** `cloudrift demo generate --neo4j` loads config and runs the same export path as `scan --neo4j` after writing files (requires valid `[neo4j]` and password env).
+
+### Permission visibility (trust)
+
+**Design:** `internal/scorers/permission_visibility.go` derives **`RolePermissionVisibility`** from **IAM role** `AssetNode` properties: `attached_policy_names` and `inline_policy_documents` (JSON policy strings). It does **not** evaluate full AWS effective permissions; analysis mode is explicitly **`attached_names_plus_inline_docs`**.
+
+**Classification:** Ordered tiers (`admin`, `privileged`, `scoped`, `limited`, `unknown`) from conservative heuristics (wildcard allow, IAM write + assume-role combinations, managed policy **name** heuristics with lowered confidence, parse failures → `unknown`).
+
+**Consumption:** Trust scoring attaches the struct under finding `evidence["permission_visibility"]` when producing `external_access` findings from live scoring (`internal/scorers/trust.go`). The dashboard reads this object for chips/panels. Demo fixtures may include a simplified `permission_visibility` object in evidence for UI coverage.
+
+### External entity aggregation
+
+**Implementation:** `internal/api/handlers/external_entities.go` — `aggregateExternalEntities` scans `external_access` findings only, normalizes dimensions, rolls up metrics per bucket, sorts for list/preview. **`summaryExternalEntityRollups`** builds summary-only counters and preview rows from the **same** aggregation so summary and list stay consistent.
+
+**Unknown dimension:** Empty `external_principal`, `principal_type`, or `external_account_id` becomes the string **`unknown`** for grouping; multiple distinct “missing” cases can share one bucket (documented in UI tooltips).
 
 ---
 
@@ -456,7 +541,9 @@ fails** with `ErrLocalEmbeddingsUnavailable` until that implementation exists. D
 **Vector retrieval (Phase 3, `internal/graph/rag.go`):** `graph.RetrieveFindingContext` runs
 `ValidateEmbeddingCompatibility` before any vector read, embeds the query with the caller’s
 `EmbeddingProvider`, then runs hybrid Cypher (`HybridVectorRetrievalCypher`). JSON scan files remain
-canonical; Neo4j is a projection only.
+canonical; Neo4j is a projection only. Retrieval hits are **limited to the requested `scan_id`** (relationship filter in Cypher); there is no cross-scan neighbor mixing.
+
+**Retrieval limitations:** No LLM answer synthesis in `cloudrift query` (table/JSON show grounded hits and operator notes only). Empty or sparse hits may reflect probe/`TopK` limits, missing embeddings for findings in that scan, or an absent vector index—use `EmptyHint` / `OperatorNotes` rather than inferring “no risk.”
 
 - **Operator UX (empty results):** Do not equate “zero hits” with “no relevant findings in the scan.”
   Inspect `RAGRetrievalResponse.EmptyHint` and `OperatorNotes`:
@@ -500,4 +587,4 @@ canonical; Neo4j is a projection only.
 
 ---
 
-*Last updated: 2026-04-18 — aligns with Phase 3 graph/query, scan path safety, dashboard theming, and embedder error truncation.*
+*Last updated: 2026-04-20 — adds stable API empty-array response guarantees, hardened Scan Control runtime-state notes, and dashboard mode/navigation behavior clarifications.*

@@ -23,3 +23,61 @@ a {
 #root {
   @apply min-h-screen;
 }
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 160ms ease-out;
+}
+
+@layer components {
+  /* Product typography scale — use across Dashboard, Findings, Access, External, Changes, Scan Control */
+  .cr-page-title {
+    @apply text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl;
+  }
+
+  .cr-section-title {
+    @apply text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400;
+  }
+
+  .cr-kpi-value {
+    @apply text-2xl font-semibold tabular-nums tracking-tight text-slate-900 dark:text-slate-100;
+  }
+
+  .cr-kpi-label {
+    @apply text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-500;
+  }
+
+  .cr-body {
+    @apply text-sm leading-relaxed text-slate-800 dark:text-slate-200;
+  }
+
+  .cr-helper {
+    @apply text-xs leading-snug text-slate-500 dark:text-slate-500;
+  }
+
+  .cr-table {
+    @apply text-xs text-slate-700 dark:text-slate-300;
+  }
+
+  .cr-table th {
+    @apply font-semibold text-slate-500 dark:text-slate-500;
+  }
+
+  .cr-chip {
+    @apply text-[11px] font-medium;
+  }
+
+  .cr-mono {
+    @apply font-mono text-xs;
+  }
+}

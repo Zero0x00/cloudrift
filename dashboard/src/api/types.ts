@@ -19,6 +19,11 @@ export interface ScanListResponse {
   total_items: number;
 }
 
+export interface ExternalPrincipalTypeCount {
+  principal_type: string;
+  count: number;
+}
+
 export interface ScanSummaryResponse {
   scan_id: string;
   finding_count: number;
@@ -35,6 +40,58 @@ export interface ScanSummaryResponse {
   edge_obscured_count: number;
   external_access_count: number;
   orphaned_edge_count: number;
+  /** external_access findings with evidence.verdict === stale_review_now */
+  external_trust_stale_count?: number;
+  /** external_access where permission_visibility.classification is privileged (coarse permission tier; not admin_like). */
+  external_privileged_count?: number;
+  /** external_access where permission_visibility.capabilities.admin_like is true (capability flag; orthogonal to privileged tier). */
+  external_admin_like_count?: number;
+  /** external_access matching trust_stale AND privileged classification */
+  external_stale_privileged_count?: number;
+  /** Counts by evidence.principal_type (missing → unknown), sorted by count desc */
+  external_principal_types?: ExternalPrincipalTypeCount[];
+  /** Distinct external entities (principal × principal_type × external_account_id); matches unfiltered GET …/external-entities total_items */
+  external_entity_count?: number;
+  external_entities_with_stale_role?: number;
+  external_entities_with_privileged_tier?: number;
+  external_entities_with_admin_like_flag?: number;
+  external_entity_by_principal_type?: ExternalEntityPrincipalTypeCount[];
+  external_entities_preview?: ExternalEntityRow[];
+}
+
+export interface ExternalEntityPrincipalTypeCount {
+  principal_type: string;
+  entity_count: number;
+}
+
+export interface ExternalEntityRow {
+  external_principal: string;
+  principal_type: string;
+  external_account_id: string;
+  unique_trusted_role_count: number;
+  unique_internal_account_count: number;
+  highest_severity: string;
+  total_monthly_risk_cost_usd: number;
+  stale_role_count: number;
+  privileged_role_count: number;
+  admin_like_role_count: number;
+  external_access_finding_count: number;
+}
+
+export interface ExternalEntitiesAppliedFilter {
+  principal_type?: string;
+  external_principal?: string;
+  external_account_id?: string;
+  has_stale_role?: boolean;
+  has_privileged_role?: boolean;
+  has_admin_like_role?: boolean;
+}
+
+export interface ExternalEntitiesResponse {
+  scan_id: string;
+  items: ExternalEntityRow[];
+  filters: ExternalEntitiesAppliedFilter;
+  pagination: PaginationMeta;
 }
 
 export interface FindingsAppliedFilter {
@@ -43,6 +100,12 @@ export interface FindingsAppliedFilter {
   account_id?: string;
   claimability?: string;
   search?: string;
+  trust_stale?: boolean;
+  admin_like?: boolean;
+  trust_classification?: string;
+  principal_type?: string;
+  external_principal?: string;
+  external_account_id?: string;
 }
 
 export interface PaginationMeta {
@@ -75,6 +138,7 @@ export interface FindingsListResponse {
 }
 
 export interface TrustDisplay {
+  permission_visibility?: PermissionVisibilityDisplay;
   role_arn?: string;
   role_name?: string;
   external_principal?: string;
@@ -86,6 +150,26 @@ export interface TrustDisplay {
   admin_eval_state?: string;
   unknown_vendor?: boolean;
   activity_status?: string;
+}
+
+export interface PermissionCapabilityFlags {
+  can_assume_role?: boolean;
+  iam_write_access?: boolean;
+  s3_write_access?: boolean;
+  cloudfront_control?: boolean;
+  admin_like?: boolean;
+}
+
+export interface PermissionVisibilityDisplay {
+  classification?: "admin" | "privileged" | "scoped" | "limited" | "unknown";
+  capabilities?: PermissionCapabilityFlags;
+  reasons?: string[];
+  confidence?: "high" | "medium" | "low";
+  analysis_mode?: string;
+  policy_parse_ok?: boolean;
+  used_managed_policy_name_heuristics?: boolean;
+  complex_policy_detected?: boolean;
+  managed_policy_documents_inspected?: boolean;
 }
 
 export interface FindingDetailItem extends FindingListItem {
@@ -134,6 +218,24 @@ export interface FindingsQueryParams {
   account_id?: string;
   claimability?: string;
   search?: string;
+  trust_stale?: boolean;
+  admin_like?: boolean;
+  trust_classification?: string;
+  principal_type?: string;
+  external_principal?: string;
+  external_account_id?: string;
+}
+
+/** Query params for GET /api/scans/:id/external-entities */
+export interface ExternalEntitiesQueryParams {
+  page?: number;
+  page_size?: number;
+  principal_type?: string;
+  external_principal?: string;
+  external_account_id?: string;
+  has_stale_role?: boolean;
+  has_privileged_role?: boolean;
+  has_admin_like_role?: boolean;
 }
 
 export interface RuntimeStatusResponse {

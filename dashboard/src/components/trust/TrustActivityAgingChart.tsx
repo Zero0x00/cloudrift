@@ -59,7 +59,8 @@ export function TrustActivityAgingChart({
     );
   }
 
-  const buckets = q.data!.buckets;
+  const buckets = q.data?.buckets ?? { lt90: 0, d90_365: 0, gt365: 0, never: 0 };
+  const failedCount = q.data?.failed ?? 0;
   const totalInBuckets = ROWS.reduce((s, r) => s + buckets[r.key], 0);
 
   return (
@@ -74,9 +75,9 @@ export function TrustActivityAgingChart({
         Sampled detail is stored under the same query keys as row expansion, so expanding a row that was already
         sampled reuses cached data (no second HTTP request while fresh).
       </p>
-      {q.data!.failed > 0 ? (
+      {failedCount > 0 ? (
         <p className="mt-2 text-[11px] text-amber-500/90">
-          {formatCount(q.data!.failed)} detail request(s) failed and were excluded.
+          {formatCount(failedCount)} detail request(s) failed and were excluded.
         </p>
       ) : null}
       {totalInBuckets === 0 ? (

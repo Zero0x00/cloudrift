@@ -1,8 +1,10 @@
-import type { FindingsQueryParams } from "./types";
+import type { ExternalEntitiesQueryParams, FindingsQueryParams } from "./types";
 
 export const queryKeys = {
   scans: () => ["scans"] as const,
   summary: (scanId: string | null) => ["summary", scanId] as const,
+  externalEntities: (scanId: string | null, params: ExternalEntitiesQueryParams) =>
+    ["external-entities", scanId, params] as const,
   findings: (scanId: string | null, params: FindingsQueryParams) => ["findings", scanId, params] as const,
   findingDetail: (scanId: string | null, findingId: string | null) =>
     ["finding", scanId, findingId] as const,

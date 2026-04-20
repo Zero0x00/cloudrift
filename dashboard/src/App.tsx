@@ -5,6 +5,7 @@ import { DiffPage } from "./pages/Diff";
 import { FindingsPage } from "./pages/Findings";
 import { OverviewPage } from "./pages/Overview";
 import { ScanControlCenterPage } from "./pages/ScanControlCenter";
+import { ExternalEntitiesPage } from "./pages/ExternalEntities";
 import { TrustReportPage } from "./pages/TrustReport";
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/accounts" element={<AccountsPage />} />
         <Route path="/diff" element={<DiffPage />} />
         <Route path="/trust-report" element={<TrustReportPage />} />
+        <Route path="/external-entities" element={<ExternalEntitiesPage />} />
       </Routes>
     </AppLayout>
   );

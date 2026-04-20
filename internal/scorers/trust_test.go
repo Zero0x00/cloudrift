@@ -32,14 +32,20 @@ func TestScoreTrust_AgingRole(t *testing.T) {
 }
 
 func TestScoreTrust_ActiveRole(t *testing.T) {
+	role := baseRole(false)
+	role.Properties["attached_policy_names"] = []string{"ReadOnlyAccess"}
+	role.Properties["inline_policy_documents"] = []string{`{"Statement":[{"Effect":"Allow","Action":["s3:GetObject"],"Resource":"*"}]}`}
 	findings := ScoreTrust(
-		[]models.AssetNode{baseRole(false), basePrincipal("arn:aws:iam::222222222222:root", "aws_account")},
+		[]models.AssetNode{role, basePrincipal("arn:aws:iam::222222222222:root", "aws_account")},
 		[]models.Relationship{baseRel()},
 		map[string]collectors.RoleActivity{roleARN: {RoleARN: roleARN, DaysSinceUsed: 12}},
 		testTrustConfig([]string{"222222222222"}),
 	)
 	assertSingleSeverity(t, findings, models.SeverityLow)
 	assertEvidenceValue(t, findings[0], "verdict", "active")
+	if _, ok := findings[0].Evidence["permission_visibility"]; !ok {
+		t.Fatalf("expected permission_visibility in trust evidence")
+	}
 }
 
 func TestScoreTrust_GhostAdminCriticalWhenIsAdminTrue(t *testing.T) {

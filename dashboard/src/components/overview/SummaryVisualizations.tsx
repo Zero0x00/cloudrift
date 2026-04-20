@@ -2,6 +2,12 @@ import type { ScanSummaryResponse } from "../../api/types";
 import { formatCount, formatUsd } from "../../lib/format";
 import { severityBarClass } from "../SeverityBadge";
 
+export type SummaryDrilldownHandlers = {
+  onSeverityClick?: (severity: "critical" | "high" | "medium" | "low") => void;
+  onModuleClick?: (module: "orphaned_edge" | "external_access") => void;
+  onClaimabilityClick?: (claimability: "reclaimable" | "dangling" | "broken" | "edge_obscured") => void;
+};
+
 function pct(part: number, total: number): number {
   if (total <= 0) {
     return 0;
@@ -18,7 +24,13 @@ function pct(part: number, total: number): number {
  * (e.g. info-style labels). UI label "Low / info" reflects that aggregation — not a
  * separate info counter from the backend.
  */
-export function SeverityDistribution({ summary }: { summary: ScanSummaryResponse }) {
+export function SeverityDistribution({
+  summary,
+  onSeverityClick
+}: {
+  summary: ScanSummaryResponse;
+  onSeverityClick?: SummaryDrilldownHandlers["onSeverityClick"];
+}) {
   const total = summary.finding_count;
   const rows: { key: string; label: string; count: number }[] = [
     { key: "critical", label: "Critical", count: summary.critical_count },
@@ -44,9 +56,10 @@ export function SeverityDistribution({ summary }: { summary: ScanSummaryResponse
               count > 0 ? (
                 <div
                   key={key}
-                  className={`${severityBarClass(key)} h-full min-w-[2px] transition-[flex-grow]`}
+                  className={`${severityBarClass(key)} h-full min-w-[2px] transition-[flex-grow] ${onSeverityClick ? "cursor-pointer" : ""}`}
                   style={{ flexGrow: count, flexBasis: 0 }}
                   title={`${key}: ${count}`}
+                  onClick={onSeverityClick ? () => onSeverityClick(key as "critical" | "high" | "medium" | "low") : undefined}
                 />
               ) : null
             )}
@@ -59,9 +72,10 @@ export function SeverityDistribution({ summary }: { summary: ScanSummaryResponse
                 <div key={key} className="flex min-w-0 flex-1 flex-col items-center gap-1">
                   <div className="flex h-14 w-full max-w-[2.75rem] items-end justify-center">
                     <div
-                      className={`w-full rounded-t ${severityBarClass(key)}`}
+                      className={`w-full rounded-t ${severityBarClass(key)} ${onSeverityClick ? "cursor-pointer" : ""}`}
                       style={{ height: barPx }}
                       title={`${label}: ${count} (${pct(count, total)}%)`}
+                      onClick={onSeverityClick ? () => onSeverityClick(key as "critical" | "high" | "medium" | "low") : undefined}
                     />
                   </div>
                   <span className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
@@ -73,7 +87,13 @@ export function SeverityDistribution({ summary }: { summary: ScanSummaryResponse
           </div>
           <ul className="mt-4 space-y-2 text-sm">
             {rows.map(({ key, label, count }) => (
-              <li key={key} className="flex items-center justify-between gap-4 text-slate-700 dark:text-slate-300">
+              <li
+                key={key}
+                className={`flex items-center justify-between gap-4 text-slate-700 dark:text-slate-300 ${
+                  onSeverityClick ? "cursor-pointer rounded px-1 py-1 hover:bg-slate-100 dark:hover:bg-slate-800/70" : ""
+                }`}
+                onClick={onSeverityClick ? () => onSeverityClick(key as "critical" | "high" | "medium" | "low") : undefined}
+              >
                 <span className="flex items-center gap-2">
                   <span className={`h-2 w-2 shrink-0 rounded-sm ${severityBarClass(key)}`} />
                   {label}
@@ -91,7 +111,13 @@ export function SeverityDistribution({ summary }: { summary: ScanSummaryResponse
 }
 
 /** Two-way split from summary: orphaned edge vs external access (counts — summary has no USD-by-module split). */
-export function ModuleDistribution({ summary }: { summary: ScanSummaryResponse }) {
+export function ModuleDistribution({
+  summary,
+  onModuleClick
+}: {
+  summary: ScanSummaryResponse;
+  onModuleClick?: SummaryDrilldownHandlers["onModuleClick"];
+}) {
   const a = summary.orphaned_edge_count;
   const b = summary.external_access_count;
   const total = a + b;
@@ -110,21 +136,28 @@ export function ModuleDistribution({ summary }: { summary: ScanSummaryResponse }
           <div className="mt-4 flex h-3 w-full overflow-hidden rounded bg-slate-800">
             {a > 0 ? (
               <div
-                className="h-full min-w-[2px] bg-cyan-600"
+                className={`h-full min-w-[2px] bg-cyan-600 ${onModuleClick ? "cursor-pointer" : ""}`}
                 style={{ flexGrow: a, flexBasis: 0 }}
                 title={`orphaned_edge: ${a}`}
+                onClick={onModuleClick ? () => onModuleClick("orphaned_edge") : undefined}
               />
             ) : null}
             {b > 0 ? (
               <div
-                className="h-full min-w-[2px] bg-violet-600"
+                className={`h-full min-w-[2px] bg-violet-600 ${onModuleClick ? "cursor-pointer" : ""}`}
                 style={{ flexGrow: b, flexBasis: 0 }}
                 title={`external_access: ${b}`}
+                onClick={onModuleClick ? () => onModuleClick("external_access") : undefined}
               />
             ) : null}
           </div>
           <ul className="mt-4 space-y-2 text-sm text-slate-700 dark:text-slate-300">
-            <li className="flex justify-between gap-4">
+            <li
+              className={`flex justify-between gap-4 ${
+                onModuleClick ? "cursor-pointer rounded px-1 py-1 hover:bg-slate-100 dark:hover:bg-slate-800/70" : ""
+              }`}
+              onClick={onModuleClick ? () => onModuleClick("orphaned_edge") : undefined}
+            >
               <span className="flex items-center gap-2">
                 <span className="h-2 w-2 shrink-0 rounded-sm bg-cyan-600" />
                 Orphaned edge
@@ -133,7 +166,12 @@ export function ModuleDistribution({ summary }: { summary: ScanSummaryResponse }
                 {formatCount(a)} ({pct(a, total)}%)
               </span>
             </li>
-            <li className="flex justify-between gap-4">
+            <li
+              className={`flex justify-between gap-4 ${
+                onModuleClick ? "cursor-pointer rounded px-1 py-1 hover:bg-slate-100 dark:hover:bg-slate-800/70" : ""
+              }`}
+              onClick={onModuleClick ? () => onModuleClick("external_access") : undefined}
+            >
               <span className="flex items-center gap-2">
                 <span className="h-2 w-2 shrink-0 rounded-sm bg-violet-600" />
                 External access
@@ -150,7 +188,13 @@ export function ModuleDistribution({ summary }: { summary: ScanSummaryResponse }
 }
 
 /** Claimability buckets from summary (API fields only). */
-export function ClaimabilityDistribution({ summary }: { summary: ScanSummaryResponse }) {
+export function ClaimabilityDistribution({
+  summary,
+  onClaimabilityClick
+}: {
+  summary: ScanSummaryResponse;
+  onClaimabilityClick?: SummaryDrilldownHandlers["onClaimabilityClick"];
+}) {
   const rows: { key: string; label: string; count: number; bar: string }[] = [
     { key: "reclaimable", label: "Reclaimable", count: summary.reclaimable_count, bar: "bg-emerald-600" },
     { key: "dangling", label: "Dangling", count: summary.dangling_count, bar: "bg-sky-600" },
@@ -172,16 +216,29 @@ export function ClaimabilityDistribution({ summary }: { summary: ScanSummaryResp
               count > 0 ? (
                 <div
                   key={key}
-                  className={`${bar} h-full min-w-[2px]`}
+                  className={`${bar} h-full min-w-[2px] ${onClaimabilityClick ? "cursor-pointer" : ""}`}
                   style={{ flexGrow: count, flexBasis: 0 }}
                   title={`${key}: ${count}`}
+                  onClick={
+                    onClaimabilityClick
+                      ? () => onClaimabilityClick(key as "reclaimable" | "dangling" | "broken" | "edge_obscured")
+                      : undefined
+                  }
                 />
               ) : null
             )}
           </div>
           <ul className="mt-4 space-y-3">
           {rows.map(({ key, label, count, bar }) => (
-            <li key={key}>
+            <li
+              key={key}
+              className={onClaimabilityClick ? "cursor-pointer rounded px-1 py-1 hover:bg-slate-100 dark:hover:bg-slate-800/70" : ""}
+              onClick={
+                onClaimabilityClick
+                  ? () => onClaimabilityClick(key as "reclaimable" | "dangling" | "broken" | "edge_obscured")
+                  : undefined
+              }
+            >
               <div className="mb-1 flex justify-between text-sm text-slate-700 dark:text-slate-300">
                 <span>{label}</span>
                 <span className="tabular-nums text-slate-600 dark:text-slate-400">
@@ -189,7 +246,15 @@ export function ClaimabilityDistribution({ summary }: { summary: ScanSummaryResp
                 </span>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded bg-slate-800">
-                <div className={`h-full rounded ${bar}`} style={{ width: `${pct(count, total)}%` }} />
+                <div
+                  className={`h-full rounded ${bar} ${onClaimabilityClick ? "cursor-pointer" : ""}`}
+                  style={{ width: `${pct(count, total)}%` }}
+                  onClick={
+                    onClaimabilityClick
+                      ? () => onClaimabilityClick(key as "reclaimable" | "dangling" | "broken" | "edge_obscured")
+                      : undefined
+                  }
+                />
               </div>
             </li>
           ))}

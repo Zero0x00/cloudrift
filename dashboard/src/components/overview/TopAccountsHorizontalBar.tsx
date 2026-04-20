@@ -13,13 +13,16 @@ function pct(part: number, total: number): number {
 export function TopAccountsHorizontalBar({
   items,
   title = "Top accounts by findings",
-  description
+  description,
+  onAccountClick
 }: {
   items: AccountBreakdownItem[];
   title?: string;
   description?: string;
+  onAccountClick?: (accountId: string) => void;
 }) {
-  const sorted = [...items].sort((a, b) => b.finding_count - a.finding_count).slice(0, TOP_N);
+  const safeItems = Array.isArray(items) ? items : [];
+  const sorted = [...safeItems].sort((a, b) => b.finding_count - a.finding_count).slice(0, TOP_N);
   const max = Math.max(...sorted.map((a) => a.finding_count), 1);
   const blurb =
     description ??
@@ -37,7 +40,11 @@ export function TopAccountsHorizontalBar({
             const label = account.account_name?.trim() || account.account_id;
             const w = pct(account.finding_count, max);
             return (
-              <li key={account.account_id}>
+            <li
+              key={account.account_id}
+              className={onAccountClick ? "cursor-pointer rounded px-1 py-1 hover:bg-slate-100 dark:hover:bg-slate-800/70" : ""}
+              onClick={onAccountClick ? () => onAccountClick(account.account_id) : undefined}
+            >
                 <div className="mb-1 flex justify-between gap-3 text-xs text-slate-700 dark:text-slate-300">
                   <span className="min-w-0 truncate font-mono" title={`${label} (${account.account_id})`}>
                     {label}

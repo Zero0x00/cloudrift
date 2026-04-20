@@ -80,6 +80,7 @@ func ScoreTrust(
 
 		principalType, principalValue, externalAccountID := principalMeta(principal)
 		adminState, isAdmin := resolveAdminState(role)
+		permissionVisibility := DeriveRolePermissionVisibility(role)
 
 		severity, verdict, unknownVendor := classifyTrust(
 			isAdmin,
@@ -118,6 +119,7 @@ func ScoreTrust(
 				"unknown_vendor":      unknownVendor,
 				"activity_source":     "iam:getrole:role_last_used",
 				"activity_status":     activityStatus,
+				"permission_visibility": permissionVisibility,
 			},
 		})
 	}

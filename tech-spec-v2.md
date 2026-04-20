@@ -7,6 +7,38 @@ Status: Approved
 
 ---
 
+## Implementation status (repository)
+
+Checklist reflects **what exists in this tree today**, not the original phase plan alone.
+
+### Done (implemented)
+
+- [x] **CLI:** `scan`, `report`, `dashboard`, `query`, `version`, **`demo generate`** (`cmd/cloudrift`).
+- [x] **Scan artifacts:** `output_dir/<scan_id>/` with `scan-metadata.json`, `findings.json`; optional `relationships.json`, `assets/*.json` for graph export.
+- [x] **Dashboard + API:** Chi router; embedded React SPA; read-only scan APIs (`/api/scans`, summary, findings, accounts, diff).
+- [x] **External access — API:** `GET /api/scans/{id}/external-entities` (paginated); summary includes entity rollups aligned with that aggregation (`internal/api/handlers/external_entities.go`).
+- [x] **Findings filters:** Query params including `external_principal`, `external_account_id`, `principal_type`, `trust_classification`, `trust_stale`, `admin_like`, plus existing module/severity/search filters (`internal/api/handlers/findings.go`).
+- [x] **Trust / permission visibility:** Conservative tiering from role policy artifacts (`internal/scorers/permission_visibility.go`); surfaced in finding evidence and dashboard trust UI.
+- [x] **Phase 3 graph (optional):** Neo4j schema + `WriteScan` projection; `cloudrift scan --neo4j` and **`cloudrift demo generate --neo4j`**; vector index + retrieval path for `cloudrift query`.
+- [x] **Scan Control Center (dashboard):** `/scan-control` UI; backend `GET /api/runtime/status`, `POST /api/runtime/validate-profile`, `POST /api/scan/start`, `GET /api/scan/status`, `GET /api/scan/history`, `GET /api/scan/progress` (WebSocket) — see `internal/api/handlers/scan_control.go`.
+- [x] **Demo dataset:** `cloudrift demo generate` writes a deterministic bundle (findings + metadata + relationships + assets) for UI/graph exercises.
+- [x] **Response-shape hardening:** list-like API fields now serialize as stable empty arrays (`[]`) instead of `null` in key envelopes (scan list account ids, summary external arrays, diff lists, runtime profiles, run history items).
+
+### Partial / gap
+
+- [ ] **CLI `scan`:** Still creates metadata + **empty** `findings.json` unless other paths populate the directory; full collectors→scorers→write pipeline is not the default `scan` path (library code in `internal/` is tested; orchestration gap called out in `docs/TECHNICAL.md`).
+- [ ] **Embeddings `local` provider:** Config allowlist may mention it; **`Embed` is not implemented** (stub errors) — operational path is OpenAI with 384-dim for Neo4j.
+- [ ] **RAG answer synthesis:** `cloudrift query` is **retrieval-only**; no LLM-composed answer in-tree.
+
+### Roadmap (not implemented here)
+
+- [ ] Wire default CLI `scan` to full pipeline (or document a single blessed entrypoint).
+- [ ] Implement `local` / on-box embedding provider if required without OpenAI.
+- [ ] Optional answer synthesis layer for `query` (behind explicit flag and provider config).
+- [ ] Hardening: API auth when not bound to loopback; structured logging.
+
+---
+
 ## 1. What We Are Building
 
 **cloudrift** is an open-source, single-binary CLI tool that answers four
@@ -1045,6 +1077,12 @@ New dashboard page `/scan-control`:
 - live run status/progress panel (poll + websocket message)
 - explicit note on current limitation: single active run model (latest run state shared across tabs/users)
 
+Current UI behavior hardening:
+
+- explicit render states: `loading`, `error`, `empty/unconfigured`, `ready`
+- API-derived nullable lists normalized before `.length` / `.map` use
+- WebSocket progress connection is non-fatal; API polling status/history remains authoritative
+
 ### Security invariants
 
 1. No raw AWS/OpenAI credentials in UI forms.
@@ -1059,6 +1097,7 @@ New dashboard page `/scan-control`:
 - invalid/missing profiles handled clearly
 - run-status endpoint returns safe state (idle/running/failed/completed)
 - websocket still serves progress event
+- list-like JSON fields in representative endpoints serialize as arrays (`[]`) when empty
 - no regression to existing scans/findings/dashboard APIs
 
 ---

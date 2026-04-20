@@ -20,7 +20,13 @@ func TestCollectTrust_ExternalAWSAccountPrincipal(t *testing.T) {
 		RoleName:                 awsv2.String("ExternalAccessRole"),
 		AssumeRolePolicyDocument: awsv2.String(encodedPolicy(singleStatement(`{"AWS":"arn:aws:iam::222222222222:root"}`))),
 	}
-	nodes, rels, err := collectTrustFromClient(context.Background(), "111111111111", &fakeIAMAPI{roles: []iamtypes.Role{role}})
+	nodes, rels, err := collectTrustFromClient(context.Background(), "111111111111", &fakeIAMAPI{
+		roles:               []iamtypes.Role{role},
+		attachedPolicyNames: []string{"ReadOnlyAccess"},
+		inlinePolicyDocsByName: map[string]string{
+			"InlineRead": `{"Statement":[{"Effect":"Allow","Action":["s3:GetObject"],"Resource":"*"}]}`,
+		},
+	})
 	if err != nil {
 		t.Fatalf("collectTrustFromClient error: %v", err)
 	}
@@ -29,6 +35,20 @@ func TestCollectTrust_ExternalAWSAccountPrincipal(t *testing.T) {
 	assertAssetTypeCount(t, nodes, models.AssetExternalPrincipal, 1)
 	if len(rels) != 1 || rels[0].RelType != models.RelTrusts {
 		t.Fatalf("expected single TRUSTS relationship, got %#v", rels)
+	}
+	for _, n := range nodes {
+		if n.AssetType != models.AssetIAMRole {
+			continue
+		}
+		if _, ok := n.Properties["attached_policy_names"]; !ok {
+			t.Fatalf("expected attached_policy_names on role properties")
+		}
+		if _, ok := n.Properties["inline_policy_documents"]; !ok {
+			t.Fatalf("expected inline_policy_documents on role properties")
+		}
+		if _, ok := n.Properties["policy_parse_ok"]; !ok {
+			t.Fatalf("expected policy_parse_ok on role properties")
+		}
 	}
 }
 
@@ -165,7 +185,9 @@ func TestCollectTrustWithConfig_DeterministicOrderingAndDedup(t *testing.T) {
 }
 
 type fakeIAMAPI struct {
-	roles []iamtypes.Role
+	roles                []iamtypes.Role
+	attachedPolicyNames  []string
+	inlinePolicyDocsByName map[string]string
 }
 
 func (f *fakeIAMAPI) ListRoles(_ context.Context, _ *iam.ListRolesInput, _ ...func(*iam.Options)) (*iam.ListRolesOutput, error) {
@@ -173,6 +195,33 @@ func (f *fakeIAMAPI) ListRoles(_ context.Context, _ *iam.ListRolesInput, _ ...fu
 		Roles:       f.roles,
 		IsTruncated: false,
 	}, nil
+}
+
+func (f *fakeIAMAPI) ListAttachedRolePolicies(_ context.Context, _ *iam.ListAttachedRolePoliciesInput, _ ...func(*iam.Options)) (*iam.ListAttachedRolePoliciesOutput, error) {
+	out := make([]iamtypes.AttachedPolicy, 0, len(f.attachedPolicyNames))
+	for _, n := range f.attachedPolicyNames {
+		out = append(out, iamtypes.AttachedPolicy{PolicyName: awsv2.String(n)})
+	}
+	return &iam.ListAttachedRolePoliciesOutput{
+		AttachedPolicies: out,
+		IsTruncated:      false,
+	}, nil
+}
+
+func (f *fakeIAMAPI) ListRolePolicies(_ context.Context, _ *iam.ListRolePoliciesInput, _ ...func(*iam.Options)) (*iam.ListRolePoliciesOutput, error) {
+	names := make([]string, 0, len(f.inlinePolicyDocsByName))
+	for n := range f.inlinePolicyDocsByName {
+		names = append(names, n)
+	}
+	return &iam.ListRolePoliciesOutput{
+		PolicyNames: names,
+		IsTruncated: false,
+	}, nil
+}
+
+func (f *fakeIAMAPI) GetRolePolicy(_ context.Context, in *iam.GetRolePolicyInput, _ ...func(*iam.Options)) (*iam.GetRolePolicyOutput, error) {
+	doc := f.inlinePolicyDocsByName[awsv2.ToString(in.PolicyName)]
+	return &iam.GetRolePolicyOutput{PolicyDocument: awsv2.String(url.QueryEscape(doc))}, nil
 }
 
 func singleStatement(principalJSON string) string {

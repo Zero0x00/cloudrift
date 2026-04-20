@@ -1,5 +1,6 @@
 import type { TrustDisplay } from "../../api/types";
 import { formatAdminEvalStateLabel } from "../../lib/trustLabels";
+import { formatPermissionTierLabel } from "../../lib/permissionVisibility";
 
 /**
  * Surfaces IAM activity semantics for auditors without implying “ghost admin” or other
@@ -12,6 +13,8 @@ export function TrustActivityCallout({ trust }: { trust: TrustDisplay | null | u
 
   const status = trust.activity_status?.trim();
   const adminLabel = formatAdminEvalStateLabel(trust.admin_eval_state);
+  const permissionTier = formatPermissionTierLabel(trust.permission_visibility?.classification);
+  const permissionConfidence = trust.permission_visibility?.confidence?.trim();
 
   const lines: { key: string; body: string; intent: "info" | "warn" | "neutral" }[] = [];
 
@@ -20,6 +23,14 @@ export function TrustActivityCallout({ trust }: { trust: TrustDisplay | null | u
     body: `Admin evaluation: ${adminLabel}`,
     intent: "neutral"
   });
+
+  if (trust.permission_visibility) {
+    lines.push({
+      key: "permission-tier",
+      body: `Permission visibility tier: ${permissionTier}${permissionConfidence ? ` (${permissionConfidence} confidence)` : ""}`,
+      intent: permissionTier === "Unknown" ? "warn" : "neutral"
+    });
+  }
 
   if (status === "iam_never_used") {
     lines.push({

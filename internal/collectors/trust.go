@@ -21,6 +21,9 @@ var accountIDInIAMArn = regexp.MustCompile(`^arn:aws:iam::([0-9]{12}):`)
 
 type IAMAPI interface {
 	ListRoles(ctx context.Context, params *iam.ListRolesInput, optFns ...func(*iam.Options)) (*iam.ListRolesOutput, error)
+	ListAttachedRolePolicies(ctx context.Context, params *iam.ListAttachedRolePoliciesInput, optFns ...func(*iam.Options)) (*iam.ListAttachedRolePoliciesOutput, error)
+	ListRolePolicies(ctx context.Context, params *iam.ListRolePoliciesInput, optFns ...func(*iam.Options)) (*iam.ListRolePoliciesOutput, error)
+	GetRolePolicy(ctx context.Context, params *iam.GetRolePolicyInput, optFns ...func(*iam.Options)) (*iam.GetRolePolicyOutput, error)
 }
 
 var newIAMClient = func(cfg awsv2.Config) IAMAPI {
@@ -131,6 +134,10 @@ func collectTrustFromClient(ctx context.Context, accountID string, client IAMAPI
 					"path": awsv2.ToString(role.Path),
 				},
 			}
+			attachedPolicyNames, inlinePolicyDocuments, parseOK := collectRolePermissionInputs(ctx, client, roleNode.Name)
+			roleNode.Properties["attached_policy_names"] = attachedPolicyNames
+			roleNode.Properties["inline_policy_documents"] = inlinePolicyDocuments
+			roleNode.Properties["policy_parse_ok"] = parseOK
 			roleNodes = append(roleNodes, roleNode)
 
 			for _, p := range principals {
@@ -375,6 +382,77 @@ func classifyFederatedPrincipal(value string) string {
 func externalPrincipalARN(principalType, principalValue string) string {
 	encoded := base64.RawURLEncoding.EncodeToString([]byte(strings.TrimSpace(principalValue)))
 	return "arn:cloudrift:external-principal:::" + principalType + "/" + encoded
+}
+
+func collectRolePermissionInputs(ctx context.Context, client IAMAPI, roleName string) ([]string, []string, bool) {
+	attachedPolicyNames := make([]string, 0, 4)
+	inlinePolicyDocuments := make([]string, 0, 4)
+	parseOK := true
+
+	var attachedMarker *string
+	for {
+		out, err := client.ListAttachedRolePolicies(ctx, &iam.ListAttachedRolePoliciesInput{
+			RoleName: awsv2.String(roleName),
+			Marker:   attachedMarker,
+		})
+		if err != nil {
+			parseOK = false
+			break
+		}
+		for _, ap := range out.AttachedPolicies {
+			name := strings.TrimSpace(awsv2.ToString(ap.PolicyName))
+			if name != "" {
+				attachedPolicyNames = append(attachedPolicyNames, name)
+			}
+		}
+		if !out.IsTruncated || out.Marker == nil {
+			break
+		}
+		attachedMarker = out.Marker
+	}
+
+	inlinePolicyNames := make([]string, 0, 4)
+	var inlineMarker *string
+	for {
+		out, err := client.ListRolePolicies(ctx, &iam.ListRolePoliciesInput{
+			RoleName: awsv2.String(roleName),
+			Marker:   inlineMarker,
+		})
+		if err != nil {
+			parseOK = false
+			break
+		}
+		for _, pn := range out.PolicyNames {
+			if s := strings.TrimSpace(pn); s != "" {
+				inlinePolicyNames = append(inlinePolicyNames, s)
+			}
+		}
+		if !out.IsTruncated || out.Marker == nil {
+			break
+		}
+		inlineMarker = out.Marker
+	}
+
+	for _, pn := range inlinePolicyNames {
+		out, err := client.GetRolePolicy(ctx, &iam.GetRolePolicyInput{
+			RoleName:   awsv2.String(roleName),
+			PolicyName: awsv2.String(pn),
+		})
+		if err != nil {
+			parseOK = false
+			continue
+		}
+		decoded, err := url.QueryUnescape(awsv2.ToString(out.PolicyDocument))
+		if err != nil {
+			parseOK = false
+			continue
+		}
+		inlinePolicyDocuments = append(inlinePolicyDocuments, decoded)
+	}
+
+	sort.Strings(attachedPolicyNames)
+	sort.Strings(inlinePolicyDocuments)
+	return attachedPolicyNames, inlinePolicyDocuments, parseOK
 }
 
 func stringValue(v any) string {

@@ -14,13 +14,13 @@ import { formatCount, formatUsd } from "../lib/format";
 export function AccountsPage() {
   const { selectedScanId } = useScanContext();
   const query = useAccountsQuery();
+  const accountItems = query.data?.items ?? [];
 
   return (
     <section className="space-y-6">
       <PageHeader
         title="Accounts"
         description="Per-account rollups from GET /api/scans/:id/accounts. Rows are ordered deterministically by the API."
-        scanId={selectedScanId}
       />
       {!selectedScanId ? (
         <ScanRequired />
@@ -30,19 +30,19 @@ export function AccountsPage() {
         <StatePanel intent="error" title="Failed to load accounts">
           <pre className="whitespace-pre-wrap font-sans text-xs">{formatQueryError(query.error)}</pre>
         </StatePanel>
-      ) : query.isSuccess && query.data.items.length === 0 ? (
+      ) : query.isSuccess && accountItems.length === 0 ? (
         <StatePanel intent="empty" title="No account rows">
           The API returned successfully with no per-account breakdown for this scan.
         </StatePanel>
       ) : query.data ? (
         <div className="space-y-6">
           <TopAccountsHorizontalBar
-            items={query.data.items}
+            items={accountItems}
             title="Top accounts (same data as Overview)"
             description="Uses the same GET /api/scans/:id/accounts response as the cards below — React Query shares the cache with Overview when the scan is unchanged."
           />
           <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-            {query.data.items.map((account) => (
+            {accountItems.map((account) => (
               <AccountCard key={account.account_id} account={account} />
             ))}
           </div>

@@ -3,7 +3,7 @@ import { formatQueryError } from "../api/httpError";
 import { PageHeader } from "../components/PageHeader";
 import { StatePanel } from "../components/StatePanel";
 import { useRuntimeStatusQuery, useScanRunHistoryQuery, useScanRunStatusQuery, useStartScanMutation, useValidateProfileMutation } from "../hooks/useDashboardQueries";
-import { useScanContext } from "../hooks/useScanContext";
+import { useScanControlUrlState } from "../hooks/useScanControlUrlState";
 
 const MODULE_OPTIONS = ["all", "orphaned_edge", "external_access"] as const;
 const PROVIDER_OPTIONS = ["", "openai", "local"] as const;
@@ -15,30 +15,54 @@ function statusTone(ok: boolean): string {
 }
 
 export function ScanControlCenterPage() {
-  const { selectedScanId } = useScanContext();
+  const { state, patch } = useScanControlUrlState();
   const runtime = useRuntimeStatusQuery();
   const scanStatus = useScanRunStatusQuery();
   const history = useScanRunHistoryQuery();
   const validateProfile = useValidateProfileMutation();
   const startScan = useStartScanMutation();
 
-  const [profile, setProfile] = useState("");
-  const [moduleName, setModuleName] = useState<(typeof MODULE_OPTIONS)[number]>("all");
-  const [provider, setProvider] = useState<(typeof PROVIDER_OPTIONS)[number]>("");
-  const [noHTTP, setNoHTTP] = useState(false);
-  const [neo4j, setNeo4j] = useState(false);
   const [progressMessage, setProgressMessage] = useState("");
+  const [socketFailed, setSocketFailed] = useState(false);
+
+  const runtimeData = runtime.data;
+  const profiles = runtimeData?.aws_profiles ?? [];
+  const defaultProfile = runtimeData?.default_profile ?? "";
+  const runtimeReady = Boolean(runtimeData);
+  const historyItems = history.data?.items ?? [];
+  const hasRuntimeSignals =
+    profiles.length > 0 ||
+    Boolean(defaultProfile) ||
+    Boolean(runtimeData?.openai_configured) ||
+    Boolean(runtimeData?.neo4j_configured) ||
+    Boolean(runtimeData?.slack_configured) ||
+    Boolean(runtimeData?.email_configured);
 
   useEffect(() => {
-    if (!runtime.data) {
+    if (!runtimeData) {
       return;
     }
-    setProfile((prev) => prev || runtime.data.default_profile || runtime.data.aws_profiles[0] || "");
-  }, [runtime.data]);
+    if (!state.profile) {
+      const fallbackProfile = defaultProfile || profiles[0] || "";
+      if (fallbackProfile) {
+        patch({ profile: fallbackProfile });
+      }
+    }
+  }, [runtimeData, state.profile, patch, defaultProfile, profiles]);
 
   useEffect(() => {
+    if (!runtimeReady) {
+      return;
+    }
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const ws = new WebSocket(`${protocol}://${window.location.host}/api/scan/progress`);
+    let ws: WebSocket | null = null;
+    try {
+      ws = new WebSocket(`${protocol}://${window.location.host}/api/scan/progress`);
+    } catch {
+      setSocketFailed(true);
+      return;
+    }
+
     ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data) as { message?: string; stage?: string };
@@ -47,8 +71,15 @@ export function ScanControlCenterPage() {
         // Ignore malformed websocket payloads.
       }
     };
-    return () => ws.close();
-  }, []);
+    ws.onerror = () => {
+      setSocketFailed(true);
+    };
+    ws.onopen = () => {
+      setSocketFailed(false);
+    };
+
+    return () => ws?.close();
+  }, [runtimeReady]);
 
   const isRunning = scanStatus.data?.status === "running";
   const effectiveStatus = useMemo(() => {
@@ -63,7 +94,6 @@ export function ScanControlCenterPage() {
       <PageHeader
         title="Scan Control Center"
         description="Start scans from the dashboard using profile/provider selections only. Secrets are resolved server-side from env/shared config/role sources."
-        scanId={selectedScanId}
       />
 
       {runtime.isLoading ? (
@@ -72,16 +102,45 @@ export function ScanControlCenterPage() {
         <StatePanel intent="error" title="Failed to load runtime status">
           <pre className="whitespace-pre-wrap font-sans text-xs">{formatQueryError(runtime.error)}</pre>
         </StatePanel>
-      ) : runtime.data ? (
+      ) : !runtimeData ? (
+        <StatePanel intent="empty" title="Runtime status unavailable">
+          <p className="cr-body">
+            The control center could not load a runtime configuration payload. Check that the API is reachable and
+            returning JSON from <code className="cr-mono">/api/runtime/status</code>.
+          </p>
+        </StatePanel>
+      ) : !hasRuntimeSignals ? (
+        <StatePanel intent="empty" title="Runtime appears unconfigured">
+          <p className="cr-body">
+            No local profiles or runtime integrations are currently configured. You can still try ambient credentials
+            using the controls below once runtime setup is complete.
+          </p>
+        </StatePanel>
+      ) : (
         <>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-            <Badge title="OpenAI" ok={runtime.data.openai_configured} />
-            <Badge title="Neo4j" ok={runtime.data.neo4j_configured} />
-            <Badge title="Slack alerts" ok={runtime.data.slack_configured} />
-            <Badge title="Email alerts" ok={runtime.data.email_configured} />
-            <Badge title="AWS profiles" ok={runtime.data.aws_profiles.length > 0} detail={`${runtime.data.aws_profiles.length} found`} />
+            <Badge title="OpenAI" ok={Boolean(runtimeData.openai_configured)} />
+            <Badge title="Neo4j" ok={Boolean(runtimeData.neo4j_configured)} />
+            <Badge title="Slack alerts" ok={Boolean(runtimeData.slack_configured)} />
+            <Badge title="Email alerts" ok={Boolean(runtimeData.email_configured)} />
+            <Badge title="AWS profiles" ok={profiles.length > 0} detail={`${profiles.length} found`} />
           </div>
-          <p className="text-xs text-slate-500">
+          {profiles.length === 0 ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2 dark:border-amber-900/50 dark:bg-amber-950/25">
+              <p className="cr-body text-amber-950 dark:text-amber-100/95">
+                No named AWS profiles were detected. Ambient credentials (instance role, SSO, or env vars) may still work—use{" "}
+                <strong>Validate profile</strong> or <strong>Start scan</strong> to confirm.
+              </p>
+            </div>
+          ) : null}
+          {socketFailed ? (
+            <div className="rounded-lg border border-slate-200 bg-slate-50/90 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/60">
+              <p className="cr-helper">
+                Live progress channel is unavailable. Scans can still run; status and history continue to refresh via API polling.
+              </p>
+            </div>
+          ) : null}
+          <p className="cr-helper">
             If no local profiles are listed, ambient AWS auth may still work (instance role, container/task role, or env-based credentials).
           </p>
 
@@ -89,12 +148,12 @@ export function ScanControlCenterPage() {
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <Field label="AWS profile">
                 <select
-                  value={profile}
-                  onChange={(e) => setProfile(e.target.value)}
+                  value={state.profile}
+                  onChange={(e) => patch({ profile: e.target.value })}
                   className="w-full rounded-md border border-slate-700 bg-white px-2 py-2 text-sm text-slate-800 dark:bg-slate-950 dark:text-slate-200"
                 >
                   <option value="">(ambient default chain)</option>
-                  {runtime.data.aws_profiles.map((p) => (
+                  {profiles.map((p) => (
                     <option key={p} value={p}>
                       {p}
                     </option>
@@ -104,8 +163,8 @@ export function ScanControlCenterPage() {
 
               <Field label="Module">
                 <select
-                  value={moduleName}
-                  onChange={(e) => setModuleName(e.target.value as (typeof MODULE_OPTIONS)[number])}
+                  value={state.moduleName}
+                  onChange={(e) => patch({ moduleName: e.target.value as (typeof MODULE_OPTIONS)[number] })}
                   className="w-full rounded-md border border-slate-700 bg-white px-2 py-2 text-sm text-slate-800 dark:bg-slate-950 dark:text-slate-200"
                 >
                   {MODULE_OPTIONS.map((m) => (
@@ -118,8 +177,8 @@ export function ScanControlCenterPage() {
 
               <Field label="Embedding provider (optional)">
                 <select
-                  value={provider}
-                  onChange={(e) => setProvider(e.target.value as (typeof PROVIDER_OPTIONS)[number])}
+                  value={state.provider}
+                  onChange={(e) => patch({ provider: e.target.value as (typeof PROVIDER_OPTIONS)[number] })}
                   className="w-full rounded-md border border-slate-700 bg-white px-2 py-2 text-sm text-slate-800 dark:bg-slate-950 dark:text-slate-200"
                 >
                   {PROVIDER_OPTIONS.map((p) => (
@@ -132,15 +191,15 @@ export function ScanControlCenterPage() {
 
               <Field label="Flags">
                 <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                  <input type="checkbox" checked={noHTTP} onChange={(e) => setNoHTTP(e.target.checked)} />
+                  <input type="checkbox" checked={state.noHTTP} onChange={(e) => patch({ noHTTP: e.target.checked })} />
                   no-http
                 </label>
                 <label className="mt-2 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
                   <input
                     type="checkbox"
-                    checked={neo4j}
-                    onChange={(e) => setNeo4j(e.target.checked)}
-                    disabled={!runtime.data.neo4j_configured}
+                    checked={state.neo4j}
+                    onChange={(e) => patch({ neo4j: e.target.checked })}
+                    disabled={!runtimeData.neo4j_configured}
                   />
                   neo4j export
                 </label>
@@ -150,7 +209,7 @@ export function ScanControlCenterPage() {
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <button
                 type="button"
-                onClick={() => validateProfile.mutate(profile)}
+                onClick={() => validateProfile.mutate(state.profile)}
                 disabled={validateProfile.isPending}
                 className="rounded-md border border-cyan-700 bg-cyan-900/25 px-3 py-2 text-sm text-cyan-100 disabled:opacity-50"
               >
@@ -158,7 +217,15 @@ export function ScanControlCenterPage() {
               </button>
               <button
                 type="button"
-                onClick={() => startScan.mutate({ profile, module: moduleName, provider: provider || undefined, no_http: noHTTP, neo4j: neo4j })}
+                onClick={() =>
+                  startScan.mutate({
+                    profile: state.profile,
+                    module: state.moduleName,
+                    provider: state.provider || undefined,
+                    no_http: state.noHTTP,
+                    neo4j: state.neo4j
+                  })
+                }
                 disabled={isRunning || startScan.isPending}
                 className="rounded-md border border-emerald-700 bg-emerald-900/25 px-3 py-2 text-sm text-emerald-100 disabled:opacity-50"
               >
@@ -186,8 +253,8 @@ export function ScanControlCenterPage() {
             <dl className="mt-3 grid gap-2 text-sm md:grid-cols-2">
               <Stat label="State" value={scanStatus.data?.status || "idle"} />
               <Stat label="Stage" value={scanStatus.data?.stage || "idle"} />
-              <Stat label="Profile" value={scanStatus.data?.profile || profile || "—"} />
-              <Stat label="Module" value={scanStatus.data?.module || moduleName} />
+              <Stat label="Profile" value={scanStatus.data?.profile || state.profile || "—"} />
+              <Stat label="Module" value={scanStatus.data?.module || state.moduleName} />
               <Stat label="Scan ID" value={scanStatus.data?.scan_id || "—"} />
               <Stat label="Message" value={effectiveStatus || "—"} />
             </dl>
@@ -199,7 +266,7 @@ export function ScanControlCenterPage() {
               <p className="mt-3 text-sm text-slate-500">Loading recent runs…</p>
             ) : history.isError ? (
               <p className="mt-3 text-sm text-rose-300">{formatQueryError(history.error)}</p>
-            ) : (history.data?.items.length ?? 0) === 0 ? (
+            ) : historyItems.length === 0 ? (
               <p className="mt-3 text-sm text-slate-500">No recent runs recorded yet.</p>
             ) : (
               <div className="mt-3 overflow-x-auto">
@@ -217,7 +284,7 @@ export function ScanControlCenterPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-800/90">
-                    {history.data?.items.map((item) => (
+                    {historyItems.map((item) => (
                       <tr key={item.run_id} className="text-slate-700 dark:text-slate-300">
                         <td className="px-2 py-2 font-mono">{item.run_id}</td>
                         <td className="px-2 py-2">
@@ -250,7 +317,7 @@ export function ScanControlCenterPage() {
             )}
           </div>
         </>
-      ) : null}
+      )}
     </section>
   );
 }
@@ -258,7 +325,7 @@ export function ScanControlCenterPage() {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</label>
+      <label className="cr-kpi-label mb-1 block">{label}</label>
       {children}
     </div>
   );

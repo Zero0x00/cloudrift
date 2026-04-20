@@ -91,8 +91,9 @@ func newRootCommand() *cobra.Command {
 
 	dashboardCmd := newDashboardCommand(cfgPath)
 	queryCmd := newQueryCommand(cfgPath)
+	demoCmd := newDemoCommand(cfgPath)
 
-	root.AddCommand(scanCmd, reportCmd, queryCmd, versionCmd, dashboardCmd)
+	root.AddCommand(scanCmd, reportCmd, queryCmd, versionCmd, dashboardCmd, demoCmd)
 	return root
 }
 
