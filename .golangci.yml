@@ -45,11 +45,3 @@ linters:
       rules:
         - name: var-naming
         - name: error-return
-
-issues:
-  exclusions:
-    rules:
-      - path: _test\.go
-        linters:
-          - errcheck
-          - gosec
