@@ -137,6 +137,32 @@ export interface FindingsListResponse {
   filters: FindingsAppliedFilter;
 }
 
+/** GET /api/scans/:id/top-fixes — server-ranked priority queue */
+export interface TopFixItem extends FindingListItem {
+  priority_score: number;
+  reason: string;
+}
+
+export interface TopFixesResponse {
+  scan_id: string;
+  items: TopFixItem[];
+  limit: number;
+}
+
+export interface RemediationGroupItem {
+  key: "reclaimable" | "stale_external_trust" | "dangling_edge" | "admin_like_external" | "broken_edge";
+  label: string;
+  why: string;
+  finding_count: number;
+  total_monthly_risk_cost_usd: number;
+  top_example?: string;
+}
+
+export interface RemediationGroupsResponse {
+  scan_id: string;
+  items: RemediationGroupItem[];
+}
+
 export interface TrustDisplay {
   permission_visibility?: PermissionVisibilityDisplay;
   role_arn?: string;

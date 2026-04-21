@@ -1,4 +1,5 @@
 import type { ComponentType, PropsWithChildren, SVGProps } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { CurrentScanCard } from "../components/CurrentScanCard";
 import { ThemeToggle } from "../components/ThemeToggle";
@@ -42,6 +43,18 @@ export function AppLayout({ children }: PropsWithChildren) {
   const scanIdParam = currentSearchParams.get("scan_id");
   const currentViewParam = currentSearchParams.get("view");
   const isOnDashboard = location.pathname === "/overview";
+  const [isNavCollapsed, setIsNavCollapsed] = useState(false);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("cloudrift.nav.collapsed");
+    if (saved === "1") {
+      setIsNavCollapsed(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("cloudrift.nav.collapsed", isNavCollapsed ? "1" : "0");
+  }, [isNavCollapsed]);
 
   const buildNavSearch = (item: (typeof staticNavItems)[number]): string => {
     if (item.preserveSearch) {
@@ -64,15 +77,28 @@ export function AppLayout({ children }: PropsWithChildren) {
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      <aside className="flex w-full shrink-0 flex-col border-b border-slate-200 bg-white/95 dark:border-slate-800 dark:bg-slate-900/95 md:w-60 md:border-b-0 md:border-r">
+      <aside
+        className={`flex w-full shrink-0 flex-col border-b border-slate-200 bg-white/95 transition-[width] dark:border-slate-800 dark:bg-slate-900/95 md:border-b-0 md:border-r ${
+          isNavCollapsed ? "md:w-16" : "md:w-60"
+        }`}
+      >
         <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
           <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-cyan-500 dark:bg-cyan-400" />
-          <h1 className="text-sm font-semibold uppercase tracking-wide text-slate-800 dark:text-slate-100">
+          <h1 className={`text-sm font-semibold uppercase tracking-wide text-slate-800 dark:text-slate-100 ${isNavCollapsed ? "hidden" : ""}`}>
             Cloudrift
           </h1>
+          <button
+            type="button"
+            className="ml-auto hidden rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 md:inline-flex"
+            onClick={() => setIsNavCollapsed((s) => !s)}
+            aria-label={isNavCollapsed ? "Expand navigation" : "Collapse navigation"}
+            title={isNavCollapsed ? "Expand navigation" : "Collapse navigation"}
+          >
+            {isNavCollapsed ? "»" : "«"}
+          </button>
         </div>
 
-        <div className="px-3 py-3">
+        <div className={`px-3 py-3 ${isNavCollapsed ? "hidden" : ""}`}>
           <CurrentScanCard />
         </div>
 
@@ -81,17 +107,17 @@ export function AppLayout({ children }: PropsWithChildren) {
             <NavLink
               key={item.to}
               to={{ pathname: item.to, search: buildNavSearch(item) }}
-              className={({ isActive }) => navClassName(isActive)}
+              className={({ isActive }) => `${navClassName(isActive)} ${isNavCollapsed ? "justify-center px-2" : ""}`}
             >
               <item.Icon className="shrink-0 opacity-80" />
-              {item.label}
+              <span className={isNavCollapsed ? "hidden" : ""}>{item.label}</span>
             </NavLink>
           ))}
         </nav>
 
         <div className="mt-auto border-t border-slate-200 px-3 py-3 dark:border-slate-800">
           <div className="flex items-center justify-between gap-2">
-            <span className="cr-helper">Theme</span>
+            <span className={`cr-helper ${isNavCollapsed ? "hidden" : ""}`}>Theme</span>
             <ThemeToggle />
           </div>
         </div>

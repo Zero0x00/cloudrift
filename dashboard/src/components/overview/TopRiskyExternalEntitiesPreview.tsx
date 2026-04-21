@@ -19,18 +19,15 @@ export function TopRiskyExternalEntitiesPreview({
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white/90 p-4 dark:border-slate-800 dark:bg-slate-900/80">
+    <div className="hs-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-            Highest-severity external entities
-          </h3>
+          <h3 className="cr-section-title">Top external entities</h3>
           <p
-            className="mt-0.5 text-[11px] text-slate-500"
+            className="cr-helper mt-1"
             title="Sort is severity first (not a pure risk-cost ranking). Ties on severity are broken by total monthly risk, then by a stable key. Same order as the External Entities list without filters."
           >
-            Preview of up to 5 entities. Ordered by <strong>highest severity first</strong>, then by total monthly risk
-            cost within the same severity. Not a pure cost ranking.
+            Highest severity first, then monthly risk cost.
           </p>
         </div>
         <button

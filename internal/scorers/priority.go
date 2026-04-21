@@ -1,0 +1,218 @@
+package scorers
+
+import (
+	"fmt"
+	"math"
+	"strings"
+
+	"cloudrift/internal/models"
+)
+
+// PriorityScore ranks findings for top-fix workflows. Higher is more urgent.
+func PriorityScore(f models.Finding) float64 {
+	s := severityPoints(f.Severity)
+	c := claimabilityPoints(f.Claimability)
+	r := riskCostPoints(f.MonthlyRiskCost)
+	e := externalExposurePoints(f)
+	return math.Round((s+c+r+e)*100) / 100
+}
+
+// PriorityReason builds a concise, explainable string for why a finding ranked highly.
+func PriorityReason(f models.Finding) string {
+	var parts []string
+	switch strings.ToLower(string(f.Severity)) {
+	case string(models.SeverityCritical):
+		parts = append(parts, "Critical")
+	case string(models.SeverityHigh):
+		parts = append(parts, "High severity")
+	case string(models.SeverityMedium):
+		parts = append(parts, "Medium severity")
+	}
+	switch strings.ToLower(string(f.Claimability)) {
+	case string(models.ClaimReclaimable):
+		parts = append(parts, "reclaimable")
+	case string(models.ClaimDangling):
+		parts = append(parts, "dangling resource")
+	case string(models.ClaimBroken):
+		parts = append(parts, "broken claim")
+	case string(models.ClaimEdgeObscured):
+		parts = append(parts, "edge obscured")
+	}
+	if f.MonthlyRiskCost > 0 {
+		parts = append(parts, fmt.Sprintf("$%.0f/mo modeled risk", f.MonthlyRiskCost))
+	}
+	if strings.EqualFold(string(f.Module), string(models.ModuleExternalAccess)) {
+		var ext []string
+		if evidenceAdminLike(f.Evidence) {
+			ext = append(ext, "admin-like external trust")
+		}
+		if evidenceTrustVerdictStale(f.Evidence) {
+			ext = append(ext, "stale trust review")
+		}
+		if strings.EqualFold(strings.TrimSpace(evidenceTrustClassification(f.Evidence)), "privileged") {
+			ext = append(ext, "privileged access pattern")
+		}
+		if b, ok := boolEvidence(f.Evidence, "unknown_vendor"); ok && b {
+			ext = append(ext, "unknown vendor")
+		}
+		if evidencePrincipalType(f.Evidence) == "" {
+			ext = append(ext, "unknown principal type")
+		}
+		if len(ext) > 0 {
+			parts = append(parts, "External: "+strings.Join(ext, ", "))
+		} else {
+			parts = append(parts, "External access")
+		}
+	}
+	if len(parts) == 0 {
+		return "Ranked by composite priority"
+	}
+	return strings.Join(parts, " · ")
+}
+
+// PriorityLess provides deterministic ordering for equal/close scores.
+func PriorityLess(a, b models.Finding, scoreA, scoreB float64) bool {
+	if scoreA != scoreB {
+		return scoreA > scoreB
+	}
+	rankA := prioritySeverityRank(a.Severity)
+	rankB := prioritySeverityRank(b.Severity)
+	if rankA != rankB {
+		return rankA > rankB
+	}
+	if a.MonthlyRiskCost != b.MonthlyRiskCost {
+		return a.MonthlyRiskCost > b.MonthlyRiskCost
+	}
+	return a.ID < b.ID
+}
+
+func severityPoints(s models.Severity) float64 {
+	switch strings.ToLower(string(s)) {
+	case string(models.SeverityCritical):
+		return 100
+	case string(models.SeverityHigh):
+		return 72
+	case string(models.SeverityMedium):
+		return 48
+	case string(models.SeverityLow):
+		return 28
+	case string(models.SeverityInfo):
+		return 12
+	default:
+		return 35
+	}
+}
+
+func claimabilityPoints(c models.Claimability) float64 {
+	switch strings.ToLower(string(c)) {
+	case string(models.ClaimReclaimable):
+		return 38
+	case string(models.ClaimDangling):
+		return 30
+	case string(models.ClaimBroken):
+		return 24
+	case string(models.ClaimEdgeObscured):
+		return 18
+	case string(models.ClaimUnknown):
+		return 6
+	default:
+		return 6
+	}
+}
+
+func riskCostPoints(monthlyUSD float64) float64 {
+	if monthlyUSD <= 0 {
+		return 0
+	}
+	return math.Min(42, monthlyUSD*0.12)
+}
+
+func externalExposurePoints(f models.Finding) float64 {
+	if !strings.EqualFold(string(f.Module), string(models.ModuleExternalAccess)) {
+		return 0
+	}
+	pts := 10.0
+	if evidenceAdminLike(f.Evidence) {
+		pts += 22
+	}
+	if evidenceTrustVerdictStale(f.Evidence) {
+		pts += 14
+	}
+	if strings.EqualFold(strings.TrimSpace(evidenceTrustClassification(f.Evidence)), "privileged") {
+		pts += 12
+	}
+	if b, ok := boolEvidence(f.Evidence, "unknown_vendor"); ok && b {
+		pts += 9
+	}
+	if evidencePrincipalType(f.Evidence) == "" {
+		pts += 5
+	}
+	return math.Min(52, pts)
+}
+
+func prioritySeverityRank(s models.Severity) int {
+	switch strings.ToLower(string(s)) {
+	case string(models.SeverityCritical):
+		return 5
+	case string(models.SeverityHigh):
+		return 4
+	case string(models.SeverityMedium):
+		return 3
+	case string(models.SeverityLow):
+		return 2
+	case string(models.SeverityInfo):
+		return 1
+	default:
+		return 0
+	}
+}
+
+func evidenceTrustVerdictStale(evidence map[string]any) bool {
+	return strings.EqualFold(strings.TrimSpace(strEvidence(evidence, "verdict")), "stale_review_now")
+}
+
+func evidenceTrustClassification(evidence map[string]any) string {
+	pv, ok := evidence["permission_visibility"].(map[string]any)
+	if !ok || pv == nil {
+		return ""
+	}
+	return strings.TrimSpace(strEvidence(pv, "classification"))
+}
+
+func evidenceAdminLike(evidence map[string]any) bool {
+	pv, ok := evidence["permission_visibility"].(map[string]any)
+	if !ok || pv == nil {
+		return false
+	}
+	cap, ok := pv["capabilities"].(map[string]any)
+	if !ok || cap == nil {
+		return false
+	}
+	b, ok := boolEvidence(cap, "admin_like")
+	return ok && b
+}
+
+func evidencePrincipalType(evidence map[string]any) string {
+	return strings.TrimSpace(strEvidence(evidence, "principal_type"))
+}
+
+func strEvidence(e map[string]any, key string) string {
+	v, ok := e[key]
+	if !ok || v == nil {
+		return ""
+	}
+	s, ok := v.(string)
+	if ok {
+		return s
+	}
+	return ""
+}
+
+func boolEvidence(e map[string]any, key string) (bool, bool) {
+	v, ok := e[key]
+	if !ok || v == nil {
+		return false, false
+	}
+	b, ok := v.(bool)
+	return b, ok
+}

@@ -1,7 +1,7 @@
 [
   {
     "id": "a1b2c3d4e5f6",
-    "title": "static.example.com -> reclaimable",
+    "title": "static.example.com -\u003e reclaimable",
     "severity": "critical",
     "module": "orphaned_edge",
     "claimability": "reclaimable",
@@ -17,16 +17,16 @@
     "recommendation": "Remove hosted zone record or reclaim hostname after validation.",
     "remediation_command": "aws route53 change-resource-record-sets --hosted-zone-id Z1D633PJN8HTWQ --change-batch file://batch.json",
     "evidence": {
+      "bucket_name": "old-campaign-assets",
       "dns_status": "resolved",
-      "http_status": 404,
       "fingerprint": "s3_bucket_deleted",
-      "bucket_name": "old-campaign-assets"
+      "http_status": 404
     },
     "scan_id": "demo"
   },
   {
     "id": "b2c3d4e5f6a1",
-    "title": "api.legacy.corp -> dangling",
+    "title": "api.legacy.corp -\u003e dangling",
     "severity": "high",
     "module": "orphaned_edge",
     "claimability": "dangling",
@@ -36,21 +36,21 @@
     "ou_path": "Root/Workloads/Prod",
     "team": "Platform",
     "hostname": "api.legacy.corp",
-    "monthly_direct_cost_usd": 35.0,
-    "monthly_risk_cost_usd": 105.0,
+    "monthly_direct_cost_usd": 35,
+    "monthly_risk_cost_usd": 105,
     "impact": "Alias resolves to CloudFront; origin errors suggest misconfiguration.",
     "recommendation": "Validate origin and remove if unused.",
     "remediation_command": "",
     "evidence": {
       "dns_status": "resolved",
-      "http_status": 502,
-      "fingerprint": "origin_error"
+      "fingerprint": "origin_error",
+      "http_status": 502
     },
     "scan_id": "demo"
   },
   {
     "id": "c3d4e5f6a1b2",
-    "title": "cdn.partner.io -> edge_obscured",
+    "title": "cdn.partner.io -\u003e edge_obscured",
     "severity": "medium",
     "module": "orphaned_edge",
     "claimability": "edge_obscured",
@@ -60,20 +60,21 @@
     "ou_path": "Root/Shared",
     "team": "Edge",
     "hostname": "cdn.partner.io",
-    "monthly_direct_cost_usd": 35.0,
-    "monthly_risk_cost_usd": 35.0,
+    "monthly_direct_cost_usd": 35,
+    "monthly_risk_cost_usd": 35,
     "impact": "CNAME resolves to CloudFront but hostname not in alternate domain names.",
     "recommendation": "Add alternate domain or remove DNS.",
+    "remediation_command": "",
     "evidence": {
       "dns_status": "resolved",
-      "http_status": 200,
-      "fingerprint": "cf_alias_mismatch"
+      "fingerprint": "cf_alias_mismatch",
+      "http_status": 200
     },
     "scan_id": "demo"
   },
   {
     "id": "d4e5f6a1b2c3",
-    "title": "old-marketing.example.com -> broken",
+    "title": "old-marketing.example.com -\u003e broken",
     "severity": "low",
     "module": "orphaned_edge",
     "claimability": "broken",
@@ -87,16 +88,17 @@
     "monthly_risk_cost_usd": 0.5,
     "impact": "NXDOMAIN — record may be stale in inventory.",
     "recommendation": "Confirm with owner and delete zone if obsolete.",
+    "remediation_command": "",
     "evidence": {
       "dns_status": "nxdomain",
-      "http_status": 0,
-      "fingerprint": ""
+      "fingerprint": "",
+      "http_status": 0
     },
     "scan_id": "demo"
   },
   {
     "id": "e5f6a1b2c3d4",
-    "title": "assets.internal -> unknown",
+    "title": "assets.internal -\u003e unknown",
     "severity": "low",
     "module": "orphaned_edge",
     "claimability": "unknown",
@@ -104,22 +106,23 @@
     "account_id": "333333333333",
     "account_name": "Sandbox",
     "ou_path": "Root/Dev",
-    "team": "R&D",
+    "team": "R\u0026D",
     "hostname": "assets.internal",
     "monthly_direct_cost_usd": 0.23,
     "monthly_risk_cost_usd": 0.23,
     "impact": "Could not classify edge behavior from probes alone.",
     "recommendation": "Manual review.",
+    "remediation_command": "",
     "evidence": {
       "dns_status": "timeout",
-      "http_status": 0,
-      "fingerprint": ""
+      "fingerprint": "",
+      "http_status": 0
     },
     "scan_id": "demo"
   },
   {
     "id": "f6a1b2c3d4e5",
-    "title": "External trust on VendorAccessRole -> unknown_vendor",
+    "title": "External trust on VendorAccessRole -\u003e unknown_vendor",
     "severity": "high",
     "module": "external_access",
     "claimability": "unknown",
@@ -130,28 +133,40 @@
     "team": "Security",
     "hostname": "",
     "monthly_direct_cost_usd": 0,
-    "monthly_risk_cost_usd": 0,
+    "monthly_risk_cost_usd": 120,
     "impact": "Role trusts an external account outside approved vendor list.",
     "recommendation": "Validate business owner and vendor contract; remove trust if not explicitly approved.",
+    "remediation_command": "",
     "evidence": {
-      "role_arn": "arn:aws:iam::111111111111:role/VendorAccessRole",
-      "external_principal": "arn:aws:iam::999999999999:root",
-      "principal_type": "aws_account",
-      "external_account_id": "999999999999",
-      "days_since_used": 400,
-      "verdict": "unknown_vendor",
-      "reason": "external account not found in approved list",
-      "admin_eval_state": "false",
-      "is_admin": false,
-      "unknown_vendor": true,
       "activity_source": "iam:getrole:role_last_used",
-      "activity_status": "iam_never_used"
+      "activity_status": "iam_never_used",
+      "admin_eval_state": "false",
+      "days_since_used": 400,
+      "external_account_id": "999999999999",
+      "external_principal": "arn:aws:iam::999999999999:root",
+      "is_admin": false,
+      "permission_visibility": {
+        "capabilities": {
+          "admin_like": false,
+          "can_assume_role": true,
+          "cloudfront_control": false,
+          "iam_write_access": false,
+          "s3_write_access": false
+        },
+        "classification": "scoped",
+        "confidence": "medium"
+      },
+      "principal_type": "aws_account",
+      "reason": "external account not found in approved list",
+      "role_arn": "arn:aws:iam::111111111111:role/VendorAccessRole",
+      "unknown_vendor": true,
+      "verdict": "unknown_vendor"
     },
     "scan_id": "demo"
   },
   {
     "id": "a1b2c3d4e5f7",
-    "title": "External trust on BreakGlassRole -> ghost_admin_access",
+    "title": "External trust on BreakGlassRole -\u003e ghost_admin_access",
     "severity": "critical",
     "module": "external_access",
     "claimability": "unknown",
@@ -162,28 +177,40 @@
     "team": "Security",
     "hostname": "",
     "monthly_direct_cost_usd": 0,
-    "monthly_risk_cost_usd": 0,
+    "monthly_risk_cost_usd": 300,
     "impact": "Externally trusted admin role can enable direct privileged access.",
     "recommendation": "Remove external trust or reduce role privileges immediately and require explicit vendor approval.",
+    "remediation_command": "",
     "evidence": {
-      "role_arn": "arn:aws:iam::222222222222:role/BreakGlassRole",
-      "external_principal": "arn:aws:iam::888888888888:root",
-      "principal_type": "aws_account",
-      "external_account_id": "888888888888",
-      "days_since_used": 5,
-      "verdict": "ghost_admin_access",
-      "reason": "is_admin=true with external trust",
-      "admin_eval_state": "true",
-      "is_admin": true,
-      "unknown_vendor": false,
       "activity_source": "iam:getrole:role_last_used",
-      "activity_status": "observed"
+      "activity_status": "observed",
+      "admin_eval_state": "true",
+      "days_since_used": 5,
+      "external_account_id": "888888888888",
+      "external_principal": "arn:aws:iam::888888888888:root",
+      "is_admin": true,
+      "permission_visibility": {
+        "capabilities": {
+          "admin_like": true,
+          "can_assume_role": true,
+          "cloudfront_control": true,
+          "iam_write_access": true,
+          "s3_write_access": true
+        },
+        "classification": "admin",
+        "confidence": "high"
+      },
+      "principal_type": "aws_account",
+      "reason": "is_admin=true with external trust",
+      "role_arn": "arn:aws:iam::222222222222:role/BreakGlassRole",
+      "unknown_vendor": false,
+      "verdict": "ghost_admin_access"
     },
     "scan_id": "demo"
   },
   {
     "id": "b2c3d4e5f6a2",
-    "title": "External trust on IntegrationRole -> aging",
+    "title": "External trust on IntegrationRole -\u003e aging",
     "severity": "medium",
     "module": "external_access",
     "claimability": "unknown",
@@ -194,28 +221,40 @@
     "team": "Integrations",
     "hostname": "",
     "monthly_direct_cost_usd": 0,
-    "monthly_risk_cost_usd": 0,
+    "monthly_risk_cost_usd": 45,
     "impact": "Aging externally trusted role should be reviewed for continued necessity.",
     "recommendation": "Review trust relationship and rotate to least-privilege with owner attestation.",
+    "remediation_command": "",
     "evidence": {
-      "role_arn": "arn:aws:iam::111111111111:role/IntegrationRole",
-      "external_principal": "arn:aws:iam::222222222222:root",
-      "principal_type": "aws_account",
-      "external_account_id": "222222222222",
-      "days_since_used": 120,
-      "verdict": "aging",
-      "reason": "days_since_used between stale and ghost thresholds",
-      "admin_eval_state": "false",
-      "is_admin": false,
-      "unknown_vendor": false,
       "activity_source": "iam:getrole:role_last_used",
-      "activity_status": "observed"
+      "activity_status": "observed",
+      "admin_eval_state": "false",
+      "days_since_used": 120,
+      "external_account_id": "222222222222",
+      "external_principal": "arn:aws:iam::222222222222:root",
+      "is_admin": false,
+      "permission_visibility": {
+        "capabilities": {
+          "admin_like": true,
+          "can_assume_role": true,
+          "cloudfront_control": false,
+          "iam_write_access": true,
+          "s3_write_access": false
+        },
+        "classification": "privileged",
+        "confidence": "medium"
+      },
+      "principal_type": "aws_account",
+      "reason": "days_since_used between stale and ghost thresholds",
+      "role_arn": "arn:aws:iam::111111111111:role/IntegrationRole",
+      "unknown_vendor": false,
+      "verdict": "aging"
     },
     "scan_id": "demo"
   },
   {
     "id": "c3d4e5f6a1b3",
-    "title": "External trust on ReadOnlyAudit -> active",
+    "title": "External trust on ReadOnlyAudit -\u003e active",
     "severity": "low",
     "module": "external_access",
     "claimability": "unknown",
@@ -226,28 +265,40 @@
     "team": "Security",
     "hostname": "",
     "monthly_direct_cost_usd": 0,
-    "monthly_risk_cost_usd": 0,
+    "monthly_risk_cost_usd": 12,
     "impact": "External trust is active and should remain under periodic review.",
     "recommendation": "Keep monitoring role activity and trust boundary as part of periodic access review.",
+    "remediation_command": "",
     "evidence": {
-      "role_arn": "arn:aws:iam::333333333333:role/ReadOnlyAudit",
-      "external_principal": "arn:aws:iam::444444444444:root",
-      "principal_type": "aws_account",
-      "external_account_id": "444444444444",
-      "days_since_used": 14,
-      "verdict": "active",
-      "reason": "days_since_used below stale threshold",
-      "admin_eval_state": "false",
-      "is_admin": false,
-      "unknown_vendor": false,
       "activity_source": "iam:getrole:role_last_used",
-      "activity_status": "observed"
+      "activity_status": "observed",
+      "admin_eval_state": "false",
+      "days_since_used": 14,
+      "external_account_id": "444444444444",
+      "external_principal": "arn:aws:iam::444444444444:root",
+      "is_admin": false,
+      "permission_visibility": {
+        "capabilities": {
+          "admin_like": false,
+          "can_assume_role": false,
+          "cloudfront_control": false,
+          "iam_write_access": false,
+          "s3_write_access": false
+        },
+        "classification": "limited",
+        "confidence": "medium"
+      },
+      "principal_type": "aws_account",
+      "reason": "days_since_used below stale threshold",
+      "role_arn": "arn:aws:iam::333333333333:role/ReadOnlyAudit",
+      "unknown_vendor": false,
+      "verdict": "active"
     },
     "scan_id": "demo"
   },
   {
     "id": "d4e5f6a1b2c4",
-    "title": "External trust on OidcDevRole -> stale_review_now",
+    "title": "External trust on OidcDevRole -\u003e stale_review_now",
     "severity": "high",
     "module": "external_access",
     "claimability": "unknown",
@@ -258,28 +309,40 @@
     "team": "Platform",
     "hostname": "",
     "monthly_direct_cost_usd": 0,
-    "monthly_risk_cost_usd": 0,
+    "monthly_risk_cost_usd": 120,
     "impact": "Unused externally trusted role increases latent access risk.",
     "recommendation": "Disable or delete stale trusted role unless justified by an active owner.",
+    "remediation_command": "",
     "evidence": {
-      "role_arn": "arn:aws:iam::111111111111:role/OidcDevRole",
-      "external_principal": "https://dev.okta.com/oauth2/default",
-      "principal_type": "oidc",
-      "external_account_id": "",
-      "days_since_used": -1,
-      "verdict": "stale_review_now",
-      "reason": "never used or days_since_used > ghost threshold",
-      "admin_eval_state": "unknown",
-      "is_admin": false,
-      "unknown_vendor": false,
       "activity_source": "iam:getrole:role_last_used",
-      "activity_status": "iam_never_used"
+      "activity_status": "iam_never_used",
+      "admin_eval_state": "unknown",
+      "days_since_used": -1,
+      "external_account_id": "",
+      "external_principal": "https://dev.okta.com/oauth2/default",
+      "is_admin": false,
+      "permission_visibility": {
+        "capabilities": {
+          "admin_like": false,
+          "can_assume_role": false,
+          "cloudfront_control": false,
+          "iam_write_access": false,
+          "s3_write_access": false
+        },
+        "classification": "unknown",
+        "confidence": "low"
+      },
+      "principal_type": "oidc",
+      "reason": "never used or days_since_used \u003e ghost threshold",
+      "role_arn": "arn:aws:iam::111111111111:role/OidcDevRole",
+      "unknown_vendor": false,
+      "verdict": "stale_review_now"
     },
     "scan_id": "demo"
   },
   {
     "id": "e5f6a1b2c3d5",
-    "title": "External trust on TelemetryRole -> missing_join",
+    "title": "External trust on TelemetryRole -\u003e missing_join",
     "severity": "high",
     "module": "external_access",
     "claimability": "unknown",
@@ -290,28 +353,40 @@
     "team": "Observability",
     "hostname": "",
     "monthly_direct_cost_usd": 0,
-    "monthly_risk_cost_usd": 0,
+    "monthly_risk_cost_usd": 120,
     "impact": "Unused externally trusted role increases latent access risk.",
     "recommendation": "Investigate missing activity telemetry for this role, then disable or delete if still unverified. Activity telemetry for this role was unavailable and the stale classification is conservative; verify IAM RoleLastUsed visibility.",
+    "remediation_command": "",
     "evidence": {
-      "role_arn": "arn:aws:iam::222222222222:role/TelemetryRole",
-      "external_principal": "arn:aws:iam::777777777777:root",
-      "principal_type": "aws_account",
-      "external_account_id": "777777777777",
-      "days_since_used": -1,
-      "verdict": "stale_review_now",
-      "reason": "missing activity join; treated conservatively as stale",
-      "admin_eval_state": "false",
-      "is_admin": false,
-      "unknown_vendor": true,
       "activity_source": "iam:getrole:role_last_used",
-      "activity_status": "missing_join"
+      "activity_status": "missing_join",
+      "admin_eval_state": "false",
+      "days_since_used": -1,
+      "external_account_id": "777777777777",
+      "external_principal": "arn:aws:iam::777777777777:root",
+      "is_admin": false,
+      "permission_visibility": {
+        "capabilities": {
+          "admin_like": false,
+          "can_assume_role": true,
+          "cloudfront_control": false,
+          "iam_write_access": false,
+          "s3_write_access": false
+        },
+        "classification": "scoped",
+        "confidence": "medium"
+      },
+      "principal_type": "aws_account",
+      "reason": "missing activity join; treated conservatively as stale",
+      "role_arn": "arn:aws:iam::222222222222:role/TelemetryRole",
+      "unknown_vendor": true,
+      "verdict": "stale_review_now"
     },
     "scan_id": "demo"
   },
   {
     "id": "f6a1b2c3d4e6",
-    "title": "promo-cf.example.com -> dangling",
+    "title": "promo-cf.example.com -\u003e dangling",
     "severity": "high",
     "module": "orphaned_edge",
     "claimability": "dangling",
@@ -321,20 +396,21 @@
     "ou_path": "Root/Shared",
     "team": "Marketing",
     "hostname": "promo-cf.example.com",
-    "monthly_direct_cost_usd": 35.0,
-    "monthly_risk_cost_usd": 105.0,
+    "monthly_direct_cost_usd": 35,
+    "monthly_risk_cost_usd": 105,
     "impact": "Resolved DNS with AWS error fingerprint.",
     "recommendation": "Triage origin ownership.",
+    "remediation_command": "",
     "evidence": {
       "dns_status": "resolved",
-      "http_status": 403,
-      "fingerprint": "access_denied"
+      "fingerprint": "access_denied",
+      "http_status": 403
     },
     "scan_id": "demo"
   },
   {
     "id": "a1b2c3d4e5f8",
-    "title": "cert-wildcard.internal -> reclaimable",
+    "title": "cert-wildcard.internal -\u003e reclaimable",
     "severity": "critical",
     "module": "orphaned_edge",
     "claimability": "reclaimable",
@@ -344,21 +420,22 @@
     "ou_path": "Root/Workloads/Prod",
     "team": "Platform",
     "hostname": "*.internal.example.com",
-    "monthly_direct_cost_usd": 7.0,
-    "monthly_risk_cost_usd": 35.0,
+    "monthly_direct_cost_usd": 7,
+    "monthly_risk_cost_usd": 35,
     "impact": "Orphaned cert + DNS pattern suggests reclaimable waste.",
     "recommendation": "Revoke cert and clean DNS after validation.",
+    "remediation_command": "",
     "evidence": {
+      "bucket_name": "wildcard-assets",
       "dns_status": "resolved",
-      "http_status": 404,
       "fingerprint": "s3_bucket_deleted",
-      "bucket_name": "wildcard-assets"
+      "http_status": 404
     },
     "scan_id": "demo"
   },
   {
     "id": "b2c3d4e5f6a3",
-    "title": "staging-app.example.com -> dangling",
+    "title": "staging-app.example.com -\u003e dangling",
     "severity": "high",
     "module": "orphaned_edge",
     "claimability": "dangling",
@@ -366,22 +443,23 @@
     "account_id": "333333333333",
     "account_name": "Sandbox",
     "ou_path": "Root/Dev",
-    "team": "R&D",
+    "team": "R\u0026D",
     "hostname": "staging-app.example.com",
     "monthly_direct_cost_usd": 0.5,
     "monthly_risk_cost_usd": 1.5,
     "impact": "API Gateway edge signal with dangling classification.",
     "recommendation": "Remove custom domain or fix stage.",
+    "remediation_command": "",
     "evidence": {
       "dns_status": "resolved",
-      "http_status": 404,
-      "fingerprint": "missing_resource"
+      "fingerprint": "missing_resource",
+      "http_status": 404
     },
     "scan_id": "demo"
   },
   {
     "id": "c3d4e5f6a1b4",
-    "title": "Edge cache drift -> edge_obscured",
+    "title": "Edge cache drift -\u003e edge_obscured",
     "severity": "medium",
     "module": "orphaned_edge",
     "claimability": "edge_obscured",
@@ -391,20 +469,21 @@
     "ou_path": "Root/Workloads/Prod",
     "team": "Edge",
     "hostname": "cache.prod.example.com",
-    "monthly_direct_cost_usd": 35.0,
-    "monthly_risk_cost_usd": 35.0,
+    "monthly_direct_cost_usd": 35,
+    "monthly_risk_cost_usd": 35,
     "impact": "Alternate domain drift.",
     "recommendation": "Align CloudFront aliases with DNS.",
+    "remediation_command": "",
     "evidence": {
       "dns_status": "resolved",
-      "http_status": 200,
-      "fingerprint": "cf_alias_mismatch"
+      "fingerprint": "cf_alias_mismatch",
+      "http_status": 200
     },
     "scan_id": "demo"
   },
   {
     "id": "d4e5f6a1b2c5",
-    "title": "blog.legacy.net -> broken",
+    "title": "blog.legacy.net -\u003e broken",
     "severity": "low",
     "module": "orphaned_edge",
     "claimability": "broken",
@@ -418,16 +497,17 @@
     "monthly_risk_cost_usd": 0.5,
     "impact": "DNS resolution failures.",
     "recommendation": "Archive or fix delegation.",
+    "remediation_command": "",
     "evidence": {
       "dns_status": "servfail",
-      "http_status": 0,
-      "fingerprint": ""
+      "fingerprint": "",
+      "http_status": 0
     },
     "scan_id": "demo"
   },
   {
     "id": "e5f6a1b2c3d6",
-    "title": "External trust on SamlCorpRole -> active",
+    "title": "External trust on SamlCorpRole -\u003e active",
     "severity": "low",
     "module": "external_access",
     "claimability": "unknown",
@@ -438,28 +518,40 @@
     "team": "IAM",
     "hostname": "",
     "monthly_direct_cost_usd": 0,
-    "monthly_risk_cost_usd": 0,
+    "monthly_risk_cost_usd": 12,
     "impact": "SAML federation trust under review cadence.",
     "recommendation": "Keep monitoring role activity and trust boundary as part of periodic access review.",
+    "remediation_command": "",
     "evidence": {
-      "role_arn": "arn:aws:iam::333333333333:role/SamlCorpRole",
-      "external_principal": "arn:aws:iam::111111111111:saml-provider/CorpIdP",
-      "principal_type": "saml",
-      "external_account_id": "",
-      "days_since_used": 3,
-      "verdict": "active",
-      "reason": "days_since_used below stale threshold",
-      "admin_eval_state": "false",
-      "is_admin": false,
-      "unknown_vendor": false,
       "activity_source": "iam:getrole:role_last_used",
-      "activity_status": "observed"
+      "activity_status": "observed",
+      "admin_eval_state": "false",
+      "days_since_used": 3,
+      "external_account_id": "",
+      "external_principal": "arn:aws:iam::111111111111:saml-provider/CorpIdP",
+      "is_admin": false,
+      "permission_visibility": {
+        "capabilities": {
+          "admin_like": false,
+          "can_assume_role": false,
+          "cloudfront_control": false,
+          "iam_write_access": false,
+          "s3_write_access": false
+        },
+        "classification": "limited",
+        "confidence": "medium"
+      },
+      "principal_type": "saml",
+      "reason": "days_since_used below stale threshold",
+      "role_arn": "arn:aws:iam::333333333333:role/SamlCorpRole",
+      "unknown_vendor": false,
+      "verdict": "active"
     },
     "scan_id": "demo"
   },
   {
     "id": "f6a1b2c3d4e7",
-    "title": "docs.static.io -> unknown",
+    "title": "docs.static.io -\u003e unknown",
     "severity": "low",
     "module": "orphaned_edge",
     "claimability": "unknown",
@@ -473,10 +565,11 @@
     "monthly_risk_cost_usd": 0.23,
     "impact": "Inconclusive validation.",
     "recommendation": "Manual follow-up.",
+    "remediation_command": "",
     "evidence": {
       "dns_status": "resolved",
-      "http_status": 301,
-      "fingerprint": ""
+      "fingerprint": "",
+      "http_status": 301
     },
     "scan_id": "demo"
   }

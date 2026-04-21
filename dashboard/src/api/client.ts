@@ -6,6 +6,8 @@ import type {
   FindingDetailResponse,
   FindingsListResponse,
   FindingsQueryParams,
+  TopFixesResponse,
+  RemediationGroupsResponse,
   RuntimeStatusResponse,
   ScanRunHistoryResponse,
   ScanListResponse,
@@ -79,6 +81,14 @@ export const apiClient = {
     return fetchJSON<FindingsListResponse>(
       `/scans/${encodeURIComponent(scanId)}/findings${makeQueryString(params)}`
     );
+  },
+  getTopFixes(scanId: string, params: { limit?: number } = {}): Promise<TopFixesResponse> {
+    return fetchJSON<TopFixesResponse>(
+      `/scans/${encodeURIComponent(scanId)}/top-fixes${makeQueryString(params)}`
+    );
+  },
+  getRemediationGroups(scanId: string): Promise<RemediationGroupsResponse> {
+    return fetchJSON<RemediationGroupsResponse>(`/scans/${encodeURIComponent(scanId)}/remediation-groups`);
   },
   getFindingDetail(scanId: string, findingId: string): Promise<FindingDetailResponse> {
     return fetchJSON<FindingDetailResponse>(

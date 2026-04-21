@@ -35,33 +35,39 @@ export function TopAccountsHorizontalBar({
       {sorted.length === 0 ? (
         <p className="mt-3 text-sm text-slate-500">No account rows returned for this scan.</p>
       ) : (
-        <ul className="mt-4 space-y-3">
-          {sorted.map((account) => {
-            const label = account.account_name?.trim() || account.account_id;
-            const w = pct(account.finding_count, max);
-            return (
-            <li
-              key={account.account_id}
-              className={onAccountClick ? "cursor-pointer rounded px-1 py-1 hover:bg-slate-100 dark:hover:bg-slate-800/70" : ""}
-              onClick={onAccountClick ? () => onAccountClick(account.account_id) : undefined}
-            >
-                <div className="mb-1 flex justify-between gap-3 text-xs text-slate-700 dark:text-slate-300">
-                  <span className="min-w-0 truncate font-mono" title={`${label} (${account.account_id})`}>
-                    {label}
-                  </span>
-                  <span className="shrink-0 tabular-nums text-slate-600 dark:text-slate-400">{formatCount(account.finding_count)}</span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded bg-slate-800">
-                  <div
-                    className="h-full rounded bg-indigo-600/90"
-                    style={{ width: `${w}%` }}
-                    title={`${account.account_id}: ${account.finding_count}`}
-                  />
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        <div
+          className="cr-chart-focusable mt-4 rounded-md"
+          tabIndex={0}
+          aria-label="Top accounts horizontal bar chart ranked by findings"
+        >
+          <ul className="space-y-3">
+            {sorted.map((account) => {
+              const label = account.account_name?.trim() || account.account_id;
+              const w = pct(account.finding_count, max);
+              return (
+              <li
+                key={account.account_id}
+                className={onAccountClick ? "cursor-pointer rounded px-1 py-1 hover:bg-slate-100 dark:hover:bg-slate-800/70" : ""}
+                onClick={onAccountClick ? () => onAccountClick(account.account_id) : undefined}
+              >
+                  <div className="mb-1 flex justify-between gap-3 text-xs text-slate-700 dark:text-slate-300">
+                    <span className="min-w-0 truncate font-mono" title={`${label} (${account.account_id})`}>
+                      {label}
+                    </span>
+                    <span className="shrink-0 tabular-nums text-slate-600 dark:text-slate-400">{formatCount(account.finding_count)}</span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded bg-slate-800">
+                    <div
+                      className="h-full rounded bg-indigo-600/90"
+                      style={{ width: `${w}%` }}
+                      title={`${account.account_id}: ${account.finding_count}`}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
     </div>
   );

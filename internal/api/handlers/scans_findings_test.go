@@ -234,6 +234,53 @@ func TestListFindingsFiltersAndPagination(t *testing.T) {
 	}
 }
 
+func TestListRemediationGroups(t *testing.T) {
+	dir := t.TempDir()
+	findings := []models.Finding{
+		{
+			ID: "r1", Title: "reclaim me", Severity: models.SeverityHigh, Module: models.ModuleOrphanedEdge,
+			Claimability: models.ClaimReclaimable, AccountID: "111", AffectedARN: "a", MonthlyRiskCost: 120,
+		},
+		{
+			ID: "d1", Title: "dangling edge", Severity: models.SeverityHigh, Module: models.ModuleOrphanedEdge,
+			Claimability: models.ClaimDangling, AccountID: "111", AffectedARN: "b", MonthlyRiskCost: 50,
+		},
+		{
+			ID: "s1", Title: "stale trust", Severity: models.SeverityCritical, Module: models.ModuleExternalAccess,
+			AccountID: "111", AffectedARN: "c", MonthlyRiskCost: 300,
+			Evidence: map[string]any{"verdict": "stale_review_now"},
+		},
+		{
+			ID: "a1", Title: "admin like external", Severity: models.SeverityCritical, Module: models.ModuleExternalAccess,
+			AccountID: "111", AffectedARN: "d", MonthlyRiskCost: 220,
+			Evidence: map[string]any{
+				"permission_visibility": map[string]any{
+					"capabilities": map[string]any{"admin_like": true},
+				},
+			},
+		},
+	}
+	writeScan(t, dir, "scan-a", time.Now().UTC(), findings)
+
+	req := withParam(httptest.NewRequest(http.MethodGet, "/api/scans/scan-a/remediation-groups", nil), "id", "scan-a")
+	rr := httptest.NewRecorder()
+	ListRemediationGroups(dir).ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+	var resp schema.RemediationGroupsResponse
+	mustDecode(t, rr, &resp)
+	if len(resp.Items) == 0 {
+		t.Fatalf("expected remediation groups, got none")
+	}
+	if resp.Items[0].Key != "stale_external_trust" {
+		t.Fatalf("expected highest risk group stale_external_trust, got %q", resp.Items[0].Key)
+	}
+	if resp.Items[0].FindingCount != 1 || resp.Items[0].TotalMonthlyRiskCostUSD != 300 {
+		t.Fatalf("unexpected top group values: %+v", resp.Items[0])
+	}
+}
+
 func TestListFindingsBadPagination(t *testing.T) {
 	dir := t.TempDir()
 	writeScan(t, dir, "scan-a", time.Now().UTC(), []models.Finding{})

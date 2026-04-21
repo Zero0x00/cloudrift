@@ -10,37 +10,38 @@ type Props = {
  * Entity counts by principal_type (distinct external entities), unlike `external_principal_types` which counts findings.
  */
 export function ExternalEntityByPrincipalTypeStrip({ summary, onOpenEntityListForPrincipalType }: Props) {
-  const rows = summary.external_entity_by_principal_type ?? [];
+  const rows = [...(summary.external_entity_by_principal_type ?? [])].sort((a, b) => b.entity_count - a.entity_count);
   if (rows.length === 0) {
     return null;
   }
+  const max = Math.max(...rows.map((r) => r.entity_count), 1);
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white/90 p-4 dark:border-slate-800 dark:bg-slate-900/80">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-        Entities by principal type
-      </h3>
-      <p
-        className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-500"
-        title="Principal type comes from evidence.principal_type (lower-cased). Missing evidence is bucketed as 'unknown' and may include multiple distinct principals that could not be classified."
-      >
-        Each chip is a distinct-entity count (not finding count). Entries labeled{" "}
-        <span className="font-mono">unknown</span> had no <span className="font-mono">principal_type</span> evidence.
-        Opens the External Entities list filtered to that type.
-      </p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {rows.map((r) => (
-          <button
-            key={r.principal_type}
-            type="button"
-            onClick={() => onOpenEntityListForPrincipalType(r.principal_type)}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-800 transition hover:border-cyan-500/50 hover:bg-cyan-50/60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-500/40 dark:hover:bg-cyan-950/30"
-          >
-            <span className="font-mono text-[11px]">{r.principal_type}</span>
-            <span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCount(r.entity_count)}</span>
-          </button>
-        ))}
-      </div>
+    <div className="hs-card p-4">
+      <h3 className="cr-section-title">Entities by principal type</h3>
+      <p className="cr-helper mt-0.5">Distinct external entities by evidence principal type.</p>
+      <ul className="mt-3 space-y-2">
+        {rows.map((r) => {
+          const width = Math.max(8, Math.round((r.entity_count / max) * 100));
+          return (
+            <li key={r.principal_type}>
+              <button
+                type="button"
+                onClick={() => onOpenEntityListForPrincipalType(r.principal_type)}
+                className="w-full rounded-md px-2 py-1.5 text-left transition hover:bg-slate-100 dark:hover:bg-slate-800/70"
+              >
+                <div className="mb-1 flex items-center justify-between gap-2 text-xs">
+                  <span className="font-mono text-slate-700 dark:text-slate-200">{r.principal_type}</span>
+                  <span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCount(r.entity_count)}</span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded bg-slate-200 dark:bg-slate-800">
+                  <div className="h-full rounded bg-cyan-600/85" style={{ width: `${width}%` }} />
+                </div>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

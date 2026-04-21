@@ -1,0 +1,86 @@
+[
+  {
+    "source_arn": "arn:aws:route53:::hostedzone/Z1D633PJN8HTWQ/static.example.com",
+    "target_arn": "arn:aws:s3:::old-campaign-assets",
+    "rel_type": "POINTS_TO",
+    "properties": null,
+    "scan_id": "demo"
+  },
+  {
+    "source_arn": "arn:aws:route53:::hostedzone/Z3EXAMPLE/api.legacy.corp",
+    "target_arn": "arn:aws:cloudfront::111111111111:distribution/E123EXAMPLE",
+    "rel_type": "POINTS_TO",
+    "properties": null,
+    "scan_id": "demo"
+  },
+  {
+    "source_arn": "arn:aws:route53:::hostedzone/Z4EXAMPLE/cdn.partner.io",
+    "target_arn": "arn:aws:cloudfront::111111111111:distribution/E123EXAMPLE",
+    "rel_type": "POINTS_TO",
+    "properties": null,
+    "scan_id": "demo"
+  },
+  {
+    "source_arn": "arn:aws:cloudfront::111111111111:distribution/E123EXAMPLE",
+    "target_arn": "arn:aws:acm:us-east-1:111111111111:certificate/cert-123",
+    "rel_type": "USES_CERT",
+    "properties": null,
+    "scan_id": "demo"
+  },
+  {
+    "source_arn": "arn:aws:cloudfront::111111111111:distribution/E123EXAMPLE",
+    "target_arn": "arn:aws:s3:::old-campaign-assets",
+    "rel_type": "FRONTS",
+    "properties": null,
+    "scan_id": "demo"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111111:role/VendorAccessRole",
+    "target_arn": "arn:cloudrift:external-principal:::aws_account/YXJuOmF3czppYW06Ojk5OTk5OTk5OTk5OTpyb290",
+    "rel_type": "TRUSTS",
+    "properties": null,
+    "scan_id": "demo"
+  },
+  {
+    "source_arn": "arn:aws:iam::222222222222:role/BreakGlassRole",
+    "target_arn": "arn:cloudrift:external-principal:::aws_account/YXJuOmF3czppYW06Ojg4ODg4ODg4ODg4ODpyb290",
+    "rel_type": "TRUSTS",
+    "properties": null,
+    "scan_id": "demo"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111111:role/IntegrationRole",
+    "target_arn": "arn:cloudrift:external-principal:::aws_account/YXJuOmF3czppYW06OjIyMjIyMjIyMjIyMjpyb290",
+    "rel_type": "TRUSTS",
+    "properties": null,
+    "scan_id": "demo"
+  },
+  {
+    "source_arn": "arn:aws:iam::333333333333:role/ReadOnlyAudit",
+    "target_arn": "arn:cloudrift:external-principal:::aws_account/YXJuOmF3czppYW06OjQ0NDQ0NDQ0NDQ0NDpyb290",
+    "rel_type": "TRUSTS",
+    "properties": null,
+    "scan_id": "demo"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111111:role/OidcDevRole",
+    "target_arn": "arn:cloudrift:external-principal:::oidc/aHR0cHM6Ly9kZXYub2t0YS5jb20vb2F1dGgyL2RlZmF1bHQ",
+    "rel_type": "TRUSTS",
+    "properties": null,
+    "scan_id": "demo"
+  },
+  {
+    "source_arn": "arn:aws:iam::333333333333:role/SamlBillingRole",
+    "target_arn": "arn:cloudrift:external-principal:::saml/YXJuOmF3czppYW06OjAwMDAwMDAwMDAwMDpzYW1sLXByb3ZpZGVyL0NvcnBTQU1M",
+    "rel_type": "TRUSTS",
+    "properties": null,
+    "scan_id": "demo"
+  },
+  {
+    "source_arn": "arn:aws:iam::222222222222:role/OpsSupportRole",
+    "target_arn": "arn:cloudrift:external-principal:::unknown/YXJuOmF3czppYW06OjU1NTU1NTU1NTU1NTpyb290",
+    "rel_type": "TRUSTS",
+    "properties": null,
+    "scan_id": "demo"
+  }
+]

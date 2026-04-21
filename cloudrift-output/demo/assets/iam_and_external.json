@@ -1,0 +1,163 @@
+[
+  {
+    "arn": "arn:aws:iam::111111111111:role/VendorAccessRole",
+    "asset_type": "iam_role",
+    "name": "VendorAccessRole",
+    "account_id": "111111111111",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo"
+  },
+  {
+    "arn": "arn:aws:iam::222222222222:role/BreakGlassRole",
+    "asset_type": "iam_role",
+    "name": "BreakGlassRole",
+    "account_id": "222222222222",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo"
+  },
+  {
+    "arn": "arn:aws:iam::111111111111:role/IntegrationRole",
+    "asset_type": "iam_role",
+    "name": "IntegrationRole",
+    "account_id": "111111111111",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo"
+  },
+  {
+    "arn": "arn:aws:iam::333333333333:role/ReadOnlyAudit",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAudit",
+    "account_id": "333333333333",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo"
+  },
+  {
+    "arn": "arn:aws:iam::111111111111:role/OidcDevRole",
+    "asset_type": "iam_role",
+    "name": "OidcDevRole",
+    "account_id": "111111111111",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo"
+  },
+  {
+    "arn": "arn:aws:iam::333333333333:role/SamlBillingRole",
+    "asset_type": "iam_role",
+    "name": "SamlBillingRole",
+    "account_id": "333333333333",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo"
+  },
+  {
+    "arn": "arn:aws:iam::222222222222:role/OpsSupportRole",
+    "asset_type": "iam_role",
+    "name": "OpsSupportRole",
+    "account_id": "222222222222",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo"
+  },
+  {
+    "arn": "arn:cloudrift:external-principal:::aws_account/YXJuOmF3czppYW06Ojk5OTk5OTk5OTk5OTpyb290",
+    "asset_type": "external_principal",
+    "name": "arn:aws:iam::999999999999:root",
+    "account_id": "111111111111",
+    "region": "global",
+    "properties": {
+      "principal_type": "aws_account",
+      "principal_value": "arn:aws:iam::999999999999:root"
+    },
+    "scan_id": "demo"
+  },
+  {
+    "arn": "arn:cloudrift:external-principal:::aws_account/YXJuOmF3czppYW06Ojg4ODg4ODg4ODg4ODpyb290",
+    "asset_type": "external_principal",
+    "name": "arn:aws:iam::888888888888:root",
+    "account_id": "222222222222",
+    "region": "global",
+    "properties": {
+      "principal_type": "aws_account",
+      "principal_value": "arn:aws:iam::888888888888:root"
+    },
+    "scan_id": "demo"
+  },
+  {
+    "arn": "arn:cloudrift:external-principal:::aws_account/YXJuOmF3czppYW06OjIyMjIyMjIyMjIyMjpyb290",
+    "asset_type": "external_principal",
+    "name": "arn:aws:iam::222222222222:root",
+    "account_id": "111111111111",
+    "region": "global",
+    "properties": {
+      "principal_type": "aws_account",
+      "principal_value": "arn:aws:iam::222222222222:root"
+    },
+    "scan_id": "demo"
+  },
+  {
+    "arn": "arn:cloudrift:external-principal:::aws_account/YXJuOmF3czppYW06OjQ0NDQ0NDQ0NDQ0NDpyb290",
+    "asset_type": "external_principal",
+    "name": "arn:aws:iam::444444444444:root",
+    "account_id": "333333333333",
+    "region": "global",
+    "properties": {
+      "principal_type": "aws_account",
+      "principal_value": "arn:aws:iam::444444444444:root"
+    },
+    "scan_id": "demo"
+  },
+  {
+    "arn": "arn:cloudrift:external-principal:::oidc/aHR0cHM6Ly9kZXYub2t0YS5jb20vb2F1dGgyL2RlZmF1bHQ",
+    "asset_type": "external_principal",
+    "name": "https://dev.okta.com/oauth2/default",
+    "account_id": "111111111111",
+    "region": "global",
+    "properties": {
+      "principal_type": "oidc",
+      "principal_value": "https://dev.okta.com/oauth2/default"
+    },
+    "scan_id": "demo"
+  },
+  {
+    "arn": "arn:cloudrift:external-principal:::saml/YXJuOmF3czppYW06OjAwMDAwMDAwMDAwMDpzYW1sLXByb3ZpZGVyL0NvcnBTQU1M",
+    "asset_type": "external_principal",
+    "name": "arn:aws:iam::000000000000:saml-provider/CorpSAML",
+    "account_id": "333333333333",
+    "region": "global",
+    "properties": {
+      "principal_type": "saml",
+      "principal_value": "arn:aws:iam::000000000000:saml-provider/CorpSAML"
+    },
+    "scan_id": "demo"
+  },
+  {
+    "arn": "arn:cloudrift:external-principal:::unknown/YXJuOmF3czppYW06OjU1NTU1NTU1NTU1NTpyb290",
+    "asset_type": "external_principal",
+    "name": "arn:aws:iam::555555555555:root",
+    "account_id": "222222222222",
+    "region": "global",
+    "properties": {
+      "principal_type": "unknown",
+      "principal_value": "arn:aws:iam::555555555555:root"
+    },
+    "scan_id": "demo"
+  }
+]

@@ -105,6 +105,36 @@ type FindingsListResponse struct {
 	Filters    FindingsAppliedFilter `json:"filters"`
 }
 
+// TopFixesResponse is the payload for GET /api/scans/:id/top-fixes (server-ranked priority queue).
+type TopFixesResponse struct {
+	ScanID string      `json:"scan_id"`
+	Items  []TopFixItem `json:"items"`
+	Limit  int         `json:"limit"`
+}
+
+// TopFixItem extends a table row with a transparent priority score and short reason string.
+type TopFixItem struct {
+	FindingListItem
+	PriorityScore float64 `json:"priority_score"`
+	Reason        string  `json:"reason"`
+}
+
+// RemediationGroupsResponse is the payload for GET /api/scans/:id/remediation-groups.
+// Groups are transparent, rule-based aggregations derived from existing findings data.
+type RemediationGroupsResponse struct {
+	ScanID string                 `json:"scan_id"`
+	Items  []RemediationGroupItem `json:"items"`
+}
+
+type RemediationGroupItem struct {
+	Key                    string  `json:"key"`
+	Label                  string  `json:"label"`
+	Why                    string  `json:"why"`
+	FindingCount           int     `json:"finding_count"`
+	TotalMonthlyRiskCostUSD float64 `json:"total_monthly_risk_cost_usd"`
+	TopExample             string  `json:"top_example,omitempty"`
+}
+
 type PaginationMeta struct {
 	Page       int `json:"page"`
 	PageSize   int `json:"page_size"`

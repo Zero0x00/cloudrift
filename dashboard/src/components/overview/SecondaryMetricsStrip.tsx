@@ -47,7 +47,7 @@ export function SecondaryMetricsStrip({
   return (
     <div>
       <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-        More metrics
+        Operational KPIs
       </h2>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MiniKpi label="High findings" value={formatCount(summary.high_count)} tone="orange" onClick={onOpenHigh} />

@@ -31,6 +31,8 @@ func apiRouter(outputDir, configPath string) http.Handler {
 	r.Get("/scans/{id}/summary", handlers.GetScanSummary(outputDir))
 	r.Get("/scans/{id}/external-entities", handlers.ListExternalEntities(outputDir))
 	r.Get("/scans/{id}/findings", handlers.ListFindings(outputDir))
+	r.Get("/scans/{id}/remediation-groups", handlers.ListRemediationGroups(outputDir))
+	r.Get("/scans/{id}/top-fixes", handlers.ListTopFixes(outputDir))
 	r.Get("/scans/{id}/findings/{fid}", handlers.GetFinding(outputDir))
 	r.Get("/scans/{id}/accounts", handlers.ListAccounts(outputDir))
 	r.Get("/diff", handlers.DiffScans(outputDir))

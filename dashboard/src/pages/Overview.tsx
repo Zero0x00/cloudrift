@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { formatQueryError } from "../api/httpError";
 import type { ExternalEntityRow, ScanListItem, ScanSummaryResponse } from "../api/types";
 import { ExecutiveSummaryStrip } from "../components/overview/ExecutiveSummaryStrip";
@@ -5,7 +6,9 @@ import { ExternalEntitiesOverviewStrip } from "../components/overview/ExternalEn
 import { ExternalEntityByPrincipalTypeStrip } from "../components/overview/ExternalEntityByPrincipalTypeStrip";
 import { ExternalPrincipalTypesStrip } from "../components/overview/ExternalPrincipalTypesStrip";
 import { TopRiskyExternalEntitiesPreview } from "../components/overview/TopRiskyExternalEntitiesPreview";
+import { TopFixesPanel } from "../components/overview/TopFixesPanel";
 import { HighRiskCombinationStrip } from "../components/overview/HighRiskCombinationStrip";
+import { RemediationGroupingPanel } from "../components/overview/RemediationGroupingPanel";
 import {
   ClaimabilityDistribution,
   DirectVsRiskCostSplit,
@@ -14,7 +17,7 @@ import {
 } from "../components/overview/SummaryVisualizations";
 import { ScanRiskTrendChart } from "../components/overview/ScanRiskTrendChart";
 import { SecondaryMetricsStrip } from "../components/overview/SecondaryMetricsStrip";
-import { TopAccountsHorizontalBar } from "../components/overview/TopAccountsHorizontalBar";
+import { OwnershipRiskPanel } from "../components/overview/OwnershipRiskPanel";
 import { DashboardViewSwitch } from "../components/overview/DashboardViewSwitch";
 import { OperationsScanSummaryCard } from "../components/overview/OperationsScanSummaryCard";
 import { PageHeader } from "../components/PageHeader";
@@ -24,6 +27,7 @@ import { useAccountsQuery, useSummaryQuery } from "../hooks/useDashboardQueries"
 import { useDashboardViewUrlState } from "../hooks/useDashboardViewUrlState";
 import { useScanContext } from "../hooks/useScanContext";
 import { formatCount } from "../lib/format";
+import { IconAlertTriangle, IconGlobe, IconZap } from "../lib/icons";
 import { Link, useNavigate } from "react-router-dom";
 
 export function OverviewPage() {
@@ -141,10 +145,24 @@ function ExecutiveLayout({
   goToTrust: (params: Record<string, string>) => void;
   goToExternalEntities: (params: Record<string, string>) => void;
 }) {
+  const orderedScans = [...scans].reverse();
+  const criticalSeries = orderedScans.slice(-8).map((scan) => scan.critical_count ?? 0);
+  const riskSeries = orderedScans.slice(-8).map((scan) => scan.total_monthly_cost_usd ?? 0);
+  const latest = orderedScans.length > 0 ? orderedScans[orderedScans.length - 1] : undefined;
+  const previous = orderedScans.length > 1 ? orderedScans[orderedScans.length - 2] : undefined;
+  const criticalDelta =
+    latest && previous ? (latest.critical_count ?? 0) - (previous.critical_count ?? 0) : undefined;
+  const riskDelta =
+    latest && previous ? (latest.total_monthly_cost_usd ?? 0) - (previous.total_monthly_cost_usd ?? 0) : undefined;
+
   return (
     <div className="hs-section space-y-6">
       <ExecutiveSummaryStrip
         summary={summary}
+        criticalDelta={criticalDelta}
+        riskDelta={riskDelta}
+        criticalSparkline={criticalSeries.length >= 2 ? criticalSeries : undefined}
+        riskSparkline={riskSeries.length >= 2 ? riskSeries : undefined}
         onOpenCritical={() => goToFindings({ severity: "critical", page: "1" })}
         onOpenRiskCost={() => goToFindings({ page: "1" })}
         onOpenExternal={() => goToTrust({ page: "1" })}
@@ -159,13 +177,28 @@ function ExecutiveLayout({
       </div>
 
       {(summary.external_entity_count ?? 0) > 0 ? (
-        <ExternalEntitiesOverviewStrip
-          summary={summary}
-          onOpenAllEntities={() => goToExternalEntities({ page: "1" })}
-          onOpenEntitiesWithStale={() => goToExternalEntities({ page: "1", has_stale_role: "true" })}
-          onOpenEntitiesWithPrivileged={() => goToExternalEntities({ page: "1", has_privileged_role: "true" })}
-          onOpenEntitiesWithAdminLike={() => goToExternalEntities({ page: "1", has_admin_like_role: "true" })}
-        />
+        <div className="space-y-4">
+          <ExternalEntitiesOverviewStrip
+            summary={summary}
+            onOpenAllEntities={() => goToExternalEntities({ page: "1" })}
+            onOpenEntitiesWithStale={() => goToExternalEntities({ page: "1", has_stale_role: "true" })}
+            onOpenEntitiesWithPrivileged={() => goToExternalEntities({ page: "1", has_privileged_role: "true" })}
+            onOpenEntitiesWithAdminLike={() => goToExternalEntities({ page: "1", has_admin_like_role: "true" })}
+          />
+          <TopRiskyExternalEntitiesPreview
+            summary={summary}
+            onOpenExternalEntitiesPage={() => goToExternalEntities({ page: "1" })}
+            onOpenEntityFindings={(row: ExternalEntityRow) =>
+              goToFindings({
+                module: "external_access",
+                page: "1",
+                principal_type: row.principal_type,
+                external_principal: row.external_principal,
+                external_account_id: row.external_account_id
+              })
+            }
+          />
+        </div>
       ) : null}
     </div>
   );
@@ -190,6 +223,12 @@ function HighSignalLayout({
 }) {
   return (
     <div className="hs-section space-y-6">
+      <TopFixesPanel
+        scanId={selectedScanId}
+        limit={12}
+        onDrilldown={(item) => goToFindings({ finding_id: item.id, page: "1" })}
+      />
+
       <HighRiskCombinationStrip
         summary={summary}
         onOpenReclaimable={() => goToFindings({ claimability: "reclaimable", page: "1" })}
@@ -206,6 +245,29 @@ function HighSignalLayout({
             page: "1"
           })
         }
+      />
+
+      <RemediationGroupingPanel
+        scanId={selectedScanId}
+        onDrilldown={(groupKey) => {
+          if (groupKey === "reclaimable") {
+            goToFindings({ claimability: "reclaimable", page: "1" });
+            return;
+          }
+          if (groupKey === "stale_external_trust") {
+            goToTrust({ trust_stale: "true", page: "1" });
+            return;
+          }
+          if (groupKey === "admin_like_external") {
+            goToTrust({ admin_like: "true", page: "1" });
+            return;
+          }
+          if (groupKey === "dangling_edge") {
+            goToFindings({ module: "orphaned_edge", claimability: "dangling", page: "1" });
+            return;
+          }
+          goToFindings({ module: "orphaned_edge", claimability: "broken", page: "1" });
+        }}
       />
 
       <div className="grid gap-6 xl:grid-cols-2">
@@ -275,40 +337,6 @@ function OperationsLayout({
     <div className="hs-section space-y-6">
       <OperationsScanSummaryCard scanId={selectedScanId} />
 
-      <div className="hs-card p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="cr-section-title !normal-case !tracking-normal text-sm text-slate-800 dark:text-slate-200">
-            Top risky accounts
-          </h3>
-          <Link
-            to={selectedScanId ? `/accounts?scan_id=${encodeURIComponent(selectedScanId)}` : "/accounts"}
-            className="hs-btn-default cr-chip px-2.5 py-1.5 font-medium"
-          >
-            Open Accounts
-          </Link>
-        </div>
-        {accountsQuery.isLoading ? (
-          <p className="cr-helper mt-3">Loading accounts…</p>
-        ) : accountsQuery.isError ? (
-          <p className="mt-3 text-sm text-rose-600 dark:text-rose-400">Chart unavailable.</p>
-        ) : accountsQuery.data ? (
-          <div className="mt-3">
-            <TopAccountsHorizontalBar
-              items={accountsQuery.data.items}
-              onAccountClick={(accountId) => goToFindings({ account_id: accountId, page: "1" })}
-            />
-          </div>
-        ) : null}
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <ModuleDistribution summary={summary} onModuleClick={(module) => goToFindings({ module, page: "1" })} />
-        <ClaimabilityDistribution
-          summary={summary}
-          onClaimabilityClick={(claimability) => goToFindings({ claimability, page: "1" })}
-        />
-      </div>
-
       <SecondaryMetricsStrip
         summary={summary}
         onOpenHigh={() => goToFindings({ severity: "high", page: "1" })}
@@ -317,18 +345,43 @@ function OperationsLayout({
         onOpenOrphaned={() => goToFindings({ module: "orphaned_edge", page: "1" })}
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <OpsNextLink
-          title="Findings inbox"
-          detail="Server-paginated filters and expanded detail"
-          onClick={() => goToFindings({ page: "1" })}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="cr-section-title !normal-case !tracking-normal text-sm text-slate-800 dark:text-slate-200">
+              Ownership risk
+            </h3>
+            <p className="cr-helper mt-0.5">Where risk lives now by owning account and team.</p>
+          </div>
+          <Link
+            to={selectedScanId ? `/accounts?scan_id=${encodeURIComponent(selectedScanId)}` : "/accounts"}
+            className="hs-btn-default cr-chip px-2.5 py-1.5 font-medium"
+          >
+            Open Accounts
+          </Link>
+        </div>
+        <div className="rounded-lg border border-cyan-200/70 bg-cyan-50/40 p-2 dark:border-cyan-800/60 dark:bg-cyan-950/20">
+          {accountsQuery.isLoading ? (
+            <StatePanel>Loading ownership risk…</StatePanel>
+          ) : accountsQuery.isError ? (
+            <StatePanel intent="error" title="Ownership risk unavailable">
+              Could not load account aggregation for this scan.
+            </StatePanel>
+          ) : accountsQuery.data ? (
+            <OwnershipRiskPanel
+              items={accountsQuery.data.items}
+              onAccountClick={(accountId) => goToFindings({ account_id: accountId, page: "1" })}
+            />
+          ) : null}
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ClaimabilityDistribution
+          summary={summary}
+          onClaimabilityClick={(claimability) => goToFindings({ claimability, page: "1" })}
         />
-        <OpsNextLink title="Access review" detail="External trust posture" onClick={() => goToTrust({ page: "1" })} />
-        <OpsNextLink
-          title="External entities"
-          detail="Entity-centric rollups"
-          onClick={() => goToExternalEntities({ page: "1" })}
-        />
+        <ModuleDistribution summary={summary} onModuleClick={(module) => goToFindings({ module, page: "1" })} />
       </div>
 
       {(summary.external_entity_count ?? 0) > 0 ? (
@@ -337,17 +390,51 @@ function OperationsLayout({
           onOpenEntityListForPrincipalType={(pt) => goToExternalEntities({ page: "1", principal_type: pt })}
         />
       ) : null}
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <OpsNextLink
+          title="Fix reclaimable assets"
+          detail="Open reclaimable findings and clear the fastest wins."
+          icon={<IconZap className="text-emerald-600 dark:text-emerald-400" />}
+          onClick={() => goToFindings({ claimability: "reclaimable", page: "1" })}
+        />
+        <OpsNextLink
+          title="Review external access"
+          detail="Inspect stale trust and admin-like exposure."
+          icon={<IconGlobe className="text-cyan-600 dark:text-cyan-400" />}
+          onClick={() => goToTrust({ page: "1" })}
+        />
+        <OpsNextLink
+          title="Investigate high-risk accounts"
+          detail="Jump into account-ranked findings from Ownership Risk."
+          icon={<IconAlertTriangle className="text-rose-600 dark:text-rose-400" />}
+          onClick={() => goToFindings({ severity: "high", page: "1" })}
+        />
+      </div>
     </div>
   );
 }
 
-function OpsNextLink({ title, detail, onClick }: { title: string; detail: string; onClick: () => void }) {
+function OpsNextLink({
+  title,
+  detail,
+  icon,
+  onClick
+}: {
+  title: string;
+  detail: string;
+  icon: ReactNode;
+  onClick: () => void;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
       className="hs-card-soft px-3 py-3 text-left transition hover:border-cyan-300 hover:bg-cyan-50/60 dark:hover:border-cyan-700 dark:hover:bg-cyan-950/25"
     >
+      <span className="inline-flex rounded-md border border-slate-200 bg-white p-1.5 dark:border-slate-700 dark:bg-slate-900">
+        {icon}
+      </span>
       <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</p>
       <p className="cr-helper mt-1">{detail}</p>
     </button>

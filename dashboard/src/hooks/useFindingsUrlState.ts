@@ -20,6 +20,7 @@ export type FindingsUrlState = {
   principalType: string;
   externalPrincipal: string;
   externalAccountId: string;
+  findingId: string;
   /** Triage-only: group rows under account headings */
   groupByAccount: boolean;
 };
@@ -54,6 +55,7 @@ export function parseFindingsUrlState(params: URLSearchParams): FindingsUrlState
     principalType: params.get("principal_type") ?? "",
     externalPrincipal: params.get("external_principal") ?? "",
     externalAccountId: params.get("external_account_id") ?? "",
+    findingId: params.get("finding_id") ?? "",
     groupByAccount: params.get("group_by") === "account"
   };
 }
@@ -90,6 +92,7 @@ export function buildFindingsSearchParams(state: FindingsUrlState): URLSearchPar
   setParam(sp, "principal_type", state.principalType, "");
   setParam(sp, "external_principal", state.externalPrincipal, "");
   setParam(sp, "external_account_id", state.externalAccountId, "");
+  setParam(sp, "finding_id", state.findingId, "");
   if (state.groupByAccount) {
     sp.set("group_by", "account");
   }
@@ -120,7 +123,8 @@ export function useFindingsUrlState() {
           partial.trustClassification !== undefined ||
           partial.principalType !== undefined ||
           partial.externalPrincipal !== undefined ||
-          partial.externalAccountId !== undefined)
+          partial.externalAccountId !== undefined ||
+          partial.findingId !== undefined)
       ) {
         next.page = 1;
       }
@@ -140,6 +144,7 @@ export function useFindingsUrlState() {
         "principal_type",
         "external_principal",
         "external_account_id",
+        "finding_id",
         "group_by"
       ];
       for (const k of managedKeys) {

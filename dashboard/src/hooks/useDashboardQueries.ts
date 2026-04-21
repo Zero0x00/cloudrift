@@ -119,6 +119,29 @@ export function useFindingsListQuery(
   });
 }
 
+/** Server-derived remediation pattern groups from existing findings/trust evidence. */
+export function useRemediationGroupsQuery(scanId: string | null, options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? Boolean(scanId);
+  return useQuery({
+    queryKey: queryKeys.remediationGroups(scanId),
+    queryFn: () => apiClient.getRemediationGroups(scanId as string),
+    enabled: Boolean(scanId) && enabled,
+    staleTime: 60_000
+  });
+}
+
+/** Server-ranked top fixes (GET /api/scans/:id/top-fixes). */
+export function useTopFixesQuery(scanId: string | null, options?: { limit?: number; enabled?: boolean }) {
+  const limit = options?.limit ?? 25;
+  const enabled = options?.enabled ?? Boolean(scanId);
+  return useQuery({
+    queryKey: queryKeys.topFixes(scanId, limit),
+    queryFn: () => apiClient.getTopFixes(scanId as string, { limit }),
+    enabled: Boolean(scanId) && enabled,
+    staleTime: 60_000
+  });
+}
+
 export function useFindingDetailQuery(scanId: string | null, findingId: string | null, enabled: boolean) {
   const canRun = Boolean(scanId && findingId && enabled);
   const detailOpts =

@@ -210,6 +210,30 @@ GET /api/scans/20260418-120000/findings?module=external_access&page=1&page_size=
 
 ---
 
+### GET `/api/scans/{id}/top-fixes`
+
+**Purpose:** Server-ranked “fix first” queue for dashboards. Each item is a `FindingListItem` plus `priority_score` (higher = more urgent) and a short `reason` string derived from the same fields used in scoring.
+
+**Query parameters:**
+
+| Param | Description |
+|-------|-------------|
+| `limit` | Default `25`, min `1`, max `100` |
+
+**Outputs:** `TopFixesResponse` — `scan_id`, `items` (`TopFixItem`: list fields + `priority_score`, `reason`), `limit` (effective cap).
+
+**Ordering:** By composite `priority_score` descending, then severity rank, then `monthly_risk_cost_usd`, then `id`.
+
+**Scoring (transparent):** severity weight + claimability weight + capped risk-cost term + external-exposure term (only for `external_access`: stale verdict, admin-like, privileged classification, unknown vendor, unknown principal type). No new data sources beyond finding JSON.
+
+**Example:**
+
+```http
+GET /api/scans/20260418-120000/top-fixes?limit=12 HTTP/1.1
+```
+
+---
+
 ### GET `/api/scans/{id}/findings/{fid}`
 
 **Purpose:** Single finding with evidence, impact, recommendation, optional `trust` block for `external_access`.
@@ -424,6 +448,14 @@ There is **no database** in core Phase 1–2 flow. **Phase 3** adds an **optiona
 **Purpose:** Supply a **consistent, non-random** scan directory for UI development, API tests, and optional graph export without AWS.
 
 **Layout:** `output_dir/demo-<UTC-timestamp>/` containing at minimum `scan-metadata.json` and `findings.json`; also `relationships.json` and `assets/*.json` when graph-style data is needed.
+
+**Bundled visualization scan (`demo`):** The repo ships `cloudrift-output/demo/` (and embeds the same findings as `cmd/cloudrift/testdata/bundled_demo_findings.json`). That bundle mixes `orphaned_edge` and `external_access` rows with **non-zero `monthly_risk_cost_usd`** and **`evidence.permission_visibility`** so dashboard charts, `/top-fixes`, and trust filters render with realistic signal. Regenerate it anytime with:
+
+```bash
+./cloudrift demo generate --output-dir ./cloudrift-output --scan-id demo --timestamp 2026-04-18T18:00:00Z
+```
+
+(`--scan-id` must be a safe scan id; omit it for the default timestamped `demo-<UTC>` directory.)
 
 **Schema expectations:**
 

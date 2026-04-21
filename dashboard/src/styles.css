@@ -16,6 +16,17 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
+@layer base {
+  a:focus-visible,
+  button:focus-visible,
+  [role="button"]:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    @apply outline-none ring-2 ring-cyan-500/60 ring-offset-2 ring-offset-white dark:ring-cyan-400/70 dark:ring-offset-slate-950;
+  }
+}
+
 a {
   @apply text-inherit no-underline;
 }
@@ -188,5 +199,9 @@ a {
 
   .hs-toggle-inline {
     @apply inline-flex min-h-[42px] items-center gap-2 text-sm text-slate-700 dark:text-slate-300;
+  }
+
+  .cr-chart-focusable {
+    @apply rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-cyan-400/70 dark:focus-visible:ring-offset-slate-950;
   }
 }

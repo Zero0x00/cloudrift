@@ -25,18 +25,16 @@ export function ExternalEntitiesOverviewStrip({
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white/90 p-4 dark:border-slate-800 dark:bg-slate-900/80">
+    <div className="hs-card p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-            External entities
-          </h3>
+          <h3 className="cr-section-title">External entities</h3>
           <p
-            className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-500"
+            className="cr-helper mt-1"
             title="An entity is the tuple (external_principal, principal_type, external_account_id) from trust evidence. Missing evidence in any dimension renders as 'unknown' and may merge multiple unidentified entries into the same bucket. Finding-level counts stay in Access / Findings."
           >
-            Distinct principals by type and external account (evidence only). Missing evidence shows as{" "}
-            <span className="font-mono">unknown</span>. Finding-level counts stay in Access / Findings.
+            Distinct external principals by type/account. Missing evidence is grouped as{" "}
+            <span className="font-mono">unknown</span>.
           </p>
         </div>
       </div>

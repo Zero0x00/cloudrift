@@ -23,6 +23,12 @@ go build -o cloudrift ./cmd/cloudrift
 ./cloudrift report --scan-id latest --format table
 ```
 
+The repository includes **`cloudrift-output/demo/`** (18 findings: orphaned edges + external trust) tuned for dashboard visualization. Open the dashboard with `?scan_id=demo` or pick **demo** from the scan list after `./cloudrift dashboard`. To refresh that directory from the embedded bundle after editing `cmd/cloudrift/testdata/bundled_demo_findings.json`:
+
+```bash
+./cloudrift demo generate --output-dir ./cloudrift-output --scan-id demo --timestamp 2026-04-18T18:00:00Z
+```
+
 **Optional Phase 3:** After Neo4j is configured, `./cloudrift scan --neo4j` exports the new scan to the graph (JSON remains canonical). Use `./cloudrift query "…"` for retrieval-only CLI output (see `docs/TECHNICAL.md`).
 
 **Dashboard:**

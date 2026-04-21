@@ -1,6 +1,7 @@
 import type { ScanSummaryResponse } from "../../api/types";
+import { BarChart, DonutChart } from "@tremor/react";
 import { formatCount, formatUsd } from "../../lib/format";
-import { severityBarClass } from "../SeverityBadge";
+import { EXEC_CHART_COLORS } from "./chartColors";
 
 export type SummaryDrilldownHandlers = {
   onSeverityClick?: (severity: "critical" | "high" | "medium" | "low") => void;
@@ -31,80 +32,54 @@ export function SeverityDistribution({
   summary: ScanSummaryResponse;
   onSeverityClick?: SummaryDrilldownHandlers["onSeverityClick"];
 }) {
-  const total = summary.finding_count;
-  const rows: { key: string; label: string; count: number }[] = [
-    { key: "critical", label: "Critical", count: summary.critical_count },
-    { key: "high", label: "High", count: summary.high_count },
-    { key: "medium", label: "Medium", count: summary.medium_count },
-    { key: "low", label: "Low / info", count: summary.low_count }
+  const rows: { key: "critical" | "high" | "medium" | "low"; label: string; count: number; color: string }[] = [
+    { key: "critical", label: "Critical", count: summary.critical_count, color: EXEC_CHART_COLORS.severity.critical },
+    { key: "high", label: "High", count: summary.high_count, color: EXEC_CHART_COLORS.severity.high },
+    { key: "medium", label: "Medium", count: summary.medium_count, color: EXEC_CHART_COLORS.severity.medium },
+    { key: "low", label: "Low / info", count: summary.low_count, color: EXEC_CHART_COLORS.severity.low }
   ];
-
-  const maxRow = Math.max(...rows.map((r) => r.count), 1);
+  const chartData = rows.map((r) => ({
+    severity: r.label,
+    key: r.key,
+    Critical: r.key === "critical" ? r.count : 0,
+    High: r.key === "high" ? r.count : 0,
+    Medium: r.key === "medium" ? r.count : 0,
+    "Low / info": r.key === "low" ? r.count : 0
+  }));
 
   return (
     <div className="hs-card p-5">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Risk distribution</h3>
-      <p className="mt-1 text-[11px] text-slate-500">
-        Severity counts from summary only — percentages are shares of total findings.
-      </p>
-      {total === 0 ? (
+      <h3 className="cr-section-title">Risk distribution</h3>
+      <p className="cr-helper mt-1">Current severity composition by finding count.</p>
+      {summary.finding_count === 0 ? (
         <p className="mt-3 text-sm text-slate-500">No findings in this scan.</p>
       ) : (
-        <>
-          <div className="mt-4 flex h-3 w-full overflow-hidden rounded bg-slate-800">
-            {rows.map(({ key, count }) =>
-              count > 0 ? (
-                <div
-                  key={key}
-                  className={`${severityBarClass(key)} h-full min-w-[2px] transition-[flex-grow] ${onSeverityClick ? "cursor-pointer" : ""}`}
-                  style={{ flexGrow: count, flexBasis: 0 }}
-                  title={`${key}: ${count}`}
-                  onClick={onSeverityClick ? () => onSeverityClick(key as "critical" | "high" | "medium" | "low") : undefined}
-                />
-              ) : null
-            )}
-          </div>
-          <div className="mt-4 flex items-end justify-between gap-2 border-b border-slate-200 pb-1 dark:border-b-slate-800/80">
-            {rows.map(({ key, label, count }) => {
-              const barPx =
-                count === 0 ? 0 : Math.max(4, Math.round((count / maxRow) * 56));
-              return (
-                <div key={key} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                  <div className="flex h-14 w-full max-w-[2.75rem] items-end justify-center">
-                    <div
-                      className={`w-full rounded-t ${severityBarClass(key)} ${onSeverityClick ? "cursor-pointer" : ""}`}
-                      style={{ height: barPx }}
-                      title={`${label}: ${count} (${pct(count, total)}%)`}
-                      onClick={onSeverityClick ? () => onSeverityClick(key as "critical" | "high" | "medium" | "low") : undefined}
-                    />
-                  </div>
-                  <span className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                    {key === "low" ? "Low" : key.slice(0, 3)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          <ul className="mt-4 space-y-2 text-sm">
-            {rows.map(({ key, label, count }) => (
-              <li
-                key={key}
-                className={`flex items-center justify-between gap-4 text-slate-700 dark:text-slate-300 ${
-                  onSeverityClick ? "cursor-pointer rounded px-1 py-1 hover:bg-slate-100 dark:hover:bg-slate-800/70" : ""
-                }`}
-                onClick={onSeverityClick ? () => onSeverityClick(key as "critical" | "high" | "medium" | "low") : undefined}
-              >
-                <span className="flex items-center gap-2">
-                  <span className={`h-2 w-2 shrink-0 rounded-sm ${severityBarClass(key)}`} />
-                  {label}
-                </span>
-                <span className="tabular-nums text-slate-600 dark:text-slate-400">
-                  {formatCount(count)} ({pct(count, total)}%)
-                </span>
-              </li>
-            ))}
-          </ul>
-        </>
+        <div className="cr-chart-focusable mt-4 rounded-md" tabIndex={0} aria-label="Risk distribution bar chart by severity">
+          <BarChart
+            className="h-64"
+            data={chartData}
+            index="severity"
+            categories={["Critical", "High", "Medium", "Low / info"]}
+            layout="vertical"
+            colors={[
+              EXEC_CHART_COLORS.severity.critical,
+              EXEC_CHART_COLORS.severity.high,
+              EXEC_CHART_COLORS.severity.medium,
+              EXEC_CHART_COLORS.severity.low
+            ]}
+            valueFormatter={(value) => formatCount(value)}
+            yAxisWidth={88}
+            onValueChange={(value) => {
+              if (!onSeverityClick || !value) {
+                return;
+              }
+              const row = chartData.find((item) => item.severity === String(value.severity));
+              if (row) {
+                onSeverityClick(row.key);
+              }
+            }}
+          />
+        </div>
       )}
     </div>
   );
@@ -124,32 +99,39 @@ export function ModuleDistribution({
 
   return (
     <div className="hs-card p-5">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Findings by module</h3>
-      <p className="mt-1 text-[11px] text-slate-500">
-        Finding counts by module. Monthly cost is not broken out per module in the summary API — see “Monthly
-        cost split” for scan-level direct vs risk USD.
-      </p>
+      <h3 className="cr-section-title">Findings by module</h3>
+      <p className="cr-helper mt-1">Composition of orphaned edge vs external access findings.</p>
       {total === 0 ? (
         <p className="mt-3 text-sm text-slate-500">No orphaned-edge or external-access findings in summary.</p>
       ) : (
-        <>
-          <div className="mt-4 flex h-3 w-full overflow-hidden rounded bg-slate-800">
-            {a > 0 ? (
-              <div
-                className={`h-full min-w-[2px] bg-cyan-600 ${onModuleClick ? "cursor-pointer" : ""}`}
-                style={{ flexGrow: a, flexBasis: 0 }}
-                title={`orphaned_edge: ${a}`}
-                onClick={onModuleClick ? () => onModuleClick("orphaned_edge") : undefined}
-              />
-            ) : null}
-            {b > 0 ? (
-              <div
-                className={`h-full min-w-[2px] bg-violet-600 ${onModuleClick ? "cursor-pointer" : ""}`}
-                style={{ flexGrow: b, flexBasis: 0 }}
-                title={`external_access: ${b}`}
-                onClick={onModuleClick ? () => onModuleClick("external_access") : undefined}
-              />
-            ) : null}
+        <div
+          className="cr-chart-focusable mt-4 rounded-md"
+          tabIndex={0}
+          aria-label="Findings by module donut composition chart"
+        >
+          <div className="mt-2 flex items-center justify-center">
+            <DonutChart
+              className="h-44"
+              data={[
+                { label: "Orphaned edge", value: a },
+                { label: "External access", value: b }
+              ]}
+              category="value"
+              index="label"
+              colors={["cyan", "violet"]}
+              valueFormatter={(value) => formatCount(value)}
+              showAnimation
+              onValueChange={(value) => {
+                if (!onModuleClick || !value?.label) {
+                  return;
+                }
+                if (value.label === "Orphaned edge") {
+                  onModuleClick("orphaned_edge");
+                  return;
+                }
+                onModuleClick("external_access");
+              }}
+            />
           </div>
           <ul className="mt-4 space-y-2 text-sm text-slate-700 dark:text-slate-300">
             <li
@@ -181,7 +163,7 @@ export function ModuleDistribution({
               </span>
             </li>
           </ul>
-        </>
+        </div>
       )}
     </div>
   );
@@ -210,7 +192,11 @@ export function ClaimabilityDistribution({
       {total === 0 ? (
         <p className="mt-3 text-sm text-slate-500">No claimability-tagged findings in summary.</p>
       ) : (
-        <>
+        <div
+          className="cr-chart-focusable mt-4 rounded-md"
+          tabIndex={0}
+          aria-label="Claimability breakdown chart"
+        >
           <div className="mt-4 flex h-3 w-full overflow-hidden rounded bg-slate-800">
             {rows.map(({ key, count, bar }) =>
               count > 0 ? (
@@ -259,7 +245,7 @@ export function ClaimabilityDistribution({
             </li>
           ))}
         </ul>
-        </>
+        </div>
       )}
     </div>
   );
@@ -273,35 +259,34 @@ export function DirectVsRiskCostSplit({ summary }: { summary: ScanSummaryRespons
 
   return (
     <div className="hs-card p-5">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Monthly cost split</h3>
-      <p className="mt-1 text-[11px] text-slate-500">
-        total_monthly_direct_cost_usd vs total_monthly_risk_cost_usd from summary. Represents waste exposure at scan
-        level, not per-account or per-service.
-      </p>
+      <h3 className="cr-section-title">Cost split</h3>
+      <p className="cr-helper mt-1">Direct cost vs risk-adjusted cost (monthly).</p>
       {totalUsd <= 0 ? (
         <p className="mt-3 text-sm text-slate-500">No monthly cost totals in summary.</p>
       ) : (
         <>
-          <div className="mt-4 flex h-4 w-full overflow-hidden rounded bg-slate-800">
-            {direct > 0 ? (
-              <div
-                className="h-full min-w-[2px] bg-teal-600"
-                style={{ flexGrow: direct, flexBasis: 0 }}
-                title={`direct: ${direct}`}
-              />
-            ) : null}
-            {risk > 0 ? (
-              <div
-                className="h-full min-w-[2px] bg-rose-600/90"
-                style={{ flexGrow: risk, flexBasis: 0 }}
-                title={`risk: ${risk}`}
-              />
-            ) : null}
+          <div
+            className="cr-chart-focusable mt-3 flex items-center justify-center rounded-md"
+            tabIndex={0}
+            aria-label="Cost split donut chart for direct and risk-adjusted monthly cost"
+          >
+            <DonutChart
+              className="h-52"
+              data={[
+                { label: "Direct cost", value: Math.round(direct * 100) / 100 },
+                { label: "Risk-adjusted cost", value: Math.round(risk * 100) / 100 }
+              ]}
+              category="value"
+              index="label"
+              colors={[EXEC_CHART_COLORS.costSplit.direct, EXEC_CHART_COLORS.costSplit.riskAdjusted]}
+              valueFormatter={(value) => formatUsd(value)}
+              showAnimation
+            />
           </div>
           <ul className="mt-4 space-y-2 text-sm text-slate-700 dark:text-slate-300">
             <li className="flex justify-between gap-4">
               <span className="flex items-center gap-2">
-                <span className="h-2 w-2 shrink-0 rounded-sm bg-teal-600" />
+                <span className="h-2 w-2 shrink-0 rounded-sm bg-emerald-600" />
                 Direct / mo
               </span>
               <span className="tabular-nums text-slate-600 dark:text-slate-400">
@@ -311,7 +296,7 @@ export function DirectVsRiskCostSplit({ summary }: { summary: ScanSummaryRespons
             <li className="flex justify-between gap-4">
               <span className="flex items-center gap-2">
                 <span className="h-2 w-2 shrink-0 rounded-sm bg-rose-600/90" />
-                Risk / mo
+                Risk-adjusted / mo
               </span>
               <span className="tabular-nums text-slate-600 dark:text-slate-400">
                 {formatUsd(risk)} ({pct(risk, totalUsd)}%)

@@ -14,7 +14,7 @@ import (
 
 func TestGenerateDemoScan_WritesExpectedArtifacts(t *testing.T) {
 	root := t.TempDir()
-	scanPath, err := generateDemoScan(root, time.Date(2026, 4, 19, 12, 34, 56, 0, time.UTC))
+	scanPath, err := generateDemoScan(root, time.Date(2026, 4, 19, 12, 34, 56, 0, time.UTC), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestGenerateDemoScan_WritesExpectedArtifacts(t *testing.T) {
 
 func TestGenerateDemoScan_CompatibleWithGraphLoader(t *testing.T) {
 	root := t.TempDir()
-	scanPath, err := generateDemoScan(root, time.Date(2026, 4, 19, 1, 2, 3, 0, time.UTC))
+	scanPath, err := generateDemoScan(root, time.Date(2026, 4, 19, 1, 2, 3, 0, time.UTC), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,6 +106,9 @@ func TestDemoCommand_RegistersGenerateSubcommand(t *testing.T) {
 	}
 	if generate.Flags().Lookup("neo4j") == nil {
 		t.Fatal("expected demo generate to have --neo4j flag")
+	}
+	if generate.Flags().Lookup("scan-id") == nil {
+		t.Fatal("expected demo generate to have --scan-id flag")
 	}
 }
 

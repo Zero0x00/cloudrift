@@ -15,6 +15,7 @@ import (
 
 	"cloudrift/internal/config"
 	"cloudrift/internal/models"
+	"cloudrift/internal/scans"
 )
 
 const demoDirTimestampFormat = "20060102T150405Z"
@@ -30,6 +31,7 @@ func newDemoCommand(cfgPath *string) *cobra.Command {
 	var outputDir string
 	var neo4jEnabled bool
 	var fixedTimestamp string
+	var scanIDFlag string
 
 	demoCmd := &cobra.Command{
 		Use:   "demo",
@@ -57,7 +59,7 @@ func newDemoCommand(cfgPath *string) *cobra.Command {
 				now = parsed.UTC()
 			}
 
-			scanPath, err := generateDemoScan(outputDir, now)
+			scanPath, err := generateDemoScan(outputDir, now, strings.TrimSpace(scanIDFlag))
 			if err != nil {
 				return err
 			}
@@ -75,13 +77,20 @@ func newDemoCommand(cfgPath *string) *cobra.Command {
 	generateCmd.Flags().StringVar(&outputDir, "output-dir", "", "Output directory")
 	generateCmd.Flags().BoolVar(&neo4jEnabled, "neo4j", false, "Write generated demo projection to Neo4j")
 	generateCmd.Flags().StringVar(&fixedTimestamp, "timestamp", "", "Fixed RFC3339 timestamp (deterministic testing)")
+	generateCmd.Flags().StringVar(&scanIDFlag, "scan-id", "", "Fixed scan directory name (e.g. demo). Default: demo-<UTC timestamp>. Must satisfy safe scan id rules.")
 	_ = generateCmd.Flags().MarkHidden("timestamp")
 	demoCmd.AddCommand(generateCmd)
 	return demoCmd
 }
 
-func generateDemoScan(outputDir string, t time.Time) (string, error) {
-	scanID := "demo-" + t.UTC().Format(demoDirTimestampFormat)
+func generateDemoScan(outputDir string, t time.Time, fixedScanID string) (string, error) {
+	scanID := fixedScanID
+	if scanID == "" {
+		scanID = "demo-" + t.UTC().Format(demoDirTimestampFormat)
+	}
+	if !scans.IsSafeScanID(scanID) {
+		return "", fmt.Errorf("invalid --scan-id %q: must be a non-empty safe scan id (letters, digits, ._- only)", scanID)
+	}
 	scanPath := filepath.Join(outputDir, scanID)
 	if err := os.MkdirAll(filepath.Join(scanPath, "assets"), 0o755); err != nil {
 		return "", fmt.Errorf("create demo assets directory: %w", err)
@@ -126,7 +135,7 @@ func writeJSONFile(path string, v any) error {
 
 func buildDemoArtifacts(scanID string, ts time.Time) demoArtifacts {
 	accounts := []string{"111111111111", "222222222222", "333333333333"}
-	findings := demoFindings(scanID)
+	findings := findingsForScan(scanID)
 
 	criticalCount := 0
 	highCount := 0

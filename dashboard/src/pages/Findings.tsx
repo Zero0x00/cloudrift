@@ -88,6 +88,7 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
   }, [debouncedSearch, state.search, patch]);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const findingScrollFocusRef = useRef<string | null>(null);
   const prefetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const listParams: FindingsQueryParams = useMemo(() => {
@@ -441,6 +442,37 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
     return bucketFindingsByAccount(pageItems);
   }, [triage, state.groupByAccount, pageItems]);
 
+  const targetedFindingInPage = useMemo(
+    () => Boolean(state.findingId && pageItems.some((item) => item.id === state.findingId)),
+    [state.findingId, pageItems]
+  );
+
+  useEffect(() => {
+    const target = state.findingId.trim();
+    if (!target) {
+      return;
+    }
+    const hit = pageItems.find((item) => item.id === target);
+    if (!hit) {
+      return;
+    }
+    if (expandedId !== target) {
+      setExpandedId(target);
+    }
+    if (findingScrollFocusRef.current === target) {
+      return;
+    }
+    findingScrollFocusRef.current = target;
+    requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>(`[data-finding-id="${target}"]`);
+      if (!el) {
+        return;
+      }
+      el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      el.focus({ preventScroll: true });
+    });
+  }, [state.findingId, pageItems, expandedId]);
+
   return (
     <section className="space-y-6">
       <PageHeader
@@ -637,6 +669,15 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
               />
               {searchInput.trim() !== debouncedSearch ? <p className="mt-1 cr-helper">Debouncing search…</p> : null}
             </FilterField>
+            <FilterField label="Finding id">
+              <input
+                type="text"
+                value={state.findingId}
+                onChange={(e) => patch({ findingId: e.target.value, page: 1 })}
+                placeholder="Exact id (auto-expand on match)"
+                className="hs-input w-full min-w-[14rem]"
+              />
+            </FilterField>
             <FilterField label="Page size">
               <select
                 value={state.pageSize}
@@ -676,8 +717,14 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
             adminLike={state.adminLike}
             trustClassification={state.trustClassification}
             principalType={state.principalType}
+            findingId={state.findingId}
             groupByAccount={state.groupByAccount}
           />
+          {state.findingId.trim() && !targetedFindingInPage ? (
+            <p className="cr-helper">
+              `finding_id` target not found in this page result. Adjust filters/page or clear `finding_id`.
+            </p>
+          ) : null}
 
           <div className="hs-table-wrap">
             <table className="w-full min-w-[56rem] border-collapse text-left text-sm">
@@ -749,6 +796,8 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
     return (
       <Fragment key={row.id}>
         <tr
+          data-finding-id={rowItem.id}
+          tabIndex={-1}
           className="group bg-slate-50/80 transition-colors hover:bg-slate-100 dark:bg-slate-50/90 dark:bg-slate-900/40 dark:hover:bg-slate-900/80"
           onPointerEnter={() => onRowPointerEnter(rowItem.id)}
           onPointerLeave={onRowPointerLeave}
@@ -815,6 +864,7 @@ function AppliedFiltersBar({
   adminLike,
   trustClassification,
   principalType,
+  findingId,
   groupByAccount
 }: {
   triage: boolean;
@@ -827,6 +877,7 @@ function AppliedFiltersBar({
   adminLike: boolean;
   trustClassification: string;
   principalType: string;
+  findingId: string;
   groupByAccount: boolean;
 }) {
   const chips: { label: string; value: string }[] = [];
@@ -859,6 +910,9 @@ function AppliedFiltersBar({
   }
   if (search) {
     chips.push({ label: "search", value: search });
+  }
+  if (findingId.trim()) {
+    chips.push({ label: "finding_id", value: findingId.trim() });
   }
   if (triage && groupByAccount) {
     chips.push({ label: "group_by", value: "account" });

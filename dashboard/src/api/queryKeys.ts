@@ -6,6 +6,8 @@ export const queryKeys = {
   externalEntities: (scanId: string | null, params: ExternalEntitiesQueryParams) =>
     ["external-entities", scanId, params] as const,
   findings: (scanId: string | null, params: FindingsQueryParams) => ["findings", scanId, params] as const,
+  remediationGroups: (scanId: string | null) => ["remediation-groups", scanId] as const,
+  topFixes: (scanId: string | null, limit: number) => ["top-fixes", scanId, limit] as const,
   findingDetail: (scanId: string | null, findingId: string | null) =>
     ["finding", scanId, findingId] as const,
   accounts: (scanId: string | null) => ["accounts", scanId] as const,
