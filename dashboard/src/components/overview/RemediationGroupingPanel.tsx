@@ -42,11 +42,12 @@ export function RemediationGroupingPanel({
       topExample: item.top_example
     }))
   ).slice(0, 8);
+  const maxRisk = Math.max(...groups.map((group) => group.totalMonthlyRiskUsd), 1);
 
   return (
     <div className="hs-card p-5">
       <h3 className="cr-section-title">Remediation grouping</h3>
-      <p className="cr-helper mt-1">Prioritize remediation patterns that remove the most recurring risk.</p>
+      <p className="cr-helper mt-1">Ranked fix patterns by total risk impact.</p>
 
       {groupsQuery.isLoading ? (
         <p className="mt-4 text-sm text-slate-500">Loading remediation groups…</p>
@@ -55,27 +56,32 @@ export function RemediationGroupingPanel({
       ) : groups.length === 0 ? (
         <p className="mt-4 text-sm text-slate-500">No high-value remediation groups detected for this scan.</p>
       ) : (
-        <ul className="mt-4 space-y-3">
+        <ul className="mt-4 space-y-2">
           {groups.map((group) => (
             <li key={group.key}>
               <button
                 type="button"
                 onClick={() => onDrilldown(group.key)}
-                className="hs-card-soft w-full rounded-lg px-4 py-3 text-left transition hover:border-cyan-300 hover:bg-cyan-50/40 dark:hover:border-cyan-700 dark:hover:bg-cyan-950/20"
+                className="hs-interactive-card w-full rounded-md border border-slate-200 px-3 py-2.5 text-left dark:border-slate-800"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{group.label}</p>
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{group.label}</p>
                   <div className="flex items-center gap-2">
                     <span className="hs-chip-compact border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                       {formatCount(group.findingCount)}
                     </span>
-                    <span className="text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+                    <span className="text-sm font-medium tabular-nums text-slate-900 dark:text-slate-100">
                       {formatUsd(group.totalMonthlyRiskUsd)}
                     </span>
                   </div>
                 </div>
-                <p className="cr-helper mt-1">{group.why}</p>
-                {group.topExample ? <p className="cr-helper mt-1 truncate">Top issue: {group.topExample}</p> : null}
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded bg-slate-200 dark:bg-slate-800">
+                  <div
+                    className="h-full rounded bg-cyan-600/85"
+                    style={{ width: `${Math.max(8, Math.round((group.totalMonthlyRiskUsd / maxRisk) * 100))}%` }}
+                  />
+                </div>
+                {group.topExample ? <p className="cr-helper mt-1 truncate">Example: {group.topExample}</p> : null}
               </button>
             </li>
           ))}

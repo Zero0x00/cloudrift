@@ -1,5 +1,4 @@
 import type { ExternalEntityRow, ScanSummaryResponse } from "../../api/types";
-import { SeverityBadge } from "../SeverityBadge";
 import { formatCount, formatUsd, shortenArn } from "../../lib/format";
 
 type Props = {
@@ -33,15 +32,15 @@ export function TopRiskyExternalEntitiesPreview({
         <button
           type="button"
           onClick={onOpenExternalEntitiesPage}
-          className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          className="hs-btn-default px-2.5 py-1 text-xs"
         >
           Open all entities
         </button>
       </div>
       <div className="mt-3 overflow-x-auto">
-        <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[640px] border-collapse text-left text-xs">
           <thead>
-            <tr className="border-b border-slate-200 text-[11px] uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:text-slate-400">
+            <tr className="border-b border-slate-200 text-[10px] uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:text-slate-400">
               <th
                 className="py-2 pr-3 font-medium"
                 title="From evidence.external_principal. Empty evidence renders as unknown and may merge multiple distinct-but-unidentified principals into the same row."
@@ -88,34 +87,47 @@ export function TopRiskyExternalEntitiesPreview({
             {rows.map((row) => (
               <tr
                 key={`${row.external_principal}|${row.principal_type}|${row.external_account_id}`}
-                className="border-b border-slate-100 dark:border-slate-800/80"
+                className="hs-interactive-row border-b border-slate-100 dark:border-slate-800/80"
               >
-                <td className="py-2 pr-3 font-mono text-xs text-slate-800 dark:text-slate-200">
+                <td className="py-1.5 pr-3 font-mono text-xs text-slate-800 dark:text-slate-200">
                   {shortenArn(row.external_principal, 42)}
                 </td>
-                <td className="py-2 pr-3 text-xs text-slate-700 dark:text-slate-300">{row.principal_type}</td>
-                <td className="py-2 pr-3 font-mono text-xs text-slate-600 dark:text-slate-400">
+                <td className="py-1.5 pr-3 text-xs text-slate-700 dark:text-slate-300">{row.principal_type}</td>
+                <td className="py-1.5 pr-3 font-mono text-xs text-slate-600 dark:text-slate-400">
                   {row.external_account_id}
                 </td>
-                <td className="py-2 pr-3">
-                  <SeverityBadge severity={row.highest_severity} />
+                <td className="py-1.5 pr-3">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        row.highest_severity === "critical"
+                          ? "bg-rose-500"
+                          : row.highest_severity === "high"
+                            ? "bg-amber-500"
+                            : row.highest_severity === "medium"
+                              ? "bg-yellow-500"
+                              : "bg-slate-400"
+                      }`}
+                    />
+                    <span className="capitalize text-slate-700 dark:text-slate-300">{row.highest_severity}</span>
+                  </span>
                 </td>
-                <td className="py-2 pr-3 tabular-nums text-xs text-slate-700 dark:text-slate-300">
+                <td className="py-1.5 pr-3 tabular-nums text-xs text-slate-700 dark:text-slate-300">
                   {formatUsd(row.total_monthly_risk_cost_usd)}
                 </td>
-                <td className="py-2 pr-2 text-center tabular-nums text-xs">{formatCount(row.stale_role_count)}</td>
-                <td className="py-2 pr-2 text-center tabular-nums text-xs">
+                <td className="py-1.5 pr-2 text-center tabular-nums text-xs">{formatCount(row.stale_role_count)}</td>
+                <td className="py-1.5 pr-2 text-center tabular-nums text-xs">
                   {formatCount(row.privileged_role_count)}
                 </td>
-                <td className="py-2 pr-2 text-center tabular-nums text-xs">{formatCount(row.admin_like_role_count)}</td>
-                <td className="py-2 pr-2 text-center tabular-nums text-xs">
+                <td className="py-1.5 pr-2 text-center tabular-nums text-xs">{formatCount(row.admin_like_role_count)}</td>
+                <td className="py-1.5 pr-2 text-center tabular-nums text-xs">
                   {formatCount(row.external_access_finding_count)}
                 </td>
-                <td className="py-2">
+                <td className="py-1.5">
                   <button
                     type="button"
                     onClick={() => onOpenEntityFindings(row)}
-                    className="text-xs font-medium text-cyan-700 underline-offset-2 hover:underline dark:text-cyan-400"
+                    className="hs-focus-ring text-xs font-medium text-cyan-700 underline-offset-2 hover:underline dark:text-cyan-400"
                   >
                     Findings
                   </button>

@@ -1,4 +1,5 @@
 import type { ExternalPrincipalTypeCount, ScanSummaryResponse } from "../../api/types";
+import { DonutChart } from "@tremor/react";
 import { formatCount } from "../../lib/format";
 
 function labelForPrincipalType(t: string): string {
@@ -15,34 +16,52 @@ export function ExternalPrincipalTypesStrip({
   summary: ScanSummaryResponse;
   onOpenPrincipalType: (principalType: string) => void;
 }) {
-  const rows = summary.external_principal_types ?? [];
+  const rows = [...(summary.external_principal_types ?? [])].sort((a, b) => b.count - a.count);
   if (rows.length === 0) {
     return null;
   }
+  const donutData = rows.map((row) => ({
+    label: labelForPrincipalType(row.principal_type),
+    key: row.principal_type,
+    value: row.count
+  }));
+  const colors = ["cyan", "violet", "amber", "slate"];
+  const dotClasses = ["bg-cyan-500", "bg-violet-500", "bg-amber-500", "bg-slate-500"];
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white/90 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-        External principal types
-      </h2>
-      <p className="mt-1 max-w-3xl text-[11px] text-slate-500">
-        Counts from scan summary (<code className="rounded bg-slate-100 px-1 dark:bg-slate-800">evidence.principal_type</code> on{" "}
-        <code className="rounded bg-slate-100 px-1 dark:bg-slate-800">external_access</code> findings). Click a row to open Findings with structured{" "}
-        <code className="rounded bg-slate-100 px-1 dark:bg-slate-800">principal_type</code> filter.
-      </p>
-      <ul className="mt-4 divide-y divide-slate-200 dark:divide-slate-800">
-        {rows.map((row: ExternalPrincipalTypeCount) => (
-          <li key={row.principal_type} className="flex items-center justify-between gap-3 py-2 first:pt-0">
+    <div className="hs-card p-4">
+      <h3 className="cr-section-title">External principal types</h3>
+      <div className="mt-2 flex items-center justify-center">
+        <DonutChart
+          className="h-44"
+          data={donutData}
+          category="value"
+          index="label"
+          colors={colors}
+          valueFormatter={(value) => formatCount(value)}
+          onValueChange={(value) => {
+            const key = donutData.find((item) => item.label === value?.label)?.key;
+            if (key) {
+              onOpenPrincipalType(key);
+            }
+          }}
+          showAnimation
+        />
+      </div>
+      <ul className="mt-2 space-y-1.5">
+        {rows.map((row: ExternalPrincipalTypeCount, idx) => (
+          <li key={row.principal_type}>
             <button
               type="button"
               onClick={() => onOpenPrincipalType(row.principal_type)}
-              className="min-w-0 flex-1 rounded-md px-1 py-0.5 text-left text-sm font-medium text-cyan-800 underline-offset-2 hover:underline dark:text-cyan-200/90"
+              className="hs-interactive-row flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs"
             >
-              {labelForPrincipalType(row.principal_type)}
+              <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                <span className={`h-2 w-2 rounded-full ${dotClasses[idx % dotClasses.length]}`} />
+                {labelForPrincipalType(row.principal_type)}
+              </span>
+              <span className="tabular-nums text-slate-500 dark:text-slate-400">{formatCount(row.count)}</span>
             </button>
-            <span className="shrink-0 tabular-nums text-sm font-semibold text-slate-900 dark:text-slate-100">
-              {formatCount(row.count)}
-            </span>
           </li>
         ))}
       </ul>

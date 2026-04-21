@@ -19,7 +19,7 @@ function ownerLine(item: TopFixItem): string {
   }
   const name = item.account_name?.trim();
   if (name) {
-    return `${name} (${item.account_id || "—"})`;
+    return name;
   }
   return item.account_id?.trim() || "—";
 }
@@ -32,10 +32,7 @@ export function TopFixesPanel({ scanId, limit = 12, onDrilldown }: TopFixesPanel
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 className="cr-section-title">Prioritized risk queue</h3>
-          <p className="cr-helper mt-1">
-            Server-ranked fixes from severity, claimability, modeled monthly risk, and external-trust signals. Click a row
-            to open Findings with this item targeted.
-          </p>
+          <p className="cr-helper mt-1">Ranked fixes by severity, actionability, and monthly risk.</p>
         </div>
       </div>
 
@@ -52,30 +49,52 @@ export function TopFixesPanel({ scanId, limit = 12, onDrilldown }: TopFixesPanel
       ) : !q.data?.items?.length ? (
         <p className="cr-helper mt-4">No findings for this scan.</p>
       ) : (
-        <ul className="mt-4 divide-y divide-slate-200 dark:divide-slate-700">
-          {q.data.items.map((item) => (
-            <li key={item.id}>
-              <button
-                type="button"
-                onClick={() => onDrilldown(item)}
-                className="flex w-full flex-col gap-1 rounded-md py-3 text-left transition hover:bg-slate-50/90 dark:hover:bg-slate-800/50"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <SeverityBadge severity={item.severity} />
-                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.title}</span>
-                  <span className="cr-chip-compact font-mono text-[10px] text-slate-500" title="Composite priority score">
-                    {item.priority_score.toFixed(1)} pts
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-600 dark:text-slate-400">
-                  <span>Risk {formatUsd(item.monthly_risk_cost_usd)}/mo</span>
-                  <span>Owner {ownerLine(item)}</span>
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-500">{item.reason}</p>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div className="hs-table-wrap mt-4 rounded-md border border-slate-200 dark:border-slate-800">
+          <table className="cr-table w-full min-w-[52rem] border-collapse text-left">
+            <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 dark:border-slate-800 dark:bg-slate-900/95">
+              <tr className="cr-kpi-label">
+                <th className="px-2 py-2">Severity</th>
+                <th className="px-2 py-2">Issue</th>
+                <th className="px-2 py-2">Owner</th>
+                <th className="px-2 py-2">Risk/mo</th>
+                <th className="px-2 py-2 text-right">Score</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {q.data.items.slice(0, 5).map((item) => (
+                <tr
+                  key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onDrilldown(item)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      onDrilldown(item);
+                    }
+                  }}
+                  className="hs-interactive-row"
+                >
+                  <td className="px-2 py-2">
+                    <SeverityBadge severity={item.severity} />
+                  </td>
+                  <td className="px-2 py-2">
+                    <p className="line-clamp-1 text-sm font-medium text-slate-900 dark:text-slate-100">{item.title}</p>
+                  </td>
+                  <td className="px-2 py-2 text-xs text-slate-700 dark:text-slate-300">{ownerLine(item)}</td>
+                  <td className="px-2 py-2 text-xs tabular-nums text-slate-700 dark:text-slate-300">
+                    {formatUsd(item.monthly_risk_cost_usd)}
+                  </td>
+                  <td className="px-2 py-2 text-right">
+                    <span className="cr-chip-compact font-mono text-[10px] text-slate-500" title="Composite priority score">
+                      {item.priority_score.toFixed(1)}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

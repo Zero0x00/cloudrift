@@ -100,8 +100,6 @@ export function OverviewPage() {
                 <HighSignalLayout
                   summary={summary}
                   selectedScanId={selectedScanId}
-                  trendEnabled={trendEnabled}
-                  scans={scans}
                   goToFindings={goToFindings}
                   goToTrust={goToTrust}
                   goToExternalEntities={goToExternalEntities}
@@ -207,27 +205,24 @@ function ExecutiveLayout({
 function HighSignalLayout({
   summary,
   selectedScanId,
-  trendEnabled,
-  scans,
   goToFindings,
   goToTrust,
   goToExternalEntities
 }: {
   summary: ScanSummaryResponse;
   selectedScanId: string;
-  trendEnabled: boolean;
-  scans: ScanListItem[];
   goToFindings: (params: Record<string, string>) => void;
   goToTrust: (params: Record<string, string>) => void;
   goToExternalEntities: (params: Record<string, string>) => void;
 }) {
   return (
     <div className="hs-section space-y-6">
-      <TopFixesPanel
-        scanId={selectedScanId}
-        limit={12}
-        onDrilldown={(item) => goToFindings({ finding_id: item.id, page: "1" })}
-      />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MiniSignalKpi label="Critical" value={formatCount(summary.critical_count)} onClick={() => goToFindings({ severity: "critical", page: "1" })} />
+        <MiniSignalKpi label="High" value={formatCount(summary.high_count)} onClick={() => goToFindings({ severity: "high", page: "1" })} />
+        <MiniSignalKpi label="Reclaimable" value={formatCount(summary.reclaimable_count)} onClick={() => goToFindings({ claimability: "reclaimable", page: "1" })} />
+        <MiniSignalKpi label="External Access" value={formatCount(summary.external_access_count)} onClick={() => goToTrust({ page: "1" })} />
+      </div>
 
       <HighRiskCombinationStrip
         summary={summary}
@@ -247,30 +242,37 @@ function HighSignalLayout({
         }
       />
 
-      <RemediationGroupingPanel
-        scanId={selectedScanId}
-        onDrilldown={(groupKey) => {
-          if (groupKey === "reclaimable") {
-            goToFindings({ claimability: "reclaimable", page: "1" });
-            return;
-          }
-          if (groupKey === "stale_external_trust") {
-            goToTrust({ trust_stale: "true", page: "1" });
-            return;
-          }
-          if (groupKey === "admin_like_external") {
-            goToTrust({ admin_like: "true", page: "1" });
-            return;
-          }
-          if (groupKey === "dangling_edge") {
-            goToFindings({ module: "orphaned_edge", claimability: "dangling", page: "1" });
-            return;
-          }
-          goToFindings({ module: "orphaned_edge", claimability: "broken", page: "1" });
-        }}
-      />
+      <div className="grid gap-4 xl:grid-cols-2">
+        <RemediationGroupingPanel
+          scanId={selectedScanId}
+          onDrilldown={(groupKey) => {
+            if (groupKey === "reclaimable") {
+              goToFindings({ claimability: "reclaimable", page: "1" });
+              return;
+            }
+            if (groupKey === "stale_external_trust") {
+              goToTrust({ trust_stale: "true", page: "1" });
+              return;
+            }
+            if (groupKey === "admin_like_external") {
+              goToTrust({ admin_like: "true", page: "1" });
+              return;
+            }
+            if (groupKey === "dangling_edge") {
+              goToFindings({ module: "orphaned_edge", claimability: "dangling", page: "1" });
+              return;
+            }
+            goToFindings({ module: "orphaned_edge", claimability: "broken", page: "1" });
+          }}
+        />
+        <TopFixesPanel
+          scanId={selectedScanId}
+          limit={5}
+          onDrilldown={(item) => goToFindings({ finding_id: item.id, page: "1" })}
+        />
+      </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2">
         <ExternalPrincipalTypesStrip
           summary={summary}
           onOpenPrincipalType={(principalType) =>
@@ -303,18 +305,31 @@ function HighSignalLayout({
         )}
       </div>
 
-      <FocusPanel summary={summary} goToFindings={goToFindings} goToTrust={goToTrust} />
-
-      <SecondaryMetricsStrip
-        summary={summary}
-        onOpenHigh={() => goToFindings({ severity: "high", page: "1" })}
-        onOpenMedium={() => goToFindings({ severity: "medium", page: "1" })}
-        onOpenAll={() => goToFindings({ page: "1" })}
-        onOpenOrphaned={() => goToFindings({ module: "orphaned_edge", page: "1" })}
-      />
-
-      <ScanRiskTrendChart scans={scans} selectedScanId={selectedScanId} enabled={trendEnabled} />
+      <div className="hs-card-soft border-slate-300 p-4 dark:border-slate-700">
+        <h3 className="cr-section-title !text-xs">Next actions</h3>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <ActionPill label="All External Access" onClick={() => goToTrust({ page: "1" })} />
+          <ActionPill label="Stale Trust" onClick={() => goToFindings({ module: "external_access", trust_stale: "true", page: "1" })} />
+          <ActionPill label="Admin-like" onClick={() => goToFindings({ module: "external_access", admin_like: "true", page: "1" })} />
+          <ActionPill label="Fix Reclaimable Assets" onClick={() => goToFindings({ claimability: "reclaimable", page: "1" })} />
+          <ActionPill label="Review External Access" onClick={() => goToTrust({ page: "1" })} />
+          <ActionPill label="Investigate High-Risk Accounts" onClick={() => goToFindings({ severity: "high", page: "1" })} />
+        </div>
+      </div>
     </div>
+  );
+}
+
+function MiniSignalKpi({ label, value, onClick }: { label: string; value: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="hs-card-soft hs-interactive-card border-slate-300 px-3 py-3 text-left dark:border-slate-700"
+    >
+      <p className="cr-kpi-label">{label}</p>
+      <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900 dark:text-slate-100">{value}</p>
+    </button>
   );
 }
 
@@ -430,7 +445,7 @@ function OpsNextLink({
     <button
       type="button"
       onClick={onClick}
-      className="hs-card-soft px-3 py-3 text-left transition hover:border-cyan-300 hover:bg-cyan-50/60 dark:hover:border-cyan-700 dark:hover:bg-cyan-950/25"
+      className="hs-card-soft hs-interactive-card h-24 px-3 py-2.5 text-left"
     >
       <span className="inline-flex rounded-md border border-slate-200 bg-white p-1.5 dark:border-slate-700 dark:bg-slate-900">
         {icon}
@@ -441,62 +456,14 @@ function OpsNextLink({
   );
 }
 
-function FocusPanel({
-  summary,
-  goToFindings,
-  goToTrust
-}: {
-  summary: ScanSummaryResponse;
-  goToFindings: (params: Record<string, string>) => void;
-  goToTrust: (params: Record<string, string>) => void;
-}) {
-  return (
-    <div className="hs-card p-5">
-      <h3 className="cr-section-title">Investigation shortcuts</h3>
-      <p className="cr-helper mt-1">Structured trust filters on Findings (aligned with summary rollups).</p>
-      <div className="mt-4 grid gap-3 md:grid-cols-3">
-        <FocusPanelItem
-          title="All external access"
-          detail={`${formatCount(summary.external_access_count)} findings — trust report UI`}
-          onClick={() => goToTrust({ page: "1" })}
-        />
-        <FocusPanelItem
-          title="Stale trust (verdict)"
-          detail="Findings: trust_stale — verdict stale_review_now; unrelated to tier or admin_like."
-          tooltip="Structured stale signal from trust scorer (verdict). Does not encode privileged vs admin_like; combine filters in Findings if you need those dimensions."
-          onClick={() => goToFindings({ module: "external_access", trust_stale: "true", page: "1" })}
-        />
-        <FocusPanelItem
-          title="Admin-like (capability flag)"
-          detail="Findings: admin_like=true — not the same as privileged tier; hover for distinction."
-          tooltip="admin_like is a specific capability boolean from policy visibility analysis. Privileged is trust_classification (coarse tier). A role can match one, both, or neither."
-          onClick={() => goToFindings({ module: "external_access", admin_like: "true", page: "1" })}
-        />
-      </div>
-    </div>
-  );
-}
-
-function FocusPanelItem({
-  title,
-  detail,
-  onClick,
-  tooltip
-}: {
-  title: string;
-  detail: string;
-  onClick: () => void;
-  tooltip?: string;
-}) {
+function ActionPill({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button
       type="button"
-      title={tooltip}
       onClick={onClick}
-      className="hs-card-soft rounded-md px-3 py-3 text-left transition hover:border-cyan-300 hover:bg-cyan-50/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60 dark:hover:border-cyan-600 dark:hover:bg-cyan-950/30"
+      className="hs-action-pill"
     >
-      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</p>
-      <p className="cr-helper mt-1">{detail}</p>
+      {label}
     </button>
   );
 }

@@ -308,7 +308,7 @@ export function ExternalEntitiesPage() {
               </thead>
               <tbody>
                 {entityItems.map((row) => (
-                  <tr key={`${row.external_principal}|${row.principal_type}|${row.external_account_id}`} className="border-b border-slate-100 dark:border-slate-800/80">
+                  <tr key={`${row.external_principal}|${row.principal_type}|${row.external_account_id}`} className="hs-interactive-row border-b border-slate-100 dark:border-slate-800/80">
                     <td className="px-3 py-2 font-mono text-xs text-slate-800 dark:text-slate-200">
                       {shortenArn(row.external_principal, 36, 16)}
                     </td>
@@ -332,7 +332,7 @@ export function ExternalEntitiesPage() {
                       <button
                         type="button"
                         onClick={() => goToFindingsForRow(row)}
-                        className="text-xs font-medium text-cyan-700 hover:underline dark:text-cyan-400"
+                        className="hs-focus-ring text-xs font-medium text-cyan-700 hover:underline dark:text-cyan-400"
                       >
                         Matching findings
                       </button>

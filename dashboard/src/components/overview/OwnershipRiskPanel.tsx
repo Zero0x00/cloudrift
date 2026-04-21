@@ -1,4 +1,4 @@
-import { BarList } from "@tremor/react";
+import { BarChart } from "@tremor/react";
 import type { AccountBreakdownItem } from "../../api/types";
 import { formatUsd } from "../../lib/format";
 
@@ -72,40 +72,45 @@ export function OwnershipRiskPanel({
           tabIndex={0}
           aria-label="Ownership risk chart ranked by account monthly risk"
         >
-          <BarList
+          <BarChart
+            className="h-[300px]"
             data={ranked.map((item) => ({
+              account: item.team ? `${item.team} - ${item.accountName}` : item.accountName,
               key: item.accountId,
-              name: (
-                <button
-                  type="button"
-                  className="group w-full text-left"
-                  onClick={() => onAccountClick?.(item.accountId)}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-xs font-medium text-slate-800 group-hover:text-cyan-700 dark:text-slate-200 dark:group-hover:text-cyan-300">
-                      {item.team ? `${item.team} - ${item.accountName}` : item.accountName}
-                    </span>
-                    <span className="hs-chip-compact border-rose-300 bg-rose-100 text-rose-700 dark:border-rose-700/50 dark:bg-rose-950/40 dark:text-rose-300">
-                      C {item.criticalCount}
-                    </span>
-                    <span className="hs-chip-compact border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-700/50 dark:bg-amber-950/40 dark:text-amber-300">
-                      H {item.highCount}
-                    </span>
-                  </div>
-                  <p className="cr-helper mt-0.5 truncate">Top issue: {item.topFinding ?? "No finding title"}</p>
-                </button>
-              ),
-              value: item.riskUsd,
-              color: "emerald"
+              risk: item.riskUsd
             }))}
-            valueFormatter={(value: number) => formatUsd(value)}
-            showAnimation
-            onValueChange={(value: { key?: string | number }) => {
-              if (value?.key) {
-                onAccountClick?.(String(value.key));
+            index="account"
+            categories={["risk"]}
+            layout="vertical"
+            colors={["emerald"]}
+            yAxisWidth={170}
+            valueFormatter={(value) => formatUsd(value)}
+            onValueChange={(value) => {
+              const key = ranked.find((item) => (item.team ? `${item.team} - ${item.accountName}` : item.accountName) === value?.account)?.accountId;
+              if (key) {
+                onAccountClick?.(key);
               }
             }}
           />
+          <ul className="mt-3 space-y-1">
+            {ranked.map((item) => (
+              <li key={item.accountId}>
+                <button
+                  type="button"
+                  onClick={() => onAccountClick?.(item.accountId)}
+                  className="hs-interactive-row flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs"
+                >
+                  <span className="truncate text-slate-700 dark:text-slate-200">
+                    {item.team ? `${item.team} - ${item.accountName}` : item.accountName}
+                  </span>
+                  <span className="flex items-center gap-1.5 tabular-nums">
+                    <span className="text-rose-600 dark:text-rose-400">C {item.criticalCount}</span>
+                    <span className="text-amber-600 dark:text-amber-400">H {item.highCount}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

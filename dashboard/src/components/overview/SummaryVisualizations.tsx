@@ -177,12 +177,12 @@ export function ClaimabilityDistribution({
   summary: ScanSummaryResponse;
   onClaimabilityClick?: SummaryDrilldownHandlers["onClaimabilityClick"];
 }) {
-  const rows: { key: string; label: string; count: number; bar: string }[] = [
-    { key: "reclaimable", label: "Reclaimable", count: summary.reclaimable_count, bar: "bg-emerald-600" },
-    { key: "dangling", label: "Dangling", count: summary.dangling_count, bar: "bg-sky-600" },
-    { key: "broken", label: "Broken", count: summary.broken_count, bar: "bg-fuchsia-600" },
-    { key: "edge_obscured", label: "Edge obscured", count: summary.edge_obscured_count, bar: "bg-amber-600" }
-  ];
+  const rows: { key: string; label: string; count: number }[] = [
+    { key: "reclaimable", label: "Reclaimable", count: summary.reclaimable_count },
+    { key: "dangling", label: "Dangling", count: summary.dangling_count },
+    { key: "broken", label: "Broken", count: summary.broken_count },
+    { key: "edge_obscured", label: "Edge obscured", count: summary.edge_obscured_count }
+  ].sort((a, b) => b.count - a.count);
   const total = rows.reduce((s, r) => s + r.count, 0);
 
   return (
@@ -197,54 +197,22 @@ export function ClaimabilityDistribution({
           tabIndex={0}
           aria-label="Claimability breakdown chart"
         >
-          <div className="mt-4 flex h-3 w-full overflow-hidden rounded bg-slate-800">
-            {rows.map(({ key, count, bar }) =>
-              count > 0 ? (
-                <div
-                  key={key}
-                  className={`${bar} h-full min-w-[2px] ${onClaimabilityClick ? "cursor-pointer" : ""}`}
-                  style={{ flexGrow: count, flexBasis: 0 }}
-                  title={`${key}: ${count}`}
-                  onClick={
-                    onClaimabilityClick
-                      ? () => onClaimabilityClick(key as "reclaimable" | "dangling" | "broken" | "edge_obscured")
-                      : undefined
-                  }
-                />
-              ) : null
-            )}
-          </div>
-          <ul className="mt-4 space-y-3">
-          {rows.map(({ key, label, count, bar }) => (
-            <li
-              key={key}
-              className={onClaimabilityClick ? "cursor-pointer rounded px-1 py-1 hover:bg-slate-100 dark:hover:bg-slate-800/70" : ""}
-              onClick={
-                onClaimabilityClick
-                  ? () => onClaimabilityClick(key as "reclaimable" | "dangling" | "broken" | "edge_obscured")
-                  : undefined
+          <BarChart
+            className="h-[220px]"
+            data={rows.map((row) => ({ label: row.label, key: row.key, count: row.count }))}
+            index="label"
+            categories={["count"]}
+            layout="vertical"
+            colors={["emerald"]}
+            yAxisWidth={100}
+            valueFormatter={(value) => formatCount(value)}
+            onValueChange={(value) => {
+              const key = rows.find((row) => row.label === value?.label)?.key;
+              if (key && onClaimabilityClick) {
+                onClaimabilityClick(key as "reclaimable" | "dangling" | "broken" | "edge_obscured");
               }
-            >
-              <div className="mb-1 flex justify-between text-sm text-slate-700 dark:text-slate-300">
-                <span>{label}</span>
-                <span className="tabular-nums text-slate-600 dark:text-slate-400">
-                  {formatCount(count)} ({pct(count, total)}%)
-                </span>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded bg-slate-800">
-                <div
-                  className={`h-full rounded ${bar} ${onClaimabilityClick ? "cursor-pointer" : ""}`}
-                  style={{ width: `${pct(count, total)}%` }}
-                  onClick={
-                    onClaimabilityClick
-                      ? () => onClaimabilityClick(key as "reclaimable" | "dangling" | "broken" | "edge_obscured")
-                      : undefined
-                  }
-                />
-              </div>
-            </li>
-          ))}
-        </ul>
+            }}
+          />
         </div>
       )}
     </div>

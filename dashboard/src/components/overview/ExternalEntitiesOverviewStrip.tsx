@@ -84,7 +84,7 @@ function MetricCard({
       type="button"
       title={hint}
       onClick={onClick}
-      className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-left transition hover:border-cyan-400/60 hover:bg-cyan-50/50 dark:border-slate-700 dark:bg-slate-900/60 dark:hover:border-cyan-600/50 dark:hover:bg-cyan-950/20"
+      className="hs-interactive-card rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-left dark:border-slate-700 dark:bg-slate-900/60"
     >
       <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
       <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-100">{value}</p>

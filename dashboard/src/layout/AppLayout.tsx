@@ -30,7 +30,7 @@ const staticNavItems: {
 
 function navClassName(isActive: boolean): string {
   return [
-    "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition",
+    "hs-focus-ring flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 ease-out motion-reduce:transition-none",
     isActive
       ? "bg-cyan-500/10 text-cyan-800 ring-1 ring-cyan-500/30 dark:bg-cyan-500/15 dark:text-cyan-200 dark:ring-cyan-400/40"
       : "text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
@@ -89,7 +89,7 @@ export function AppLayout({ children }: PropsWithChildren) {
           </h1>
           <button
             type="button"
-            className="ml-auto hidden rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 md:inline-flex"
+            className="hs-btn-default ml-auto hidden px-2 py-1 text-xs md:inline-flex"
             onClick={() => setIsNavCollapsed((s) => !s)}
             aria-label={isNavCollapsed ? "Expand navigation" : "Collapse navigation"}
             title={isNavCollapsed ? "Expand navigation" : "Collapse navigation"}

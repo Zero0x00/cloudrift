@@ -17,7 +17,7 @@ export function StatePanel({
         ? "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800/80 dark:bg-slate-900/60 dark:text-slate-400"
         : "border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300";
   return (
-    <div className={`hs-card p-6 text-sm ${classes}`}>
+    <div className={`hs-state-panel ${classes}`}>
       {title ? <p className="hs-state-title">{title}</p> : null}
       <div className={title ? "text-[0.9375rem] leading-relaxed" : undefined}>{children}</div>
     </div>

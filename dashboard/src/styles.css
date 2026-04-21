@@ -51,13 +51,33 @@ a {
 }
 
 @layer components {
+  .hs-focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-cyan-400/70 dark:focus-visible:ring-offset-slate-950;
+  }
+
+  .hs-control-transition {
+    @apply transition-colors duration-150 ease-out motion-reduce:transition-none;
+  }
+
+  .hs-interactive-card {
+    @apply hs-focus-ring hs-control-transition cursor-pointer hover:border-cyan-300 hover:bg-slate-50/80 dark:hover:border-cyan-700 dark:hover:bg-slate-800/60 active:bg-slate-100/90 dark:active:bg-slate-800;
+  }
+
+  .hs-interactive-row {
+    @apply hs-focus-ring hs-control-transition cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 active:bg-slate-100 dark:active:bg-slate-800;
+  }
+
+  .hs-action-pill {
+    @apply hs-focus-ring hs-control-transition inline-flex h-8 items-center rounded-full border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 hover:border-cyan-400 hover:bg-cyan-50/60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-700 dark:hover:bg-cyan-950/30;
+  }
+
   /* Product typography scale — use across Dashboard, Findings, Access, External, Changes, Scan Control */
   .cr-page-title {
     @apply text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl;
   }
 
   .cr-section-title {
-    @apply text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400;
+    @apply text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300;
   }
 
   .cr-kpi-value {
@@ -65,7 +85,7 @@ a {
   }
 
   .cr-kpi-label {
-    @apply text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-500;
+    @apply text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-300;
   }
 
   .cr-body {
@@ -73,7 +93,7 @@ a {
   }
 
   .cr-helper {
-    @apply text-xs leading-snug text-slate-500 dark:text-slate-500;
+    @apply text-xs leading-snug text-slate-500 dark:text-slate-300;
   }
 
   .cr-table {
@@ -81,7 +101,7 @@ a {
   }
 
   .cr-table th {
-    @apply font-semibold text-slate-500 dark:text-slate-500;
+    @apply font-semibold text-slate-500 dark:text-slate-300;
   }
 
   .cr-chip {
@@ -94,15 +114,15 @@ a {
 
   /* Preline-inspired system layer (Tailwind-only, no JS dependency) */
   .hs-card {
-    @apply rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900;
+    @apply rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900;
   }
 
   .hs-card-soft {
-    @apply rounded-xl border border-slate-200 bg-slate-50/80 shadow-sm dark:border-slate-800 dark:bg-slate-900/60;
+    @apply rounded-xl border border-slate-200 bg-slate-50/80 shadow-sm dark:border-slate-700 dark:bg-slate-900/70;
   }
 
   .hs-card-header {
-    @apply flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800;
+    @apply flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-700;
   }
 
   .hs-card-body {
@@ -110,7 +130,7 @@ a {
   }
 
   .hs-kpi-card {
-    @apply hs-card w-full border-l-4 px-4 py-4 text-left transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60;
+    @apply hs-card hs-focus-ring w-full border-l-4 px-4 py-4 text-left transition duration-150 ease-out hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none;
   }
 
   .hs-filter-bar {
@@ -118,7 +138,7 @@ a {
   }
 
   .hs-label {
-    @apply mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500;
+    @apply mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-300;
   }
 
   .hs-input {
@@ -134,7 +154,7 @@ a {
   }
 
   .hs-btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply hs-focus-ring inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors duration-150 ease-out motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .hs-btn-default {
@@ -158,11 +178,15 @@ a {
   }
 
   .hs-table-wrap {
-    @apply overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900;
+    @apply overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900;
   }
 
   .hs-state-title {
     @apply mb-1 text-sm font-semibold text-slate-900 dark:text-slate-100;
+  }
+
+  .hs-state-panel {
+    @apply hs-card px-5 py-5 text-sm;
   }
 
   .hs-section {
@@ -170,11 +194,11 @@ a {
   }
 
   .hs-section-title {
-    @apply text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400;
+    @apply text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300;
   }
 
   .hs-helper-block {
-    @apply rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs leading-relaxed text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400;
+    @apply rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs leading-relaxed text-slate-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300;
   }
 
   .hs-chip-compact {
@@ -182,7 +206,7 @@ a {
   }
 
   .hs-table-head {
-    @apply px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500;
+    @apply px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300;
   }
 
   .hs-pagination {
@@ -190,15 +214,15 @@ a {
   }
 
   .hs-pagination-meta {
-    @apply text-sm text-slate-500;
+    @apply text-sm text-slate-500 dark:text-slate-300;
   }
 
   .hs-toggle-card {
-    @apply hs-card flex min-h-[42px] items-center gap-2 rounded-lg px-2 py-2 text-sm text-slate-800 dark:text-slate-200;
+    @apply hs-focus-ring hs-control-transition hs-card flex min-h-[42px] items-center gap-2 rounded-lg px-2 py-2 text-sm text-slate-800 hover:border-cyan-300 hover:bg-slate-50 dark:text-slate-200 dark:hover:border-cyan-700 dark:hover:bg-slate-800/60;
   }
 
   .hs-toggle-inline {
-    @apply inline-flex min-h-[42px] items-center gap-2 text-sm text-slate-700 dark:text-slate-300;
+    @apply hs-focus-ring hs-control-transition inline-flex min-h-[42px] items-center gap-2 rounded-md px-1 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800/60;
   }
 
   .cr-chart-focusable {

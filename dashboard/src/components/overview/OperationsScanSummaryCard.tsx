@@ -24,7 +24,7 @@ export function OperationsScanSummaryCard({ scanId }: { scanId: string | null })
   const scanHref = scanId ? `/scan-control?scan_id=${encodeURIComponent(scanId)}` : "/scan-control";
 
   return (
-    <div className="hs-card-soft border-slate-300 p-4 dark:border-slate-700">
+    <div className="hs-card-soft border-slate-300 p-3.5 dark:border-slate-700">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <IconScan className="text-slate-500 dark:text-slate-400" />
@@ -47,7 +47,7 @@ export function OperationsScanSummaryCard({ scanId }: { scanId: string | null })
         </Link>
       </div>
 
-      <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <dl className="mt-2.5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <dt className="cr-kpi-label">Run state</dt>
           <dd className="cr-body mt-0.5 capitalize text-slate-800 dark:text-slate-200">

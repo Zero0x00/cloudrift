@@ -333,7 +333,7 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
               type="button"
               aria-expanded={open}
               aria-label={open ? "Collapse finding detail" : "Expand finding detail"}
-              className="rounded p-1 text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+              className="hs-focus-ring rounded p-1 text-slate-600 transition-colors duration-150 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
               onClick={(e) => {
                 e.stopPropagation();
                 setExpandedId((id) => (id === row.original.id ? null : row.original.id));
@@ -728,7 +728,7 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
 
           <div className="hs-table-wrap">
             <table className="w-full min-w-[56rem] border-collapse text-left text-sm">
-              <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-100/95 backdrop-blur-sm dark:border-b-slate-800 dark:bg-slate-100/95 dark:bg-slate-950/95">
+              <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-100/95 backdrop-blur-sm dark:border-b-slate-800 dark:bg-slate-950/95">
                 {table.getHeaderGroups().map((hg) => (
                   <tr key={hg.id}>
                     {hg.headers.map((header) => (
@@ -798,7 +798,7 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
         <tr
           data-finding-id={rowItem.id}
           tabIndex={-1}
-          className="group bg-slate-50/80 transition-colors hover:bg-slate-100 dark:bg-slate-50/90 dark:bg-slate-900/40 dark:hover:bg-slate-900/80"
+          className="group hs-interactive-row bg-slate-50/80 dark:bg-slate-900/40"
           onPointerEnter={() => onRowPointerEnter(rowItem.id)}
           onPointerLeave={onRowPointerLeave}
         >
