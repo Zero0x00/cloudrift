@@ -21,8 +21,10 @@ Storage is intentionally flat-file JSON under `cloudrift-output/<scan-id>/`. Sca
 
 - Dashboard is served from the Go binary and uses left-rail primary navigation.
 - `/overview` supports in-page product modes: `Executive Summary`, `High-Signal`, and `Operations` (`?view=...`).
+- High-Signal is optimized for prioritized triage (top fixes + remediation groups); Operations is optimized for action flow (status, ownership risk, next actions).
 - Dashboard mode is preserved while navigating within dashboard context; entering dashboard from other routes defaults to executive mode.
 - `scan_id` remains URL-driven and is preserved through app navigation.
+- Theme is token-driven (`darkMode: class`) with contrast-tuned helper text, table headers, borders, and focus-visible treatment shared across pages.
 
 ## Response-shape consistency
 

@@ -35,8 +35,10 @@ The repository includes **`cloudrift-output/demo/`** (18 findings: orphaned edge
 
 - `./cloudrift dashboard` serves the SPA and API.
 - `/overview` includes 3 modes (`Executive Summary`, `High-Signal`, `Operations`) via URL state (`?view=...`).
+- High-Signal includes prioritized risk queue + remediation grouping; Operations emphasizes ownership risk and next actions.
 - `/scan-control` includes explicit runtime states (loading, error, empty/unconfigured, ready) and safe runtime checks.
 - UI theme preference is saved under `localStorage` key `cloudrift-dashboard-theme`.
+- Both themes are maintained as first-class surfaces (dark-mode contrast and focus states are tuned across cards/tables/charts).
 
 Rebuild embedded assets after UI changes:
 
@@ -47,3 +49,16 @@ npm run build
 cd ..
 go build -o cloudrift ./cmd/cloudrift
 ```
+
+## Command reality check
+
+Current CLI command set:
+
+- `scan`
+- `report`
+- `dashboard`
+- `query` (Phase 3 retrieval-only)
+- `demo generate`
+- `version`
+
+`diff` and `remediate` are not active CLI commands in the current command tree.

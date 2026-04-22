@@ -2,7 +2,7 @@
 # Final Architecture & Development Plan
 
 Version: 2.0-final
-Date: 2026-04-17
+Date: 2026-04-21 (doc refresh)
 Status: Approved
 
 ---
@@ -588,10 +588,9 @@ cloudrift [flags] <command>
 Commands:
   scan        Run collectors + validators + scorers
   report      Generate output from scan results
-  diff        Compare two scan snapshots
-  remediate   Show remediation for a finding
   dashboard   Start web dashboard server        [Phase 2]
   query       Natural language query            [Phase 3]
+  demo        Generate deterministic demo scan  [helper]
   version     Print version info
 
 scan flags:
@@ -607,22 +606,13 @@ scan flags:
 
 report flags:
   --scan-id TEXT          Target scan [default: latest]
-  --format TEXT           table | json | csv | excel | markdown [default: table]
+  --format TEXT           table | json | csv | markdown [default: table]
   --severity TEXT         Minimum severity filter
   --module TEXT           orphaned-edge | external-access | all
   --output PATH
 
-diff flags:
-  --old TEXT              scan-id of baseline
-  --new TEXT              scan-id of current [default: latest]
-  --format TEXT           table | json [default: table]
-
-remediate flags:
-  --finding-id TEXT
-  --format TEXT           cli | markdown | json [default: cli]
-
 dashboard flags:
-  --port INT              [default: 8000]
+  --port INT              [default: 8080]
   --open                  Auto-open browser [default: true]
   --scan-id TEXT          Scan to display [default: latest]
 ```
@@ -854,7 +844,7 @@ cloudrift v0.1.0  |  scan-id: 2026-04-17-abc123  |  accounts: 12  |  duration: 4
 │ api.example.com      │ prod-api     │ API Gateway  │ BROKEN ●      │ $0.00        │
 └──────────────────────┴──────────────┴──────────────┴───────────────┴──────────────┘
 Summary: 3 findings  |  1 critical  |  1 high  |  $35.50/month waste
-Run `cloudrift remediate --finding-id <id>` to see cleanup commands.
+Use `cloudrift report --scan-id <id> --format markdown` to generate operator-friendly remediation context.
 ```
 
 ### Excel (Phase 2) — Three sheets
@@ -889,32 +879,30 @@ GET  /api/scans/:id/summary              KPI counts + cost totals
 GET  /api/scans/:id/findings             paginated, filterable findings
 GET  /api/scans/:id/findings/:fid        single finding detail
 GET  /api/scans/:id/accounts             per-account breakdown
+GET  /api/scans/:id/top-fixes            prioritized remediation queue
+GET  /api/scans/:id/remediation-groups   grouped remediation patterns
 GET  /api/diff?old=:id&new=:id           new + resolved findings
 WS   /api/scan/progress                  live scan progress stream
 ```
 
 ### Dashboard Pages
 
-**Overview** — KPI cards + charts
-```
-[Critical: N]  [High: N]  [Reclaimable: N]  [Monthly Waste: $X]
+**Overview** — mode-driven decision surface (`?view=executive|high-signal|operations`)
 
-Findings by Severity (donut) | Waste by Service (bar)
-Findings by Account (bar)    | Claimability Breakdown (donut)
-```
+- **Executive Summary:** KPI-first scan summary, trend/composition charts, compact external context.
+- **High-Signal:** prioritized risk queue, remediation grouping, principal-type/entity risk context, compact action shortcuts.
+- **Operations:** status banner, ownership-risk hero, action-oriented claimability/module/entity breakdowns, next-action cards.
 
-**Findings** — TanStack Table, sortable + filterable
-Columns: Severity | Hostname | Account | Team | Service | Verdict | Cost
-Expandable row: evidence JSON, remediation command, ticket markdown
+**Findings** — TanStack table with dense filtering and URL-driven drilldowns  
+Columns include severity, account/team, module, claimability, risk/cost, and trust-related filters for `external_access`.
 
-**Accounts** — Per-account card grid
-Each card: finding count, waste, OU path, team, top finding
+**External Entities** — aggregated entity-centric view over `external_access` findings with stale/privileged/admin-like filters.
 
-**Diff** — Scan comparison
-New findings (red) | Resolved (green) | Unchanged (grey)
+**Accounts** — per-account rollups (risk/cost + top issue context).
 
-**Trust Report** (Phase 2)
-External principals table: account ID, role, last used, days stale, verdict
+**Diff** — scan-to-scan new/resolved deltas.
+
+**Trust Report** — trust-focused table and detail expansion for external principals/roles.
 
 ---
 

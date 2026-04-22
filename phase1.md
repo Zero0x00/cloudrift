@@ -1,6 +1,6 @@
-# Cloudrift Phase 1 Implementation Plan
+# Cloudrift Phase 1 Implementation Plan (Historical)
 
-## Scope
+## Scope (original plan)
 
 - Commands: `scan`, `report`, `diff`, `remediate`, `version`
 - Collectors: org, dns, storage, edge
@@ -28,3 +28,18 @@
 7. Remediation + outputs
 8. CLI wiring
 9. IAM/docs/CI validation
+
+---
+
+## Current command reality (repository)
+
+This file is preserved as a historical planning artifact. The active CLI command tree today is:
+
+- `scan`
+- `report`
+- `dashboard`
+- `query` (Phase 3 retrieval-only)
+- `demo generate`
+- `version`
+
+Planned Phase 1 commands `diff` and `remediate` are not currently exposed as CLI subcommands.

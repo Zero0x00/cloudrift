@@ -234,6 +234,29 @@ GET /api/scans/20260418-120000/top-fixes?limit=12 HTTP/1.1
 
 ---
 
+### GET `/api/scans/{id}/remediation-groups`
+
+**Purpose:** Group findings into high-value remediation patterns for high-signal triage surfaces (dashboard and API consumers).
+
+**Outputs:** `RemediationGroupsResponse` — `scan_id`, `items[]` where each item includes:
+
+- `pattern_name`
+- `finding_count`
+- `total_monthly_risk_cost_usd`
+- optional representative finding metadata (`top_example_*` fields when available)
+
+**Data source / behavior:** Derived from existing findings only (no external scoring store), grouped by explainable pattern rules used by the high-signal dashboard.
+
+**Ordering:** Highest `total_monthly_risk_cost_usd` first, then `finding_count`.
+
+**Example:**
+
+```http
+GET /api/scans/20260418-120000/remediation-groups HTTP/1.1
+```
+
+---
+
 ### GET `/api/scans/{id}/findings/{fid}`
 
 **Purpose:** Single finding with evidence, impact, recommendation, optional `trust` block for `external_access`.
@@ -619,4 +642,4 @@ canonical; Neo4j is a projection only. Retrieval hits are **limited to the reque
 
 ---
 
-*Last updated: 2026-04-20 — adds stable API empty-array response guarantees, hardened Scan Control runtime-state notes, and dashboard mode/navigation behavior clarifications.*
+*Last updated: 2026-04-21 — adds remediation-groups API docs, aligns dashboard mode semantics (Executive/High-Signal/Operations), and reflects dark-mode contrast/accessibility token hardening.*

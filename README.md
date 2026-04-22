@@ -93,9 +93,15 @@ Open `http://127.0.0.1:8080` (optional `?scan_id=<id>`). Routes:
 | `/trust-report` | Trust-focused view for `external_access` findings |
 | `/external-entities` | Entity-centric table: rollups matching `GET /api/scans/{id}/external-entities` |
 
-**Theme:** The SPA supports **light** and **dark** themes. Use the header control to toggle; preference is stored in the browser as `localStorage` key `cloudrift-dashboard-theme` (default **dark**). Rebuild UI assets after UI changes (`cd dashboard && npm run build`).
+**Theme + readability:** The SPA supports **light** and **dark** themes. Use the header control to toggle; preference is stored in the browser as `localStorage` key `cloudrift-dashboard-theme` (default **dark**). Current UI tokens are tuned for dark-mode contrast (helper text, table headers, subtle borders, legend labels, and focus-visible rings) so dashboard surfaces remain readable in both themes.
 
 **Navigation/state behavior:** The left sidebar is primary navigation. Dashboard mode (`view`) is preserved when navigating within `/overview`; entering Dashboard from non-dashboard routes defaults to Executive Summary. `scan_id` is preserved across app navigation.
+
+**Overview mode highlights:**
+
+- **Executive Summary:** KPI-first layout (summary cards, risk/composition charts, compact external-entity context)
+- **High-Signal:** prioritized fix queue + remediation grouping + high-signal shortcuts for fastest triage
+- **Operations:** action-oriented layout (status banner, ownership risk hero, claimability/module breakdowns, next actions)
 
 ### Neo4j (optional graph)
 
@@ -124,6 +130,8 @@ GET /api/scans/{id}/external-entities?page=1&page_size=50
 GET /api/scans/{id}/findings?page=1&page_size=50&module=external_access
 GET /api/scans/{id}/findings/{fid}
 GET /api/scans/{id}/accounts
+GET /api/scans/{id}/top-fixes?limit=25
+GET /api/scans/{id}/remediation-groups
 GET /api/diff?old=older-scan&new=newer-scan
 GET /api/runtime/status
 POST /api/runtime/validate-profile
