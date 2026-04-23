@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"cloudrift/internal/api/schema"
+	"cloudrift/internal/blastradius"
 	"cloudrift/internal/models"
 	"cloudrift/internal/scans"
 )
@@ -20,18 +21,18 @@ const externalEntityKeySep = "\x1e"
 // Empty/missing dimension values normalize to "unknown" for stable keys (aligned with principal_type filter semantics).
 func aggregateExternalEntities(findings []models.Finding) []schema.ExternalEntityRow {
 	type bucket struct {
-		externalPrincipal   string
-		principalType       string
-		externalAccountID   string
-		roles               map[string]struct{}
-		internalAccounts    map[string]struct{}
-		maxRank             int
-		highestSeverity     string
-		staleRoles          map[string]struct{}
-		privilegedRoles     map[string]struct{}
-		adminLikeRoles      map[string]struct{}
-		totalRisk           float64
-		findingCount        int
+		externalPrincipal string
+		principalType     string
+		externalAccountID string
+		roles             map[string]struct{}
+		internalAccounts  map[string]struct{}
+		maxRank           int
+		highestSeverity   string
+		staleRoles        map[string]struct{}
+		privilegedRoles   map[string]struct{}
+		adminLikeRoles    map[string]struct{}
+		totalRisk         float64
+		findingCount      int
 	}
 
 	byKey := make(map[string]*bucket)
@@ -90,18 +91,33 @@ func aggregateExternalEntities(findings []models.Finding) []schema.ExternalEntit
 
 	out := make([]schema.ExternalEntityRow, 0, len(byKey))
 	for _, b := range byKey {
+		principalID := ""
+		if len(b.roles) == 1 {
+			var role string
+			for r := range b.roles {
+				role = strings.TrimSpace(r)
+				break
+			}
+			if role != "" && !strings.HasPrefix(role, "finding:") && strings.HasPrefix(strings.ToLower(role), "arn:") {
+				pType := principalTypeForARN(role, b.principalType)
+				accountID := accountFromARN(role)
+				principalID = blastradius.EncodePrincipalID(role, pType, accountID)
+			}
+		}
 		out = append(out, schema.ExternalEntityRow{
-			ExternalPrincipal:            b.externalPrincipal,
-			PrincipalType:                b.principalType,
-			ExternalAccountID:            b.externalAccountID,
-			UniqueTrustedRoleCount:       len(b.roles),
-			UniqueInternalAccountCount:   len(b.internalAccounts),
-			HighestSeverity:              b.highestSeverity,
-			TotalMonthlyRiskCostUSD:      b.totalRisk,
-			StaleRoleCount:               len(b.staleRoles),
-			PrivilegedRoleCount:          len(b.privilegedRoles),
-			AdminLikeRoleCount:           len(b.adminLikeRoles),
-			ExternalAccessFindingCount:   b.findingCount,
+			EntityID:                   blastradius.EncodeExternalEntityID(b.externalPrincipal, b.principalType, b.externalAccountID),
+			PrincipalID:                principalID,
+			ExternalPrincipal:          b.externalPrincipal,
+			PrincipalType:              b.principalType,
+			ExternalAccountID:          b.externalAccountID,
+			UniqueTrustedRoleCount:     len(b.roles),
+			UniqueInternalAccountCount: len(b.internalAccounts),
+			HighestSeverity:            b.highestSeverity,
+			TotalMonthlyRiskCostUSD:    b.totalRisk,
+			StaleRoleCount:             len(b.staleRoles),
+			PrivilegedRoleCount:        len(b.privilegedRoles),
+			AdminLikeRoleCount:         len(b.adminLikeRoles),
+			ExternalAccessFindingCount: b.findingCount,
 		})
 	}
 
@@ -118,6 +134,29 @@ func aggregateExternalEntities(findings []models.Finding) []schema.ExternalEntit
 	})
 
 	return out
+}
+
+func principalTypeForARN(arn, fallback string) string {
+	a := strings.ToLower(strings.TrimSpace(arn))
+	if strings.Contains(a, ":role/") {
+		return "role"
+	}
+	if strings.Contains(a, ":user/") {
+		return "user"
+	}
+	fb := strings.TrimSpace(fallback)
+	if fb == "" || strings.EqualFold(fb, "unknown") {
+		return "principal"
+	}
+	return fb
+}
+
+func accountFromARN(arn string) string {
+	parts := strings.Split(strings.TrimSpace(arn), ":")
+	if len(parts) >= 6 && strings.EqualFold(parts[0], "arn") {
+		return strings.TrimSpace(parts[4])
+	}
+	return ""
 }
 
 func entitySortKey(e schema.ExternalEntityRow) string {

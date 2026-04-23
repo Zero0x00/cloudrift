@@ -164,6 +164,12 @@ GET /api/scans/latest/summary HTTP/1.1
 
 **Per-row metrics:** distinct trusted role count, distinct internal account count, highest severity, total risk USD, counts of findings in the bucket, and **distinct-role** counts for stale verdicts, `permission_visibility.classification == privileged`, and admin-like capability flags in evidence. Entity-level flags mean **at least one** trusted role in the bucket matches the signal, not that every role does.
 
+**Identity fields:**
+
+- `entity_id` is always included (stable opaque aggregate key used by entity blast routes).
+- `principal_id` is included only when a **single trusted principal ARN** is derivable for the entity bucket; this is intentionally omitted for ambiguous/multi-role buckets.
+- `principal_id` uses the same encoded format as principal blast routes (`EncodePrincipalID`) and is server-generated to avoid frontend drift.
+
 **Query parameters:**
 
 | Param | Description |
@@ -173,6 +179,27 @@ GET /api/scans/latest/summary HTTP/1.1
 | `external_principal` | Exact match on normalized principal (or `unknown`) |
 | `external_account_id` | Exact match on normalized account id (or `unknown`) |
 | `has_stale_role`, `has_privileged_role`, `has_admin_like_role` | If present and true, require non-zero corresponding count |
+
+---
+
+### Blast Radius APIs (optional graph, curated payloads)
+
+These routes power focused blast-radius and attack-path explainability. They are not raw graph dump APIs.
+
+| Method | Path | Notes |
+|--------|------|-------|
+| `GET` | `/api/scans/{id}/blast-radius/summary` | Finding-root summary (`finding_id`, optional `mode`) |
+| `GET` | `/api/scans/{id}/blast-radius/explorer` | Finding-root curated explorer payload |
+| `GET` | `/api/scans/{id}/external-entities/blast-radius/summary` | Entity-root summary (`entity_id`, optional `mode`) |
+| `GET` | `/api/scans/{id}/external-entities/blast-radius/explorer` | Entity-root curated explorer payload |
+| `GET` | `/api/scans/{id}/principals/blast-radius/summary` | Principal-root summary (`principal_id`, optional `mode`) |
+| `GET` | `/api/scans/{id}/principals/blast-radius/explorer` | Principal-root curated explorer payload |
+
+**Common behavior:**
+
+- `mode`: `blast_radius` (default) or `attack_path`.
+- Responses include `graph_available` and optional `graph_unavailable_reason` for graceful Neo4j degradation.
+- Explorer route in SPA is shared: `/blast-explorer?scan=...&finding=...|entity=...|principal=...&mode=...`.
 
 ---
 
@@ -642,4 +669,4 @@ canonical; Neo4j is a projection only. Retrieval hits are **limited to the reque
 
 ---
 
-*Last updated: 2026-04-21 — adds remediation-groups API docs, aligns dashboard mode semantics (Executive/High-Signal/Operations), and reflects dark-mode contrast/accessibility token hardening.*
+*Last updated: 2026-04-23 — documents Blast Radius endpoints (finding/entity/principal), external-entity `principal_id` derivation, and principal blast entrypoints from entity/trust surfaces.*

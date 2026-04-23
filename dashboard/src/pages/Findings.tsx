@@ -820,7 +820,11 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
                 ) : detailQuery.isError ? (
                   <FindingDetailPanelError error={detailQuery.error} />
                 ) : detailQuery.data?.item ? (
-                  <FindingDetailPanelContent item={detailQuery.data.item} />
+                  <FindingDetailPanelContent
+                    item={detailQuery.data.item}
+                    scanId={selectedScanId ?? undefined}
+                    findingId={rowItem.id}
+                  />
                 ) : (
                   <StatePanel intent="empty">No detail payload.</StatePanel>
                 )}

@@ -8,11 +8,11 @@ import (
 
 func extFinding(id, ep, pt, extAcct, roleKey string, sev models.Severity, stale, priv, admin bool) models.Finding {
 	ev := map[string]any{
-		"external_principal":   ep,
-		"principal_type":       pt,
-		"external_account_id":    extAcct,
-		"role_arn":               roleKey,
-		"verdict":                "",
+		"external_principal":  ep,
+		"principal_type":      pt,
+		"external_account_id": extAcct,
+		"role_arn":            roleKey,
+		"verdict":             "",
 		"permission_visibility": map[string]any{
 			"classification": "scoped",
 			"capabilities": map[string]any{
@@ -62,6 +62,9 @@ func TestAggregateExternalEntities_groupsAndRollups(t *testing.T) {
 	if e.ExternalAccessFindingCount != 2 {
 		t.Fatalf("ExternalAccessFindingCount: got %d", e.ExternalAccessFindingCount)
 	}
+	if e.PrincipalID != "" {
+		t.Fatalf("expected principal_id omitted for multi-role entity bucket, got %q", e.PrincipalID)
+	}
 
 	ec, st, pr, ad, byPT, prev := summaryExternalEntityRollups([]models.Finding{r1, r2})
 	if ec != 1 || st != 1 || pr != 1 || ad != 1 {
@@ -69,6 +72,33 @@ func TestAggregateExternalEntities_groupsAndRollups(t *testing.T) {
 	}
 	if len(prev) != 1 || len(byPT) < 1 {
 		t.Fatalf("preview / byPT: %d %d", len(prev), len(byPT))
+	}
+}
+
+func TestAggregateExternalEntities_principalIDWhenSingleRoleDerivable(t *testing.T) {
+	r := extFinding("a", "arn:aws:iam::999:root", "AWS", "999", "arn:aws:iam::111111111111:role/vendor-access", models.SeverityHigh, false, false, false)
+	rows := aggregateExternalEntities([]models.Finding{r})
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 entity, got %d", len(rows))
+	}
+	if rows[0].EntityID == "" {
+		t.Fatalf("expected entity id")
+	}
+	if rows[0].PrincipalID == "" {
+		t.Fatalf("expected principal_id for single-role derivable bucket")
+	}
+}
+
+func TestAggregateExternalEntities_principalIDOmittedForSyntheticRoleKey(t *testing.T) {
+	f := extFinding("a", "arn:aws:iam::999:root", "AWS", "999", "", models.SeverityHigh, false, false, false)
+	// role_arn missing, trustedRoleKey falls back to affected ARN, clear that too so it degrades to finding key.
+	f.AffectedARN = ""
+	rows := aggregateExternalEntities([]models.Finding{f})
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 entity, got %d", len(rows))
+	}
+	if rows[0].PrincipalID != "" {
+		t.Fatalf("expected principal_id omitted for non-derivable role key, got %q", rows[0].PrincipalID)
 	}
 }
 

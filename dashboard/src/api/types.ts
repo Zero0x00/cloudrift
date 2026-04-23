@@ -65,6 +65,10 @@ export interface ExternalEntityPrincipalTypeCount {
 }
 
 export interface ExternalEntityRow {
+  /** Stable opaque id for blast-radius and cross-links (server-encoded aggregate key). */
+  entity_id?: string;
+  /** Optional encoded principal root id when a single trusted principal identity is derivable. */
+  principal_id?: string;
   external_principal: string;
   principal_type: string;
   external_account_id: string;
@@ -121,6 +125,7 @@ export interface FindingListItem {
   severity: string;
   module: string;
   claimability: string;
+  principal_id?: string;
   affected_arn: string;
   account_id: string;
   account_name?: string;
@@ -167,6 +172,7 @@ export interface TrustDisplay {
   permission_visibility?: PermissionVisibilityDisplay;
   role_arn?: string;
   role_name?: string;
+  principal_id?: string;
   external_principal?: string;
   principal_type?: string;
   external_account_id?: string;
@@ -519,4 +525,79 @@ export interface AlertCatalogType {
 export interface AlertCatalogResponse {
   supported_types: AlertCatalogType[];
   supported_channels: string[];
+}
+
+// —— Blast radius (Neo4j-backed, optional)
+
+export type BlastRootKind = "finding" | "external_entity" | "principal";
+
+export interface BlastRadiusSummary {
+  root_type: BlastRootKind;
+  root_id: string;
+  scan_id: string;
+  mode: string;
+  reachable_resource_count: number;
+  reachable_accounts_count: number;
+  top_resource_types: string[];
+  top_impacted_accounts: string[];
+  top_impacted_resources: string[];
+  escalation_possible: boolean;
+  summary_text: string;
+  recommended_action_label: string;
+  graph_available: boolean;
+  graph_unavailable_reason?: string;
+  focal_resource_arn?: string;
+  source_finding_id?: string;
+  source_principal_arn?: string;
+  source_principal_id?: string;
+  source_entity_id?: string;
+}
+
+export interface BlastFocus {
+  root_id: string;
+  root_type: BlastRootKind;
+  finding_id?: string;
+  entity_id?: string;
+  principal_id?: string;
+  mode?: string;
+  blast_mode?: string;
+}
+
+export interface BlastGraphNode {
+  id: string;
+  label: string;
+  type: string;
+  subtype?: string;
+  account_id?: string;
+  severity_or_tier?: string;
+  is_focus: boolean;
+  is_critical_path: boolean;
+  is_reachable: boolean;
+  is_external: boolean;
+  impact_score?: number;
+  display_name_hint?: string;
+}
+
+export interface BlastGraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  type: string;
+  label: string;
+  is_critical_path: boolean;
+  explanation?: string;
+}
+
+export interface BlastDisplayHints {
+  default_focus_id?: string;
+  highlight_node_ids?: string[];
+  highlight_edge_ids?: string[];
+}
+
+export interface BlastExplorerResponse {
+  focus: BlastFocus;
+  summary: BlastRadiusSummary;
+  nodes: BlastGraphNode[];
+  edges: BlastGraphEdge[];
+  display: BlastDisplayHints;
 }

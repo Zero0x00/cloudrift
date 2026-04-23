@@ -117,6 +117,9 @@ func TestListFindingsModuleFilterPagination(t *testing.T) {
 	if resp.Items[0].ID != "2" {
 		t.Fatalf("expected first trust finding id 2, got %q", resp.Items[0].ID)
 	}
+	if resp.Items[0].PrincipalID == "" {
+		t.Fatalf("expected server-provided principal_id in list item")
+	}
 	if resp.Filters.Module != "external_access" {
 		t.Fatalf("expected filter echo, got %+v", resp.Filters)
 	}
@@ -344,6 +347,12 @@ func TestGetFindingIncludesPermissionVisibilityInTrustDisplay(t *testing.T) {
 	mustDecode(t, rr, &resp)
 	if resp.Item.Trust == nil || resp.Item.Trust.PermissionVisibility == nil {
 		t.Fatalf("expected permission_visibility in trust response")
+	}
+	if resp.Item.PrincipalID == "" {
+		t.Fatalf("expected principal_id on detail item")
+	}
+	if resp.Item.Trust.PrincipalID == "" {
+		t.Fatalf("expected principal_id in trust display")
 	}
 	if resp.Item.Trust.PermissionVisibility.Classification != "privileged" {
 		t.Fatalf("unexpected classification: %+v", resp.Item.Trust.PermissionVisibility)

@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "./layout/AppLayout";
 import { AccountsPage } from "./pages/Accounts";
@@ -8,6 +9,11 @@ import { ScanControlCenterPage } from "./pages/ScanControlCenter";
 import { ExternalEntitiesPage } from "./pages/ExternalEntities";
 import { TrustReportPage } from "./pages/TrustReport";
 import { AlertingPage } from "./pages/Alerting";
+
+const BlastExplorerPage = lazy(async () => {
+  const mod = await import("./pages/BlastExplorer");
+  return { default: mod.BlastExplorerPage };
+});
 
 export default function App() {
   return (
@@ -23,6 +29,14 @@ export default function App() {
         <Route path="/trust-report" element={<TrustReportPage />} />
         <Route path="/external-entities" element={<ExternalEntitiesPage />} />
         <Route path="/alerting" element={<AlertingPage />} />
+        <Route
+          path="/blast-explorer"
+          element={
+            <Suspense fallback={<div className="text-sm text-slate-500">Loading explorer…</div>}>
+              <BlastExplorerPage />
+            </Suspense>
+          }
+        />
       </Routes>
     </AppLayout>
   );

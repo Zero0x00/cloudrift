@@ -24,7 +24,9 @@ import type {
   AlertRule,
   AlertRuleResponse,
   AlertRulesResponse,
-  AlertTestResponse
+  AlertTestResponse,
+  BlastExplorerResponse,
+  BlastRadiusSummary
 } from "./types";
 import { ApiRequestError, parseAPIErrorBody } from "./httpError";
 
@@ -102,6 +104,76 @@ export const apiClient = {
   getFindingDetail(scanId: string, findingId: string): Promise<FindingDetailResponse> {
     return fetchJSON<FindingDetailResponse>(
       `/scans/${encodeURIComponent(scanId)}/findings/${encodeURIComponent(findingId)}`
+    );
+  },
+  getBlastRadiusSummary(
+    scanId: string,
+    findingId: string,
+    params: { mode?: "blast_radius" | "attack_path" } = {}
+  ): Promise<BlastRadiusSummary> {
+    return fetchJSON<BlastRadiusSummary>(
+      `/scans/${encodeURIComponent(scanId)}/findings/${encodeURIComponent(findingId)}/blast-radius/summary${makeQueryString(
+        params
+      )}`
+    );
+  },
+  getBlastRadiusExplorer(
+    scanId: string,
+    findingId: string,
+    params: { mode?: "blast_radius" | "attack_path" } = {}
+  ): Promise<BlastExplorerResponse> {
+    return fetchJSON<BlastExplorerResponse>(
+      `/scans/${encodeURIComponent(scanId)}/findings/${encodeURIComponent(findingId)}/blast-radius/explorer${makeQueryString(
+        params
+      )}`
+    );
+  },
+  getEntityBlastSummary(
+    scanId: string,
+    entityId: string,
+    params: { mode?: "blast_radius" | "attack_path" } = {}
+  ): Promise<BlastRadiusSummary> {
+    return fetchJSON<BlastRadiusSummary>(
+      `/scans/${encodeURIComponent(scanId)}/blast-radius/entity/summary${makeQueryString({
+        entity_id: entityId,
+        ...params
+      })}`
+    );
+  },
+  getEntityBlastExplorer(
+    scanId: string,
+    entityId: string,
+    params: { mode?: "blast_radius" | "attack_path" } = {}
+  ): Promise<BlastExplorerResponse> {
+    return fetchJSON<BlastExplorerResponse>(
+      `/scans/${encodeURIComponent(scanId)}/blast-radius/entity/explorer${makeQueryString({
+        entity_id: entityId,
+        ...params
+      })}`
+    );
+  },
+  getPrincipalBlastSummary(
+    scanId: string,
+    principalId: string,
+    params: { mode?: "blast_radius" | "attack_path" } = {}
+  ): Promise<BlastRadiusSummary> {
+    return fetchJSON<BlastRadiusSummary>(
+      `/scans/${encodeURIComponent(scanId)}/principals/blast-radius/summary${makeQueryString({
+        principal_id: principalId,
+        ...params
+      })}`
+    );
+  },
+  getPrincipalBlastExplorer(
+    scanId: string,
+    principalId: string,
+    params: { mode?: "blast_radius" | "attack_path" } = {}
+  ): Promise<BlastExplorerResponse> {
+    return fetchJSON<BlastExplorerResponse>(
+      `/scans/${encodeURIComponent(scanId)}/principals/blast-radius/explorer${makeQueryString({
+        principal_id: principalId,
+        ...params
+      })}`
     );
   },
   getAccounts(scanId: string): Promise<AccountsBreakdownResponse> {

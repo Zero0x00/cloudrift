@@ -881,6 +881,12 @@ GET  /api/scans/:id/findings/:fid        single finding detail
 GET  /api/scans/:id/accounts             per-account breakdown
 GET  /api/scans/:id/top-fixes            prioritized remediation queue
 GET  /api/scans/:id/remediation-groups   grouped remediation patterns
+GET  /api/scans/:id/blast-radius/summary finding-root blast summary
+GET  /api/scans/:id/blast-radius/explorer finding-root explorer payload
+GET  /api/scans/:id/external-entities/blast-radius/summary entity-root blast summary
+GET  /api/scans/:id/external-entities/blast-radius/explorer entity-root explorer payload
+GET  /api/scans/:id/principals/blast-radius/summary principal-root blast summary
+GET  /api/scans/:id/principals/blast-radius/explorer principal-root explorer payload
 GET  /api/diff?old=:id&new=:id           new + resolved findings
 WS   /api/scan/progress                  live scan progress stream
 ```
@@ -896,13 +902,15 @@ WS   /api/scan/progress                  live scan progress stream
 **Findings** — TanStack table with dense filtering and URL-driven drilldowns  
 Columns include severity, account/team, module, claimability, risk/cost, and trust-related filters for `external_access`.
 
-**External Entities** — aggregated entity-centric view over `external_access` findings with stale/privileged/admin-like filters.
+**External Entities** — aggregated entity-centric view over `external_access` findings with stale/privileged/admin-like filters, `entity_id` for entity-root blast, and conditional server-provided `principal_id` for **Open as principal blast** when derivable.
 
 **Accounts** — per-account rollups (risk/cost + top issue context).
 
 **Diff** — scan-to-scan new/resolved deltas.
 
-**Trust Report** — trust-focused table and detail expansion for external principals/roles.
+**Trust Report** — trust-focused table and detail expansion for external principals/roles, including principal blast entry points.
+
+**Blast Explorer** — focused 3D graph surface reused for finding/entity/principal roots and `blast_radius | attack_path` modes.
 
 ---
 

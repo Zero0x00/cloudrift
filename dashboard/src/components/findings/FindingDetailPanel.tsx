@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { formatQueryError } from "../../api/httpError";
 import type { FindingDetailItem } from "../../api/types";
+import { BlastRadiusSection } from "../blast/BlastRadiusSection";
 import { formatAdminEvalStateLabel, formatDaysSinceUsedLabel } from "../../lib/trustLabels";
 import { StatePanel } from "../StatePanel";
 import { PermissionVisibilityPanel } from "../trust/PermissionVisibilityPanel";
@@ -70,13 +71,25 @@ function EvidenceBlock({ evidence }: { evidence: Record<string, unknown> }) {
   );
 }
 
-export function FindingDetailPanelContent({ item }: { item: FindingDetailItem }) {
+export function FindingDetailPanelContent({
+  item,
+  scanId,
+  findingId
+}: {
+  item: FindingDetailItem;
+  /** When set (list row id), enables blast-radius summary + link to 3D explorer. */
+  scanId?: string;
+  findingId?: string;
+}) {
   return (
     <div className="space-y-4">
       <div>
         <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.title}</p>
         <p className="mt-1 font-mono text-xs text-slate-500 break-all">{item.id}</p>
       </div>
+      {scanId && findingId ? (
+        <BlastRadiusSection scanId={scanId} findingId={findingId} severity={item.severity} />
+      ) : null}
       {item.impact ? (
         <Section title="Impact">
           <p className="whitespace-pre-wrap text-slate-700 dark:text-slate-300">{item.impact}</p>

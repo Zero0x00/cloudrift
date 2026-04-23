@@ -1,17 +1,21 @@
 package api
 
 import (
+	"context"
 	"io/fs"
 	"net/http"
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
 	"cloudrift/internal/alerting"
 	"cloudrift/internal/api/handlers"
+	"cloudrift/internal/blastradius"
+	"cloudrift/internal/config"
 )
 
 func NewRouter(outputDir, configPath string, staticFS fs.FS) http.Handler {
@@ -28,6 +32,12 @@ func NewRouter(outputDir, configPath string, staticFS fs.FS) http.Handler {
 
 func apiRouter(outputDir, configPath string) http.Handler {
 	r := chi.NewRouter()
+	cfg, _ := config.Load(configPath)
+	connCtx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	neo := blastradius.TryConnect(connCtx, cfg)
+	cancel()
+	blast := blastradius.NewService(neo, outputDir)
+
 	alertSvc := alerting.NewService(outputDir, strings.TrimSpace(os.Getenv("CLOUDRIFT_APP_BASE_URL")))
 	control := handlers.NewScanControlCenter(outputDir, configPath)
 	control.SetAlertService(alertSvc)
@@ -39,6 +49,12 @@ func apiRouter(outputDir, configPath string) http.Handler {
 	r.Get("/scans/{id}/remediation-groups", handlers.ListRemediationGroups(outputDir))
 	r.Get("/scans/{id}/top-fixes", handlers.ListTopFixes(outputDir))
 	r.Get("/scans/{id}/findings/{fid}", handlers.GetFinding(outputDir))
+	r.Get("/scans/{id}/findings/{fid}/blast-radius/summary", handlers.BlastRadiusFindingSummary(blast, outputDir))
+	r.Get("/scans/{id}/findings/{fid}/blast-radius/explorer", handlers.BlastRadiusFindingExplorer(blast, outputDir))
+	r.Get("/scans/{id}/blast-radius/entity/summary", handlers.BlastRadiusEntitySummary(blast, outputDir))
+	r.Get("/scans/{id}/blast-radius/entity/explorer", handlers.BlastRadiusEntityExplorer(blast, outputDir))
+	r.Get("/scans/{id}/principals/blast-radius/summary", handlers.BlastRadiusPrincipalSummary(blast, outputDir))
+	r.Get("/scans/{id}/principals/blast-radius/explorer", handlers.BlastRadiusPrincipalExplorer(blast, outputDir))
 	r.Get("/scans/{id}/accounts", handlers.ListAccounts(outputDir))
 	r.Get("/diff", handlers.DiffScans(outputDir))
 	r.Get("/scan/progress", handlers.ScanProgressWS(control))

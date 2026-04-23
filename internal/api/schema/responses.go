@@ -54,6 +54,10 @@ type ScanSummaryResponse struct {
 
 // ExternalEntityRow aggregates external_access findings by (external_principal, principal_type, external_account_id).
 type ExternalEntityRow struct {
+	// EntityID is a stable opaque id (same encoding as blast-radius entity routes) for this aggregate row.
+	EntityID                   string  `json:"entity_id"`
+	// PrincipalID is an optional encoded principal root id when a single trusted principal identity is derivable.
+	PrincipalID                string  `json:"principal_id,omitempty"`
 	ExternalPrincipal          string  `json:"external_principal"`
 	PrincipalType              string  `json:"principal_type"`
 	ExternalAccountID          string  `json:"external_account_id"`
@@ -107,9 +111,9 @@ type FindingsListResponse struct {
 
 // TopFixesResponse is the payload for GET /api/scans/:id/top-fixes (server-ranked priority queue).
 type TopFixesResponse struct {
-	ScanID string      `json:"scan_id"`
+	ScanID string       `json:"scan_id"`
 	Items  []TopFixItem `json:"items"`
-	Limit  int         `json:"limit"`
+	Limit  int          `json:"limit"`
 }
 
 // TopFixItem extends a table row with a transparent priority score and short reason string.
@@ -127,12 +131,12 @@ type RemediationGroupsResponse struct {
 }
 
 type RemediationGroupItem struct {
-	Key                    string  `json:"key"`
-	Label                  string  `json:"label"`
-	Why                    string  `json:"why"`
-	FindingCount           int     `json:"finding_count"`
+	Key                     string  `json:"key"`
+	Label                   string  `json:"label"`
+	Why                     string  `json:"why"`
+	FindingCount            int     `json:"finding_count"`
 	TotalMonthlyRiskCostUSD float64 `json:"total_monthly_risk_cost_usd"`
-	TopExample             string  `json:"top_example,omitempty"`
+	TopExample              string  `json:"top_example,omitempty"`
 }
 
 type PaginationMeta struct {
@@ -160,11 +164,13 @@ type FindingsAppliedFilter struct {
 
 // FindingListItem is optimized for table/card/list rendering.
 type FindingListItem struct {
-	ID                   string  `json:"id"`
-	Title                string  `json:"title"`
-	Severity             string  `json:"severity"`
-	Module               string  `json:"module"`
-	Claimability         string  `json:"claimability"`
+	ID           string `json:"id"`
+	Title        string `json:"title"`
+	Severity     string `json:"severity"`
+	Module       string `json:"module"`
+	Claimability string `json:"claimability"`
+	// PrincipalID is a stable encoded principal root id for blast-radius principal routes.
+	PrincipalID          string  `json:"principal_id,omitempty"`
 	AffectedARN          string  `json:"affected_arn"`
 	AccountID            string  `json:"account_id"`
 	AccountName          string  `json:"account_name,omitempty"`
@@ -194,6 +200,7 @@ type FindingDetailItem struct {
 type TrustDisplay struct {
 	RoleARN              string                       `json:"role_arn,omitempty"`
 	RoleName             string                       `json:"role_name,omitempty"`
+	PrincipalID          string                       `json:"principal_id,omitempty"`
 	ExternalPrincipal    string                       `json:"external_principal,omitempty"`
 	PrincipalType        string                       `json:"principal_type,omitempty"`
 	ExternalAccountID    string                       `json:"external_account_id,omitempty"`

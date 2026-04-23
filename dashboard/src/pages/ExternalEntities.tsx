@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { formatQueryError } from "../api/httpError";
 import type { ExternalEntitiesQueryParams, ExternalEntityRow } from "../api/types";
 import { PageHeader } from "../components/PageHeader";
@@ -242,6 +242,9 @@ export function ExternalEntitiesPage() {
               : ""}
             .
           </p>
+          <p className="cr-helper text-xs">
+            Blast radius uses entity context; principal blast uses the underlying principal identity when derivable.
+          </p>
 
           {pagination && pagination.total_items === 0 ? (
             <StatePanel intent="empty" title="No external entities">
@@ -308,7 +311,10 @@ export function ExternalEntitiesPage() {
               </thead>
               <tbody>
                 {entityItems.map((row) => (
-                  <tr key={`${row.external_principal}|${row.principal_type}|${row.external_account_id}`} className="hs-interactive-row border-b border-slate-100 dark:border-slate-800/80">
+                  <tr
+                    key={row.entity_id || `${row.external_principal}|${row.principal_type}|${row.external_account_id}`}
+                    className="hs-interactive-row border-b border-slate-100 dark:border-slate-800/80"
+                  >
                     <td className="px-3 py-2 font-mono text-xs text-slate-800 dark:text-slate-200">
                       {shortenArn(row.external_principal, 36, 16)}
                     </td>
@@ -329,13 +335,36 @@ export function ExternalEntitiesPage() {
                       {formatCount(row.external_access_finding_count)}
                     </td>
                     <td className="px-3 py-2">
-                      <button
-                        type="button"
-                        onClick={() => goToFindingsForRow(row)}
-                        className="hs-focus-ring text-xs font-medium text-cyan-700 hover:underline dark:text-cyan-400"
-                      >
-                        Matching findings
-                      </button>
+                      <div className="flex flex-col items-start gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => goToFindingsForRow(row)}
+                          className="hs-focus-ring text-xs font-medium text-cyan-700 hover:underline dark:text-cyan-400"
+                        >
+                          Matching findings
+                        </button>
+                        {selectedScanId && row.entity_id ? (
+                          <Link
+                            to={`/blast-explorer?scan=${encodeURIComponent(selectedScanId)}&entity=${encodeURIComponent(
+                              row.entity_id
+                            )}&mode=blast_radius`}
+                            className="hs-focus-ring text-xs font-medium text-amber-800 hover:underline dark:text-amber-300/90"
+                          >
+                            View blast radius
+                          </Link>
+                        ) : null}
+                        {selectedScanId && row.principal_id ? (
+                          <Link
+                            to={`/blast-explorer?scan=${encodeURIComponent(selectedScanId)}&principal=${encodeURIComponent(
+                              row.principal_id
+                            )}&mode=blast_radius`}
+                            className="hs-focus-ring text-xs font-medium text-violet-700 hover:underline dark:text-violet-300"
+                            title="Open blast radius from principal identity"
+                          >
+                            Open as principal blast
+                          </Link>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))}

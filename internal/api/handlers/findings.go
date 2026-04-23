@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"cloudrift/internal/api/schema"
+	"cloudrift/internal/blastradius"
 	"cloudrift/internal/models"
 	"cloudrift/internal/scans"
 )
@@ -52,15 +53,15 @@ func ListFindings(outputDir string) http.HandlerFunc {
 		}
 
 		filters := schema.FindingsAppliedFilter{
-			Severity:              strings.TrimSpace(r.URL.Query().Get("severity")),
-			Module:                strings.TrimSpace(r.URL.Query().Get("module")),
-			AccountID:             strings.TrimSpace(r.URL.Query().Get("account_id")),
-			Claimability:          strings.TrimSpace(r.URL.Query().Get("claimability")),
-			Search:                strings.TrimSpace(r.URL.Query().Get("search")),
-			TrustClassification:   strings.TrimSpace(r.URL.Query().Get("trust_classification")),
-			PrincipalType:         strings.TrimSpace(r.URL.Query().Get("principal_type")),
-			ExternalPrincipal:     strings.TrimSpace(r.URL.Query().Get("external_principal")),
-			ExternalAccountID:     strings.TrimSpace(r.URL.Query().Get("external_account_id")),
+			Severity:            strings.TrimSpace(r.URL.Query().Get("severity")),
+			Module:              strings.TrimSpace(r.URL.Query().Get("module")),
+			AccountID:           strings.TrimSpace(r.URL.Query().Get("account_id")),
+			Claimability:        strings.TrimSpace(r.URL.Query().Get("claimability")),
+			Search:              strings.TrimSpace(r.URL.Query().Get("search")),
+			TrustClassification: strings.TrimSpace(r.URL.Query().Get("trust_classification")),
+			PrincipalType:       strings.TrimSpace(r.URL.Query().Get("principal_type")),
+			ExternalPrincipal:   strings.TrimSpace(r.URL.Query().Get("external_principal")),
+			ExternalAccountID:   strings.TrimSpace(r.URL.Query().Get("external_account_id")),
 		}
 		if b := parseQueryBoolTrueOnly(r, "trust_stale"); b != nil {
 			filters.TrustStale = b
@@ -205,12 +206,14 @@ func matchesSearch(finding models.Finding, search string) bool {
 }
 
 func toFindingListItem(finding models.Finding) schema.FindingListItem {
+	pType := principalTypeForFinding(finding)
 	return schema.FindingListItem{
 		ID:                   finding.ID,
 		Title:                finding.Title,
 		Severity:             strings.ToLower(string(finding.Severity)),
 		Module:               strings.ToLower(string(finding.Module)),
 		Claimability:         strings.ToLower(string(finding.Claimability)),
+		PrincipalID:          blastradius.EncodePrincipalID(finding.AffectedARN, pType, finding.AccountID),
 		AffectedARN:          finding.AffectedARN,
 		AccountID:            finding.AccountID,
 		AccountName:          finding.AccountName,
@@ -252,6 +255,9 @@ func toTrustDisplay(evidence map[string]any) *schema.TrustDisplay {
 		AdminEvalState:    strEvidence(evidence, "admin_eval_state"),
 		ActivityStatus:    strEvidence(evidence, "activity_status"),
 	}
+	if td.RoleARN != "" {
+		td.PrincipalID = blastradius.EncodePrincipalID(td.RoleARN, trustPrincipalType(td), "")
+	}
 	if v, ok := intEvidence(evidence, "days_since_used"); ok {
 		td.DaysSinceUsed = &v
 	}
@@ -260,6 +266,30 @@ func toTrustDisplay(evidence map[string]any) *schema.TrustDisplay {
 	}
 	td.PermissionVisibility = toPermissionVisibilityDisplay(evidence["permission_visibility"])
 	return td
+}
+
+func principalTypeForFinding(f models.Finding) string {
+	t := strings.TrimSpace(strEvidence(f.Evidence, "principal_type"))
+	if t != "" {
+		return t
+	}
+	if strings.Contains(strings.ToLower(f.AffectedARN), ":role/") {
+		return "role"
+	}
+	return "principal"
+}
+
+func trustPrincipalType(t *schema.TrustDisplay) string {
+	if t == nil {
+		return "principal"
+	}
+	if strings.TrimSpace(t.PrincipalType) != "" {
+		return t.PrincipalType
+	}
+	if strings.Contains(strings.ToLower(t.RoleARN), ":role/") {
+		return "role"
+	}
+	return "principal"
 }
 
 func toPermissionVisibilityDisplay(raw any) *schema.PermissionVisibilityDisplay {

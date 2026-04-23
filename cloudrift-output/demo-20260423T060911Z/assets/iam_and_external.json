@@ -1,0 +1,1263 @@
+[
+  {
+    "arn": "arn:aws:iam::111111111111:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111111",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111111:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111111",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111112:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111112",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111112:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111112",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111113:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111113",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111113:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111113",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111114:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111114",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111114:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111114",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111115:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111115",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111115:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111115",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111116:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111116",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111116:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111116",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111117:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111117",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111117:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111117",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111118:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111118",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111118:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111118",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111119:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111119",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111119:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111119",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111120:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111120",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111120:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111120",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111121:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111121",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111121:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111121",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111122:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111122",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111122:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111122",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111123:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111123",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111123:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111123",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111124:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111124",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111124:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111124",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111125:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111125",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111125:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111125",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111126:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111126",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111126:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111126",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111127:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111127",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111127:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111127",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111128:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111128",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111128:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111128",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111129:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111129",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111129:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111129",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111130:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111130",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111130:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111130",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111131:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111131",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111131:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111131",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111132:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111132",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111132:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111132",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111133:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111133",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111133:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111133",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111134:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111134",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111134:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111134",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111135:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111135",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111135:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111135",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111136:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111136",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111136:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111136",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111137:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111137",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111137:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111137",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111138:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111138",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111138:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111138",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111139:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111139",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111139:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111139",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111140:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111140",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111140:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111140",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111141:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111141",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111141:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111141",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111142:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111142",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111142:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111142",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111143:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111143",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111143:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111143",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111144:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111144",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111144:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111144",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111145:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111145",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111145:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111145",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111146:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111146",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111146:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111146",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111147:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111147",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111147:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111147",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111148:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111148",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111148:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111148",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111149:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111149",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111149:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111149",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111150:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111150",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111150:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111150",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111151:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111151",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111151:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111151",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111152:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111152",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111152:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111152",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111153:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111153",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111153:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111153",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111154:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111154",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111154:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111154",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111155:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111155",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111155:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111155",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111156:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111156",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111156:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111156",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111157:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111157",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111157:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111157",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111158:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111158",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111158:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111158",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111159:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111159",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111159:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111159",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111160:role/AppOperatorRole",
+    "asset_type": "iam_role",
+    "name": "AppOperatorRole",
+    "account_id": "111111111160",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111160:role/ReadOnlyAuditRole",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAuditRole",
+    "account_id": "111111111160",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111111:role/VendorAccessRole",
+    "asset_type": "iam_role",
+    "name": "VendorAccessRole",
+    "account_id": "111111111111",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::222222222222:role/BreakGlassRole",
+    "asset_type": "iam_role",
+    "name": "BreakGlassRole",
+    "account_id": "222222222222",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111111:role/IntegrationRole",
+    "asset_type": "iam_role",
+    "name": "IntegrationRole",
+    "account_id": "111111111111",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::333333333333:role/ReadOnlyAudit",
+    "asset_type": "iam_role",
+    "name": "ReadOnlyAudit",
+    "account_id": "333333333333",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::111111111111:role/OidcDevRole",
+    "asset_type": "iam_role",
+    "name": "OidcDevRole",
+    "account_id": "111111111111",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::333333333333:role/SamlBillingRole",
+    "asset_type": "iam_role",
+    "name": "SamlBillingRole",
+    "account_id": "333333333333",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:aws:iam::222222222222:role/OpsSupportRole",
+    "asset_type": "iam_role",
+    "name": "OpsSupportRole",
+    "account_id": "222222222222",
+    "region": "global",
+    "properties": {
+      "path": "/"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:cloudrift:external-principal:::aws_account/YXJuOmF3czppYW06Ojk5OTk5OTk5OTk5OTpyb290",
+    "asset_type": "external_principal",
+    "name": "arn:aws:iam::999999999999:root",
+    "account_id": "111111111111",
+    "region": "global",
+    "properties": {
+      "principal_type": "aws_account",
+      "principal_value": "arn:aws:iam::999999999999:root"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:cloudrift:external-principal:::aws_account/YXJuOmF3czppYW06Ojg4ODg4ODg4ODg4ODpyb290",
+    "asset_type": "external_principal",
+    "name": "arn:aws:iam::888888888888:root",
+    "account_id": "222222222222",
+    "region": "global",
+    "properties": {
+      "principal_type": "aws_account",
+      "principal_value": "arn:aws:iam::888888888888:root"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:cloudrift:external-principal:::aws_account/YXJuOmF3czppYW06OjIyMjIyMjIyMjIyMjpyb290",
+    "asset_type": "external_principal",
+    "name": "arn:aws:iam::222222222222:root",
+    "account_id": "111111111111",
+    "region": "global",
+    "properties": {
+      "principal_type": "aws_account",
+      "principal_value": "arn:aws:iam::222222222222:root"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:cloudrift:external-principal:::aws_account/YXJuOmF3czppYW06OjQ0NDQ0NDQ0NDQ0NDpyb290",
+    "asset_type": "external_principal",
+    "name": "arn:aws:iam::444444444444:root",
+    "account_id": "333333333333",
+    "region": "global",
+    "properties": {
+      "principal_type": "aws_account",
+      "principal_value": "arn:aws:iam::444444444444:root"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:cloudrift:external-principal:::oidc/aHR0cHM6Ly9kZXYub2t0YS5jb20vb2F1dGgyL2RlZmF1bHQ",
+    "asset_type": "external_principal",
+    "name": "https://dev.okta.com/oauth2/default",
+    "account_id": "111111111111",
+    "region": "global",
+    "properties": {
+      "principal_type": "oidc",
+      "principal_value": "https://dev.okta.com/oauth2/default"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:cloudrift:external-principal:::saml/YXJuOmF3czppYW06OjAwMDAwMDAwMDAwMDpzYW1sLXByb3ZpZGVyL0NvcnBTQU1M",
+    "asset_type": "external_principal",
+    "name": "arn:aws:iam::000000000000:saml-provider/CorpSAML",
+    "account_id": "333333333333",
+    "region": "global",
+    "properties": {
+      "principal_type": "saml",
+      "principal_value": "arn:aws:iam::000000000000:saml-provider/CorpSAML"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  },
+  {
+    "arn": "arn:cloudrift:external-principal:::unknown/YXJuOmF3czppYW06OjU1NTU1NTU1NTU1NTpyb290",
+    "asset_type": "external_principal",
+    "name": "arn:aws:iam::555555555555:root",
+    "account_id": "222222222222",
+    "region": "global",
+    "properties": {
+      "principal_type": "unknown",
+      "principal_value": "arn:aws:iam::555555555555:root"
+    },
+    "scan_id": "demo-20260423T060911Z"
+  }
+]

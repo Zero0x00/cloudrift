@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { formatQueryError } from "../api/httpError";
 import type { FindingListItem, FindingsQueryParams } from "../api/types";
 import {
@@ -19,6 +20,7 @@ import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useScanContext } from "../hooks/useScanContext";
 import { useTrustReportUrlState } from "../hooks/useTrustReportUrlState";
 import { formatUsd, shortenArn } from "../lib/format";
+import { encodePrincipalId } from "../lib/principalId";
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
 const SEARCH_DEBOUNCE_MS = 350;
@@ -308,7 +310,11 @@ export function TrustReportPage() {
                           ) : detailQuery.data?.item ? (
                             <div className="space-y-4">
                               <TrustActivityCallout trust={detailQuery.data.item.trust} />
-                              <FindingDetailPanelContent item={detailQuery.data.item} />
+                              <FindingDetailPanelContent
+                                item={detailQuery.data.item}
+                                scanId={selectedScanId ?? undefined}
+                                findingId={item.id}
+                              />
                             </div>
                           ) : (
                             <StatePanel intent="empty">No detail payload.</StatePanel>
@@ -375,6 +381,7 @@ function TrustTableRow({
     (item.severity === "critical" || item.severity === "high") &&
     (activity === "Never used" || activity === "Stale") &&
     adminSignal === "Admin-like";
+  const principalId = item.principal_id || encodePrincipalId(item.affected_arn || "", "role", item.account_id || "");
 
   return (
     <tr
@@ -403,6 +410,14 @@ function TrustTableRow({
       </td>
       <td className="max-w-[14rem] px-3 py-3 align-top font-mono text-xs text-slate-700 dark:text-slate-300 break-all" title={item.affected_arn}>
         <div>{shortenArn(item.affected_arn, 20, 16)}</div>
+        <div className="mt-1">
+          <Link
+            to={`/blast-explorer?scan=${encodeURIComponent(scanId)}&principal=${encodeURIComponent(principalId)}&mode=blast_radius`}
+            className="text-[11px] text-cyan-700 hover:underline dark:text-cyan-400"
+          >
+            Blast radius
+          </Link>
+        </div>
         <div className="mt-1 flex flex-wrap items-center gap-1">
           <CachedPermissionTierChip scanId={scanId} findingId={item.id} />
           <span className="hs-chip-compact border-slate-300/80 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">

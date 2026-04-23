@@ -21,5 +21,17 @@ export const queryKeys = {
   alertCatalog: () => ["alerts", "catalog"] as const,
   alertRouting: () => ["alerts", "routing"] as const,
   alertRules: () => ["alerts", "rules"] as const,
-  alertEvents: (limit: number) => ["alerts", "events", limit] as const
+  alertEvents: (limit: number) => ["alerts", "events", limit] as const,
+  blastSummary: (scanId: string | null, findingId: string | null, mode: string) =>
+    ["blast-radius", "summary", scanId, findingId, mode] as const,
+  blastExplorer: (scanId: string | null, findingId: string | null, mode: string) =>
+    ["blast-radius", "explorer", scanId, findingId, mode] as const,
+  entityBlastSummary: (scanId: string | null, entityId: string | null, mode: string) =>
+    ["blast-radius", "entity-summary", scanId, entityId, mode] as const,
+  entityBlastExplorer: (scanId: string | null, entityId: string | null, mode: string) =>
+    ["blast-radius", "entity-explorer", scanId, entityId, mode] as const,
+  principalBlastSummary: (scanId: string | null, principalId: string | null, mode: string) =>
+    ["blast-radius", "principal-summary", scanId, principalId, mode] as const,
+  principalBlastExplorer: (scanId: string | null, principalId: string | null, mode: string) =>
+    ["blast-radius", "principal-explorer", scanId, principalId, mode] as const
 };

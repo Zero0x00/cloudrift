@@ -91,8 +91,9 @@ Open `http://127.0.0.1:8080` (optional `?scan_id=<id>`). Routes:
 | `/triage` | Findings view in triage mode (same data, alternate layout) |
 | `/accounts` | Per-account rollups |
 | `/diff` | Compare two scans |
-| `/trust-report` | Trust-focused view for `external_access` findings |
-| `/external-entities` | Entity-centric table: rollups matching `GET /api/scans/{id}/external-entities` |
+| `/trust-report` | Trust-focused view for `external_access` findings, including principal blast entry points |
+| `/external-entities` | Entity-centric table: rollups matching `GET /api/scans/{id}/external-entities`, with **entity blast** and conditional **principal blast** actions |
+| `/blast-explorer` | Focused 3D blast explorer for finding-root, entity-root, and principal-root views (`mode=blast_radius|attack_path`) |
 | `/alerting` | Security-ops **alert rules** (Slack webhooks), evaluation preview, test send, and **event history** (persisted to `{output_dir}/_alerting/`) |
 
 **Theme + readability:** The SPA supports **light** and **dark** themes. Use the header control to toggle; preference is stored in the browser as `localStorage` key `cloudrift-dashboard-theme` (default **dark**). Current UI tokens are tuned for dark-mode contrast (helper text, table headers, subtle borders, legend labels, and focus-visible rings) so dashboard surfaces remain readable in both themes.
@@ -119,6 +120,44 @@ MATCH (f:Finding) WHERE f.scan_id = $scan RETURN f.id, f.title, f.severity LIMIT
 
 Vectors: index name `finding_embeddings` (384 dimensions, cosine) per `internal/graph/schema.go`. If `query` returns index-missing hints, apply `graph.SchemaStatements()` DDL and re-export with embeddings populated.
 
+#### Graph-optional runtime behavior
+
+- Neo4j is a **power feature**, not a hard dependency for dashboard/API core surfaces.
+- If Neo4j is not configured, unreachable, or a scan has no graph projection:
+  - non-graph pages continue to work normally;
+  - blast-radius summary/explorer endpoints return structured responses with `graph_available: false`;
+  - clients should read `graph_unavailable_reason` and render an unavailable state (instead of failing).
+- Blast-radius uses bounded, curated payloads (small node/edge caps) and does **not** expose raw graph dumps.
+
+#### Minimal local Neo4j setup (dev)
+
+```bash
+# pick a password for local dev
+export CLOUDRIFT_NEO4J_PASSWORD='change-me-dev-only'
+
+# run neo4j 5 locally
+docker run --name cloudrift-neo4j -p 7474:7474 -p 7687:7687 \
+  -e NEO4J_AUTH=neo4j/${CLOUDRIFT_NEO4J_PASSWORD} \
+  -d neo4j:5
+```
+
+`cloudrift.toml`:
+
+```toml
+[neo4j]
+uri = "bolt://127.0.0.1:7687"
+username = "neo4j"
+password_env = "CLOUDRIFT_NEO4J_PASSWORD"
+```
+
+Then:
+
+```bash
+cloudrift demo generate --neo4j
+# or
+cloudrift scan --neo4j
+```
+
 ---
 
 ## API overview
@@ -131,6 +170,12 @@ GET /api/scans/{id}/summary
 GET /api/scans/{id}/external-entities?page=1&page_size=50
 GET /api/scans/{id}/findings?page=1&page_size=50&module=external_access
 GET /api/scans/{id}/findings/{fid}
+GET /api/scans/{id}/blast-radius/summary?finding_id=...&mode=...
+GET /api/scans/{id}/blast-radius/explorer?finding_id=...&mode=...
+GET /api/scans/{id}/external-entities/blast-radius/summary?entity_id=...&mode=...
+GET /api/scans/{id}/external-entities/blast-radius/explorer?entity_id=...&mode=...
+GET /api/scans/{id}/principals/blast-radius/summary?principal_id=...&mode=...
+GET /api/scans/{id}/principals/blast-radius/explorer?principal_id=...&mode=...
 GET /api/scans/{id}/accounts
 GET /api/scans/{id}/top-fixes?limit=25
 GET /api/scans/{id}/remediation-groups
@@ -145,6 +190,8 @@ GET /api/scan/history
 WebSocket: `GET /api/scan/progress` — scan-control progress events (`stage`, `message`, optional `scan_id`); loopback origins only.
 
 **Response shape guarantee:** List-like response fields are emitted as stable empty arrays (`[]`) rather than `null` where practical (for example: `items`, `new_findings`, `resolved_findings`, `aws_profiles`, summary external-entity arrays, scan history items). Filter/meta objects remain present where modeled in envelopes.
+
+**External entity principal rooting:** `GET /api/scans/{id}/external-entities` now includes optional `principal_id` per row when a single trusted principal identity is derivable for that entity bucket. UI uses this to show **Open as principal blast** without client-side identity reconstruction.
 
 Details, examples, and error format: [docs/TECHNICAL.md — API](docs/TECHNICAL.md#3-api-documentation).
 

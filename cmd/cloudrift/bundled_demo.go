@@ -14,11 +14,11 @@ var bundledDemoFindingsJSON []byte
 // otherwise the smaller programmatic demo set used for timestamped demo-* scans.
 func findingsForScan(scanID string) []models.Finding {
 	if scanID != "demo" {
-		return demoFindings(scanID)
+		return demoFindings(scanID, bankDemoAccounts())
 	}
 	var out []models.Finding
 	if err := json.Unmarshal(bundledDemoFindingsJSON, &out); err != nil {
-		return demoFindings(scanID)
+		return demoFindings(scanID, bankDemoAccounts())
 	}
 	for i := range out {
 		out[i].ScanID = scanID
