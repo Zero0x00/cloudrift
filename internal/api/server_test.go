@@ -21,6 +21,13 @@ func TestNewRouter_MountsAPIAndStatic(t *testing.T) {
 		t.Fatalf("expected 200 for /api/scans, got %d", apiRR.Code)
 	}
 
+	catalogReq := httptest.NewRequest(http.MethodGet, "/api/alerts/catalog", nil)
+	catalogRR := httptest.NewRecorder()
+	router.ServeHTTP(catalogRR, catalogReq)
+	if catalogRR.Code != http.StatusOK {
+		t.Fatalf("expected 200 for /api/alerts/catalog, got %d", catalogRR.Code)
+	}
+
 	staticReq := httptest.NewRequest(http.MethodGet, "/app", nil)
 	staticRR := httptest.NewRecorder()
 	router.ServeHTTP(staticRR, staticReq)

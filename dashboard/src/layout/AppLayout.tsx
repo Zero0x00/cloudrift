@@ -9,7 +9,8 @@ import {
   IconLayoutDashboard,
   IconList,
   IconScan,
-  IconShield
+  IconShield,
+  IconBell
 } from "../lib/icons";
 import { useScanContext } from "../hooks/useScanContext";
 
@@ -22,6 +23,7 @@ const staticNavItems: {
   { to: "/overview", label: "Dashboard", preserveSearch: false, Icon: IconLayoutDashboard },
   { to: "/triage", label: "Triage", preserveSearch: true, Icon: IconList },
   { to: "/scan-control", label: "Scan Control", preserveSearch: false, Icon: IconScan },
+  { to: "/alerting", label: "Alerting", preserveSearch: true, Icon: IconBell },
   { to: "/findings", label: "Findings", preserveSearch: true, Icon: IconList },
   { to: "/trust-report", label: "Access", preserveSearch: false, Icon: IconShield },
   { to: "/external-entities", label: "External entities", preserveSearch: false, Icon: IconGlobe },

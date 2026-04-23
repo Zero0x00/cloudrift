@@ -3,12 +3,14 @@ package api
 import (
 	"io/fs"
 	"net/http"
+	"os"
 	"path"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"cloudrift/internal/alerting"
 	"cloudrift/internal/api/handlers"
 )
 
@@ -26,7 +28,10 @@ func NewRouter(outputDir, configPath string, staticFS fs.FS) http.Handler {
 
 func apiRouter(outputDir, configPath string) http.Handler {
 	r := chi.NewRouter()
+	alertSvc := alerting.NewService(outputDir, strings.TrimSpace(os.Getenv("CLOUDRIFT_APP_BASE_URL")))
 	control := handlers.NewScanControlCenter(outputDir, configPath)
+	control.SetAlertService(alertSvc)
+	alertingHandler := handlers.NewAlertingHandler(outputDir, alertSvc)
 	r.Get("/scans", handlers.ListScans(outputDir))
 	r.Get("/scans/{id}/summary", handlers.GetScanSummary(outputDir))
 	r.Get("/scans/{id}/external-entities", handlers.ListExternalEntities(outputDir))
@@ -42,6 +47,18 @@ func apiRouter(outputDir, configPath string) http.Handler {
 	r.Post("/scan/start", control.StartScan())
 	r.Get("/scan/status", control.CurrentRunStatus())
 	r.Get("/scan/history", control.RunHistory())
+	r.Get("/alerts/catalog", alertingHandler.Catalog())
+	r.Get("/alerts/routing", alertingHandler.GetRoutingCatalog())
+	r.Put("/alerts/routing", alertingHandler.PutRoutingCatalog())
+	r.Get("/alerts/rules", alertingHandler.ListRules())
+	r.Get("/alerts/rules/{ruleID}", alertingHandler.GetRule())
+	r.Post("/alerts/rules", alertingHandler.CreateRule())
+	r.Put("/alerts/rules/{ruleID}", alertingHandler.UpdateRule())
+	r.Post("/alerts/rules/{ruleID}/enable", alertingHandler.EnableRule(true))
+	r.Post("/alerts/rules/{ruleID}/disable", alertingHandler.EnableRule(false))
+	r.Post("/alerts/rules/{ruleID}/preview", alertingHandler.PreviewRule())
+	r.Post("/alerts/rules/{ruleID}/test", alertingHandler.TestRule())
+	r.Get("/alerts/events", alertingHandler.ListEvents())
 	return r
 }
 

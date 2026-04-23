@@ -328,3 +328,195 @@ export interface ScanRunHistoryItem {
 export interface ScanRunHistoryResponse {
   items: ScanRunHistoryItem[];
 }
+
+/** ——— Alerting (GET/POST/PUT /api/alerts/*) ——— */
+
+export interface AlertChannel {
+  type: string;
+  display_name?: string;
+  slack_webhook_url?: string;
+}
+
+export interface AlertScope {
+  scan_ids?: string[];
+  account_ids?: string[];
+}
+
+export interface AlertThreshold {
+  count_min?: number;
+  risk_cost_usd_min?: number;
+}
+
+export interface AlertRule {
+  id: string;
+  name: string;
+  type: string;
+  enabled: boolean;
+  channel: AlertChannel;
+  scope: AlertScope;
+  threshold: AlertThreshold;
+  /** Minutes between successful automatic Slack deliveries for this rule; 0 = off. */
+  cooldown_minutes?: number;
+  /** API-computed: Slack label / webhook display name */
+  effective_destination_label?: string;
+  /** e.g. explicit_slack — team routing reserved */
+  routing_mode?: string;
+  destination_valid?: boolean;
+  last_evaluated_at?: string;
+  last_triggered_at?: string;
+  last_result?: string;
+  last_delivery_at?: string;
+  last_delivery_ok?: boolean;
+  last_delivery_error?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AlertPayload {
+  title: string;
+  severity: string;
+  summary: string;
+  bullets: string[];
+  action_label: string;
+  action_url: string;
+}
+
+export interface AlertContext {
+  scan_id: string;
+  rule_type: string;
+  signal_count: number;
+  metadata?: Record<string, unknown>;
+  payload: AlertPayload;
+}
+
+export interface AlertEvaluationRunMeta {
+  scan_input?: string;
+  used_latest_fallback?: boolean;
+}
+
+export interface AlertDestinationResolution {
+  source: string;
+  label: string;
+  detail: string;
+  valid: boolean;
+  team_id?: string;
+  resolved_account_id?: string;
+}
+
+export interface AlertTeamDestination {
+  team_id: string;
+  display_name?: string;
+  slack_webhook_url: string;
+}
+
+export interface AlertAccountTeamBinding {
+  account_id: string;
+  team_id: string;
+}
+
+export interface AlertRoutingCatalog {
+  default_team_id?: string;
+  teams?: AlertTeamDestination[];
+  account_teams?: AlertAccountTeamBinding[];
+}
+
+export interface AlertRoutingCatalogResponse {
+  catalog: AlertRoutingCatalog;
+}
+
+export interface AlertEvaluationResult {
+  rule_id: string;
+  rule_name: string;
+  rule_type: string;
+  scan_id: string;
+  triggered: boolean;
+  summary: string;
+  context: AlertContext;
+  evaluated_at: string;
+  run_meta?: AlertEvaluationRunMeta;
+  destination?: AlertDestinationResolution;
+}
+
+export interface AlertDeliveryResult {
+  provider: string;
+  channel: string;
+  attempted?: boolean;
+  success: boolean;
+  message_id?: string;
+  error?: string;
+  sent_at: string;
+}
+
+export interface AlertEvent {
+  id: string;
+  rule_id: string;
+  rule_name: string;
+  rule_type: string;
+  scan_id: string;
+  triggered: boolean;
+  summary: string;
+  payload_title?: string;
+  context: AlertContext;
+  delivery: AlertDeliveryResult;
+  provider: string;
+  channel_type: string;
+  error?: string;
+  forced_test_send?: boolean;
+  delivery_attempted?: boolean;
+  forced_test_delivery?: boolean;
+  suppressed?: boolean;
+  suppression_reason?: string;
+  suppression_until?: string;
+  cooldown_reference_event_id?: string;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface AlertRulesResponse {
+  items: AlertRule[];
+}
+
+export interface AlertRuleResponse {
+  item: AlertRule;
+}
+
+export interface AlertEventsResponse {
+  items: AlertEvent[];
+}
+
+export interface AlertSuppressionPreview {
+  cooldown_minutes: number;
+  would_suppress: boolean;
+  reason?: string;
+  active_until?: string;
+  reference_event_id?: string;
+  anchor_delivered_at?: string;
+}
+
+export interface AlertPreviewResponse {
+  result: AlertEvaluationResult;
+  scan_input?: string;
+  used_latest_fallback?: boolean;
+  suppression?: AlertSuppressionPreview;
+}
+
+export interface AlertTestResponse {
+  event: AlertEvent;
+  destination?: AlertDestinationResolution;
+  scan_input?: string;
+  used_latest_fallback?: boolean;
+  /** True when test delivery bypassed an active per-rule cooldown. */
+  cooldown_bypassed?: boolean;
+}
+
+export interface AlertCatalogType {
+  type: string;
+  label: string;
+  description: string;
+  supports_thresholds: boolean;
+}
+
+export interface AlertCatalogResponse {
+  supported_types: AlertCatalogType[];
+  supported_channels: string[];
+}

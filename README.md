@@ -55,6 +55,7 @@ Notable sections:
 - **`[cost]`** — `use_cur` for optional Cost Explorer enrichment  
 - **`[trust]`** — `approved_external_accounts`, stale/ghost day thresholds  
 - **`[output]`** — `output_dir` (default `./cloudrift-output`)  
+- **Environment:** `CLOUDRIFT_APP_BASE_URL` — optional base URL for **alert action links** in Slack (e.g. `https://your-host:8080`). Defaults to `http://127.0.0.1:8080` when unset.
 - **`[embeddings]`** (Phase 3) — **Default `provider` is `openai`** (set in `internal/config/config.go` `Default()`). That is the **only operational** embedding path today (OpenAI `text-embedding-3-small` with `dimensions=384` for Neo4j). **`provider = "local"` is planned only** (future on-box MiniLM); it is **not supported** yet and will error if embeddings are invoked. Set `OPENAI_API_KEY` (or the env name in `openai_api_key_env`) when using graph embedding features.
 
 ---
@@ -92,6 +93,7 @@ Open `http://127.0.0.1:8080` (optional `?scan_id=<id>`). Routes:
 | `/diff` | Compare two scans |
 | `/trust-report` | Trust-focused view for `external_access` findings |
 | `/external-entities` | Entity-centric table: rollups matching `GET /api/scans/{id}/external-entities` |
+| `/alerting` | Security-ops **alert rules** (Slack webhooks), evaluation preview, test send, and **event history** (persisted to `{output_dir}/_alerting/`) |
 
 **Theme + readability:** The SPA supports **light** and **dark** themes. Use the header control to toggle; preference is stored in the browser as `localStorage` key `cloudrift-dashboard-theme` (default **dark**). Current UI tokens are tuned for dark-mode contrast (helper text, table headers, subtle borders, legend labels, and focus-visible rings) so dashboard surfaces remain readable in both themes.
 
@@ -187,7 +189,7 @@ The **`reclaimable`** verdict is only valid within the **set of accounts scanned
 
 - **Packages:** Prefer keeping AWS I/O in `collectors`, pure logic in `scorers` / `validators`, HTTP in `internal/api`.
 - **Tests:** `go test ./...` includes API handler tests, scorer golden behavior, and collector fakes.
-- **Frontend:** `dashboard/` — React 18, Vite5, Tailwind (`darkMode: class`), TanStack Query; `fetch('/api/...')` assumes same origin as the Go server.
+- **Frontend:** `dashboard/` — React 18, Vite5, Tailwind (`darkMode: class`), TanStack Query; production `fetch('/api/...')` is same-origin with the Go server. **`npm run dev`** proxies `/api` to `http://127.0.0.1:8080` by default (same as `cloudrift dashboard` default port). If the API listens elsewhere, set `VITE_API_PROXY_TARGET` in `dashboard/.env.local`.
 
 ---
 
@@ -200,10 +202,14 @@ Commands to reproduce later
 Terminal 1 — backend
 
 cd /path/to/Defcon_clouddrift
-go run ./cmd/cloudrift dashboard --output-dir ./cloudrift-output --port 9090
+go run ./cmd/cloudrift dashboard --output-dir ./cloudrift-output --port 8080
 Terminal 2 — frontend
 
 cd dashboard && npm run dev
-Use the URL Vite prints (often http://localhost:5173/ or the next free port).
+Use the URL Vite prints (often http://localhost:5173/ or the next free port). `/api` is proxied to `http://127.0.0.1:8080` by default.
 
-If you want the proxy to use 8080 again, free that port and set target back to http://127.0.0.1:8080, then run the dashboard with --port 8080.
+If the API runs on another port (e.g. 9090), add `dashboard/.env.local`:
+
+```bash
+VITE_API_PROXY_TARGET=http://127.0.0.1:9090
+```

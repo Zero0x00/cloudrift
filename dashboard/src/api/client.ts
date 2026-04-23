@@ -15,7 +15,16 @@ import type {
   ScanStartRequest,
   ScanStartResponse,
   ScanSummaryResponse,
-  ValidateProfileResponse
+  ValidateProfileResponse,
+  AlertCatalogResponse,
+  AlertRoutingCatalog,
+  AlertRoutingCatalogResponse,
+  AlertEventsResponse,
+  AlertPreviewResponse,
+  AlertRule,
+  AlertRuleResponse,
+  AlertRulesResponse,
+  AlertTestResponse
 } from "./types";
 import { ApiRequestError, parseAPIErrorBody } from "./httpError";
 
@@ -123,5 +132,55 @@ export const apiClient = {
   },
   getScanRunHistory(): Promise<ScanRunHistoryResponse> {
     return fetchJSON<ScanRunHistoryResponse>("/scan/history");
+  },
+
+  getAlertCatalog(): Promise<AlertCatalogResponse> {
+    return fetchJSON<AlertCatalogResponse>("/alerts/catalog");
+  },
+  getAlertRoutingCatalog(): Promise<AlertRoutingCatalogResponse> {
+    return fetchJSON<AlertRoutingCatalogResponse>("/alerts/routing");
+  },
+  putAlertRoutingCatalog(catalog: AlertRoutingCatalog): Promise<AlertRoutingCatalogResponse> {
+    return fetchJSON<AlertRoutingCatalogResponse>("/alerts/routing", {
+      method: "PUT",
+      body: JSON.stringify({ catalog } satisfies { catalog: AlertRoutingCatalog })
+    });
+  },
+  getAlertRules(): Promise<AlertRulesResponse> {
+    return fetchJSON<AlertRulesResponse>("/alerts/rules");
+  },
+  getAlertRule(ruleId: string): Promise<AlertRuleResponse> {
+    return fetchJSON<AlertRuleResponse>(`/alerts/rules/${encodeURIComponent(ruleId)}`);
+  },
+  createAlertRule(rule: Partial<AlertRule> & { name: string; type: string }): Promise<AlertRuleResponse> {
+    return fetchJSON<AlertRuleResponse>("/alerts/rules", {
+      method: "POST",
+      body: JSON.stringify(rule)
+    });
+  },
+  updateAlertRule(ruleId: string, rule: Partial<AlertRule> & { name: string; type: string }): Promise<AlertRuleResponse> {
+    return fetchJSON<AlertRuleResponse>(`/alerts/rules/${encodeURIComponent(ruleId)}`, {
+      method: "PUT",
+      body: JSON.stringify(rule)
+    });
+  },
+  enableAlertRule(ruleId: string): Promise<AlertRuleResponse> {
+    return fetchJSON<AlertRuleResponse>(`/alerts/rules/${encodeURIComponent(ruleId)}/enable`, { method: "POST" });
+  },
+  disableAlertRule(ruleId: string): Promise<AlertRuleResponse> {
+    return fetchJSON<AlertRuleResponse>(`/alerts/rules/${encodeURIComponent(ruleId)}/disable`, { method: "POST" });
+  },
+  previewAlertRule(ruleId: string, scanId?: string): Promise<AlertPreviewResponse> {
+    const q = scanId ? `?scan_id=${encodeURIComponent(scanId)}` : "";
+    return fetchJSON<AlertPreviewResponse>(`/alerts/rules/${encodeURIComponent(ruleId)}/preview${q}`, {
+      method: "POST"
+    });
+  },
+  testAlertRule(ruleId: string, scanId?: string): Promise<AlertTestResponse> {
+    const q = scanId ? `?scan_id=${encodeURIComponent(scanId)}` : "";
+    return fetchJSON<AlertTestResponse>(`/alerts/rules/${encodeURIComponent(ruleId)}/test${q}`, { method: "POST" });
+  },
+  getAlertEvents(limit = 50): Promise<AlertEventsResponse> {
+    return fetchJSON<AlertEventsResponse>(`/alerts/events${makeQueryString({ limit })}`);
   }
 };

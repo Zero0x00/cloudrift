@@ -17,5 +17,9 @@ export const queryKeys = {
   diff: (oldScanId: string | null, newScanId: string | null) => ["diff", oldScanId, newScanId] as const,
   runtimeStatus: () => ["runtime-status"] as const,
   scanRunStatus: () => ["scan-run-status"] as const,
-  scanRunHistory: () => ["scan-run-history"] as const
+  scanRunHistory: () => ["scan-run-history"] as const,
+  alertCatalog: () => ["alerts", "catalog"] as const,
+  alertRouting: () => ["alerts", "routing"] as const,
+  alertRules: () => ["alerts", "rules"] as const,
+  alertEvents: (limit: number) => ["alerts", "events", limit] as const
 };

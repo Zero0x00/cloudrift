@@ -22,6 +22,7 @@ import (
 	"cloudrift/internal/config"
 	"cloudrift/internal/graph"
 	"cloudrift/internal/models"
+	"cloudrift/internal/alerting"
 	"cloudrift/internal/scanrun"
 	"cloudrift/internal/scans"
 )
@@ -32,6 +33,7 @@ const runHistoryLimit = 10
 type scanControlCenter struct {
 	outputDir  string
 	configPath string
+	alertSvc   *alerting.Service
 
 	mu      sync.RWMutex
 	current schema.ScanRunStatusResponse
@@ -49,6 +51,12 @@ func NewScanControlCenter(outputDir, configPath string) *scanControlCenter {
 		},
 		history: make([]schema.ScanRunHistoryItem, 0, runHistoryLimit),
 	}
+}
+
+func (s *scanControlCenter) SetAlertService(svc *alerting.Service) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.alertSvc = svc
 }
 
 func (s *scanControlCenter) RuntimeStatus() http.HandlerFunc {
@@ -211,6 +219,15 @@ func (s *scanControlCenter) runScanAsync(req schema.ScanStartRequest, cfg *confi
 		if err := exportScanToNeo4j(context.Background(), cfg, filepath.Join(s.outputDir, scanID)); err != nil {
 			s.failRun(runID, "scan completed, but Neo4j export failed")
 			return
+		}
+	}
+
+	s.mu.RLock()
+	alertSvc := s.alertSvc
+	s.mu.RUnlock()
+	if alertSvc != nil {
+		if _, err := alertSvc.EvaluateEnabledRulesForScan(scanID); err != nil {
+			// Alerting failure should not fail scan completion path.
 		}
 	}
 

@@ -1,12 +1,18 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    proxy: {
-      // Dev: run `cloudrift dashboard --port 8080` (or match target) alongside `npm run dev`
-      "/api": { target: "http://127.0.0.1:9090", changeOrigin: true }
+// Default matches `cloudrift dashboard` (--port default 8080). Override in dashboard/.env.local:
+//   VITE_API_PROXY_TARGET=http://127.0.0.1:9090
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  const apiTarget = env.VITE_API_PROXY_TARGET || "http://127.0.0.1:8080";
+
+  return {
+    plugins: [react()],
+    server: {
+      proxy: {
+        "/api": { target: apiTarget, changeOrigin: true }
+      }
     }
-  }
+  };
 });
