@@ -88,6 +88,6 @@ type BlastGraphEdge struct {
 // BlastDisplayHints nudges the camera and selection without exposing raw Cypher.
 type BlastDisplayHints struct {
 	DefaultFocusID   string   `json:"default_focus_id,omitempty"`
-	HighlightNodeIds []string `json:"highlight_node_ids,omitempty"`
-	HighlightEdgeIds []string `json:"highlight_edge_ids,omitempty"`
+	HighlightNodeIDs []string `json:"highlight_node_ids,omitempty"`
+	HighlightEdgeIDs []string `json:"highlight_edge_ids,omitempty"`
 }

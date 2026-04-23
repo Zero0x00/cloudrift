@@ -113,8 +113,8 @@ func BuildExplorerPayload(
 		Edges:   edges,
 		Display: schema.BlastDisplayHints{
 			DefaultFocusID:   focusID,
-			HighlightNodeIds: dedupeStr(highlightNodes, 20),
-			HighlightEdgeIds: highlightEdgeIds(ce, g),
+			HighlightNodeIDs: dedupeStr(highlightNodes, 20),
+			HighlightEdgeIDs: highlightEdgeIDs(ce, g),
 		},
 	}
 }
@@ -311,7 +311,7 @@ func nodeImpactScore(id string, n rawNode, g *workingGraph, critical map[string]
 	return score
 }
 
-func highlightEdgeIds(ce map[string]bool, g *workingGraph) []string {
+func highlightEdgeIDs(ce map[string]bool, g *workingGraph) []string {
 	var out []string
 	for id, on := range ce {
 		if on {

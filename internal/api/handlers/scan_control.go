@@ -18,11 +18,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 
+	"cloudrift/internal/alerting"
 	"cloudrift/internal/api/schema"
 	"cloudrift/internal/config"
 	"cloudrift/internal/graph"
 	"cloudrift/internal/models"
-	"cloudrift/internal/alerting"
 	"cloudrift/internal/scanrun"
 	"cloudrift/internal/scans"
 )
@@ -226,9 +226,8 @@ func (s *scanControlCenter) runScanAsync(req schema.ScanStartRequest, cfg *confi
 	alertSvc := s.alertSvc
 	s.mu.RUnlock()
 	if alertSvc != nil {
-		if _, err := alertSvc.EvaluateEnabledRulesForScan(scanID); err != nil {
-			// Alerting failure should not fail scan completion path.
-		}
+		// Alerting failure should not fail scan completion path.
+		_, _ = alertSvc.EvaluateEnabledRulesForScan(scanID)
 	}
 
 	s.finishRun(runID, scanID, "scan completed")

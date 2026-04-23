@@ -124,11 +124,11 @@ func (g *workingGraph) AddAccountNode(accountID string) {
 func (g *workingGraph) AddFindingNode(findingID, title, scanID, severity, affected string) {
 	id := "finding:" + findingID
 	props := map[string]any{
-		"id":            findingID,
-		"title":         title,
-		"scan_id":       scanID,
-		"severity":      severity,
-		"affected_arn":  affected,
+		"id":           findingID,
+		"title":        title,
+		"scan_id":      scanID,
+		"severity":     severity,
+		"affected_arn": affected,
 	}
 	g.addNode(id, "Finding", "finding", props)
 }
@@ -227,9 +227,10 @@ func (g *workingGraph) countReachableResources() int {
 func (g *workingGraph) countAccountsTouched() int {
 	acc := make(map[string]struct{})
 	for id, n := range g.Nodes {
-		if n.NType == "account" {
+		switch n.NType {
+		case "account":
 			acc[strings.TrimPrefix(id, "account:")] = struct{}{}
-		} else if n.NType == "asset" {
+		case "asset":
 			aid, _ := n.Props["account_id"].(string)
 			aid = strings.TrimSpace(aid)
 			if aid != "" {

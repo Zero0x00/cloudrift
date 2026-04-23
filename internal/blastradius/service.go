@@ -164,12 +164,15 @@ func (s *Service) ExternalEntityBlast(
 
 // PrincipalBlast is asset-ARN centered (usually an IAM role).
 func (s *Service) PrincipalBlast(ctx context.Context, scanID, principalARN string, mode BlastMode) (schema.BlastRadiusSummary, *workingGraph, UnavailableReason) {
+	if s == nil {
+		return BuildSummaryPayload(schema.BlastRootPrincipal, principalARN, scanID, mode, nil, "", "", PrivilegeSignals{Confidence: "none"}, false, ReasonNeo4jDisabled), nil, ReasonNeo4jDisabled
+	}
 	if strings.TrimSpace(principalARN) == "" {
 		return schema.BlastRadiusSummary{}, nil, ReasonUnknownRoot
 	}
 	_, findings, _ := scans.LoadScanArtifacts(s.OutDir, scanID)
 	principalSignals := privilegeSignalsForPrincipalRoot(findings, principalARN)
-	if s == nil || s.Driver == nil {
+	if s.Driver == nil {
 		return BuildSummaryPayload(schema.BlastRootPrincipal, principalARN, scanID, mode, nil, "", "", principalSignals, false, ReasonNeo4jDisabled), nil, ReasonNeo4jDisabled
 	}
 	g, err := expandFromAsset(ctx, s.Driver, s.DBName, principalARN, scanID, V1MaxHops, mode)

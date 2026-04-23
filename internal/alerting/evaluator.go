@@ -241,16 +241,9 @@ func (e *Evaluator) evalReclaimable(rule AlertRule, scanID string, findings []mo
 			reclaimRisk += f.MonthlyRiskCost
 		}
 	}
-	triggered := false
-	if rule.Threshold.CountMin > 0 && len(reclaimable) >= rule.Threshold.CountMin {
-		triggered = true
-	}
-	if rule.Threshold.RiskCostUSDMin > 0 && reclaimRisk >= rule.Threshold.RiskCostUSDMin {
-		triggered = true
-	}
-	if rule.Threshold.CountMin == 0 && rule.Threshold.RiskCostUSDMin == 0 {
-		triggered = len(reclaimable) > 0
-	}
+	triggered := (rule.Threshold.CountMin > 0 && len(reclaimable) >= rule.Threshold.CountMin) ||
+		(rule.Threshold.RiskCostUSDMin > 0 && reclaimRisk >= rule.Threshold.RiskCostUSDMin) ||
+		(rule.Threshold.CountMin == 0 && rule.Threshold.RiskCostUSDMin == 0 && len(reclaimable) > 0)
 
 	bullets := []string{
 		fmt.Sprintf("%d reclaimable (~$%.0f/mo modeled).", len(reclaimable), reclaimRisk),
@@ -298,7 +291,7 @@ func (e *Evaluator) evalStaleExternalPrivileged(rule AlertRule, scanID string, f
 		if !evidenceTrustVerdictStale(f.Evidence) {
 			continue
 		}
-		if !(strings.EqualFold(evidenceTrustClassification(f.Evidence), "privileged") || evidenceAdminLike(f.Evidence)) {
+		if !strings.EqualFold(evidenceTrustClassification(f.Evidence), "privileged") && !evidenceAdminLike(f.Evidence) {
 			continue
 		}
 		matches = append(matches, f)
