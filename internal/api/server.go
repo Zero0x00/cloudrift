@@ -38,7 +38,7 @@ func apiRouter(outputDir, configPath string) http.Handler {
 	cancel()
 	blast := blastradius.NewService(neo, outputDir)
 
-	alertSvc := alerting.NewService(outputDir, strings.TrimSpace(os.Getenv("CLOUDRIFT_APP_BASE_URL")))
+	alertSvc := alerting.NewService(outputDir, strings.TrimSpace(os.Getenv("CLOUDRIFT_APP_BASE_URL")), blast)
 	control := handlers.NewScanControlCenter(outputDir, configPath)
 	control.SetAlertService(alertSvc)
 	alertingHandler := handlers.NewAlertingHandler(outputDir, alertSvc)
@@ -55,6 +55,7 @@ func apiRouter(outputDir, configPath string) http.Handler {
 	r.Get("/scans/{id}/blast-radius/entity/explorer", handlers.BlastRadiusEntityExplorer(blast, outputDir))
 	r.Get("/scans/{id}/principals/blast-radius/summary", handlers.BlastRadiusPrincipalSummary(blast, outputDir))
 	r.Get("/scans/{id}/principals/blast-radius/explorer", handlers.BlastRadiusPrincipalExplorer(blast, outputDir))
+	r.Get("/scans/{id}/blast-radius/explorer/expand", handlers.BlastRadiusExplorerExpand(blast, outputDir))
 	r.Get("/scans/{id}/accounts", handlers.ListAccounts(outputDir))
 	r.Get("/diff", handlers.DiffScans(outputDir))
 	r.Get("/scan/progress", handlers.ScanProgressWS(control))

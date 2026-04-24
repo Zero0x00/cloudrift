@@ -38,6 +38,7 @@ type demoAccount struct {
 func newDemoCommand(cfgPath *string) *cobra.Command {
 	var outputDir string
 	var neo4jEnabled bool
+	var denseGraph bool
 	var fixedTimestamp string
 	var scanIDFlag string
 
@@ -67,7 +68,7 @@ func newDemoCommand(cfgPath *string) *cobra.Command {
 				now = parsed.UTC()
 			}
 
-			scanPath, err := generateDemoScan(outputDir, now, strings.TrimSpace(scanIDFlag))
+			scanPath, err := generateDemoScan(outputDir, now, strings.TrimSpace(scanIDFlag), denseGraph)
 			if err != nil {
 				return err
 			}
@@ -84,6 +85,7 @@ func newDemoCommand(cfgPath *string) *cobra.Command {
 	}
 	generateCmd.Flags().StringVar(&outputDir, "output-dir", "", "Output directory")
 	generateCmd.Flags().BoolVar(&neo4jEnabled, "neo4j", false, "Write generated demo projection to Neo4j")
+	generateCmd.Flags().BoolVar(&denseGraph, "dense", false, "Generate deterministic dense cross-account trust chains for richer blast paths")
 	generateCmd.Flags().StringVar(&fixedTimestamp, "timestamp", "", "Fixed RFC3339 timestamp (deterministic testing)")
 	generateCmd.Flags().StringVar(&scanIDFlag, "scan-id", "", "Fixed scan directory name (e.g. demo). Default: demo-<UTC timestamp>. Must satisfy safe scan id rules.")
 	_ = generateCmd.Flags().MarkHidden("timestamp")
@@ -91,7 +93,7 @@ func newDemoCommand(cfgPath *string) *cobra.Command {
 	return demoCmd
 }
 
-func generateDemoScan(outputDir string, t time.Time, fixedScanID string) (string, error) {
+func generateDemoScan(outputDir string, t time.Time, fixedScanID string, denseGraph bool) (string, error) {
 	scanID := fixedScanID
 	if scanID == "" {
 		scanID = "demo-" + t.UTC().Format(demoDirTimestampFormat)
@@ -104,7 +106,7 @@ func generateDemoScan(outputDir string, t time.Time, fixedScanID string) (string
 		return "", fmt.Errorf("create demo assets directory: %w", err)
 	}
 
-	artifacts := buildDemoArtifacts(scanID, t.UTC())
+	artifacts := buildDemoArtifacts(scanID, t.UTC(), denseGraph)
 	if err := writeJSONFile(filepath.Join(scanPath, "scan-metadata.json"), artifacts.metadata); err != nil {
 		return "", err
 	}
@@ -141,7 +143,7 @@ func writeJSONFile(path string, v any) error {
 	return nil
 }
 
-func buildDemoArtifacts(scanID string, ts time.Time) demoArtifacts {
+func buildDemoArtifacts(scanID string, ts time.Time, denseGraph bool) demoArtifacts {
 	org := bankDemoAccounts()
 	findings := findingsForScan(scanID)
 	if scanID != "demo" {
@@ -177,7 +179,7 @@ func buildDemoArtifacts(scanID string, ts time.Time) demoArtifacts {
 	}
 
 	assets := demoAssets(scanID, org)
-	relationships := demoRelationships(scanID, org)
+	relationships := demoRelationships(scanID, org, denseGraph)
 	return demoArtifacts{
 		metadata:      metadata,
 		findings:      findings,
@@ -331,7 +333,7 @@ func demoExternalPrincipal(scanID, accountID, principalType, value string) model
 	}
 }
 
-func demoRelationships(scanID string, accounts []demoAccount) []models.Relationship {
+func demoRelationships(scanID string, accounts []demoAccount, denseGraph bool) []models.Relationship {
 	rels := []models.Relationship{
 		{SourceARN: "arn:aws:route53:::hostedzone/Z1D633PJN8HTWQ/static.example.com", TargetARN: "arn:aws:s3:::old-campaign-assets", RelType: models.RelPointsTo, ScanID: scanID},
 		{SourceARN: "arn:aws:route53:::hostedzone/Z3EXAMPLE/api.legacy.corp", TargetARN: "arn:aws:cloudfront::111111111111:distribution/E123EXAMPLE", RelType: models.RelPointsTo, ScanID: scanID},
@@ -367,7 +369,56 @@ func demoRelationships(scanID string, accounts []demoAccount) []models.Relations
 			ScanID:    scanID,
 		})
 	}
+	if denseGraph {
+		rels = append(rels, denseCrossAccountTrustChains(scanID, accounts)...)
+	}
 	return rels
+}
+
+func denseCrossAccountTrustChains(scanID string, accounts []demoAccount) []models.Relationship {
+	if len(accounts) < 4 {
+		return nil
+	}
+	out := make([]models.Relationship, 0, len(accounts)*2)
+	for i := 0; i+3 < len(accounts); i += 3 {
+		a := accounts[i]
+		b := accounts[i+1]
+		c := accounts[i+2]
+		d := accounts[i+3]
+
+		// Chain 1: AppOperatorRole -> BreakGlassRole -> AppOperatorRole
+		out = append(out,
+			models.Relationship{
+				SourceARN: fmt.Sprintf("arn:aws:iam::%s:role/AppOperatorRole", a.ID),
+				TargetARN: fmt.Sprintf("arn:aws:iam::%s:role/BreakGlassRole", b.ID),
+				RelType:   models.RelTrusts,
+				ScanID:    scanID,
+			},
+			models.Relationship{
+				SourceARN: fmt.Sprintf("arn:aws:iam::%s:role/BreakGlassRole", b.ID),
+				TargetARN: fmt.Sprintf("arn:aws:iam::%s:role/AppOperatorRole", c.ID),
+				RelType:   models.RelTrusts,
+				ScanID:    scanID,
+			},
+		)
+
+		// Chain 2: IntegrationRole -> VendorAccessRole -> OpsSupportRole
+		out = append(out,
+			models.Relationship{
+				SourceARN: fmt.Sprintf("arn:aws:iam::%s:role/IntegrationRole", c.ID),
+				TargetARN: fmt.Sprintf("arn:aws:iam::%s:role/VendorAccessRole", d.ID),
+				RelType:   models.RelTrusts,
+				ScanID:    scanID,
+			},
+			models.Relationship{
+				SourceARN: fmt.Sprintf("arn:aws:iam::%s:role/VendorAccessRole", d.ID),
+				TargetARN: fmt.Sprintf("arn:aws:iam::%s:role/OpsSupportRole", a.ID),
+				RelType:   models.RelTrusts,
+				ScanID:    scanID,
+			},
+		)
+	}
+	return out
 }
 
 func externalPrincipalARNForDemo(principalType, value string) string {

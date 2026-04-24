@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
@@ -56,6 +57,42 @@ WHERE s IS NOT NULL AND e IS NOT NULL
 RETURN DISTINCT s AS src, e AS dst, type(rel) AS rel_type
 LIMIT $edge_limit
 `
+
+const cypherExpandOneHop = `
+MATCH (n)
+WHERE (
+  ($is_account = true AND n:AwsAccount AND ('account:' + n.account_id) = $node_id)
+  OR
+  ($is_account = false AND n:Asset AND n.arn = $node_id AND n.scan_id = $scan_id)
+)
+MATCH (n)-[rel]-(m)
+WHERE type(rel) IN $allowed
+  AND (m:Asset OR m:AwsAccount)
+  AND (
+    (m:Asset AND m.scan_id = $scan_id)
+    OR m:AwsAccount
+  )
+WITH rel, startNode(rel) AS sn, endNode(rel) AS en
+WITH rel, sn, en,
+  CASE
+    WHEN sn:Asset THEN sn.arn
+    WHEN sn:AwsAccount THEN 'account:' + sn.account_id
+    ELSE null
+  END AS s,
+  CASE
+    WHEN en:Asset THEN en.arn
+    WHEN en:AwsAccount THEN 'account:' + en.account_id
+    ELSE null
+  END AS e
+WHERE s IS NOT NULL AND e IS NOT NULL
+RETURN DISTINCT s AS src, e AS dst, type(rel) AS rel_type
+LIMIT $edge_limit
+`
+
+const (
+	oneHopMaxNeighbors = 8
+	oneHopRawEdgeCap   = 24
+)
 
 // expandFromAsset walks a bounded undirected pattern from one Asset in the given scan.
 func expandFromAsset(
@@ -172,6 +209,135 @@ func prioritizeAttackTriples(in []PathTriple, edgeCap int) []PathTriple {
 		res = append(res, out[i].t)
 	}
 	return res
+}
+
+func expandOneHopFromNode(
+	ctx context.Context,
+	driver neo4j.DriverWithContext,
+	database string,
+	nodeID string,
+	scanID string,
+	mode BlastMode,
+) (*workingGraph, []PathTriple, error) {
+	isAccount := strings.HasPrefix(nodeID, "account:")
+	recs, err := readList(ctx, driver, database, cypherExpandOneHop, map[string]any{
+		"node_id":    nodeID,
+		"scan_id":    scanID,
+		"allowed":    V1TraversalRels,
+		"is_account": isAccount,
+		"edge_limit": oneHopRawEdgeCap,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	triples := make([]PathTriple, 0, len(recs))
+	for _, rec := range recs {
+		if rec == nil {
+			continue
+		}
+		src, ok1 := rec.Get("src")
+		dst, ok2 := rec.Get("dst")
+		rt, ok3 := rec.Get("rel_type")
+		if !ok1 || !ok2 || !ok3 {
+			continue
+		}
+		s, _ := src.(string)
+		d, _ := dst.(string)
+		t, _ := rt.(string)
+		if s == "" || d == "" || t == "" {
+			continue
+		}
+		triples = append(triples, PathTriple{Src: s, Dst: d, Type: t})
+	}
+	triples = prioritizeOneHopTriples(nodeID, triples, mode, oneHopMaxNeighbors)
+	g := newWorkingGraph()
+	g.addTriples(triples)
+	if err := hydrateAssets(ctx, driver, database, g, scanID); err != nil {
+		return nil, nil, err
+	}
+	return g, triples, nil
+}
+
+func prioritizeOneHopTriples(focusNodeID string, in []PathTriple, mode BlastMode, maxNeighbors int) []PathTriple {
+	type scored struct {
+		t PathTriple
+		w int
+	}
+	if len(in) == 0 || maxNeighbors <= 0 {
+		return nil
+	}
+	scoredTriples := make([]scored, 0, len(in))
+	for _, t := range in {
+		if t.Src != focusNodeID && t.Dst != focusNodeID {
+			continue
+		}
+		neighbor := t.Dst
+		if t.Dst == focusNodeID {
+			neighbor = t.Src
+		}
+		w := 1 + expansionSemanticWeight(t.Type)
+		if mode == ModeAttackPath && t.Type == "TRUSTS" {
+			w += 2
+		}
+		if strings.HasPrefix(neighbor, "account:") {
+			w += 2
+		}
+		if a := accountForNode(nil, t.Src); a != "" {
+			if b := accountForNode(nil, t.Dst); b != "" && a != b {
+				w += 2
+			}
+		}
+		// Keep low-signal bookkeeping edges only when they are the only available context.
+		if t.Type == "OWNED_BY" && mode == ModeAttackPath {
+			w -= 2
+		}
+		scoredTriples = append(scoredTriples, scored{t: t, w: w})
+	}
+	sort.Slice(scoredTriples, func(i, j int) bool {
+		if scoredTriples[i].w != scoredTriples[j].w {
+			return scoredTriples[i].w > scoredTriples[j].w
+		}
+		if scoredTriples[i].t.Src != scoredTriples[j].t.Src {
+			return scoredTriples[i].t.Src < scoredTriples[j].t.Src
+		}
+		if scoredTriples[i].t.Dst != scoredTriples[j].t.Dst {
+			return scoredTriples[i].t.Dst < scoredTriples[j].t.Dst
+		}
+		return scoredTriples[i].t.Type < scoredTriples[j].t.Type
+	})
+
+	out := make([]PathTriple, 0, maxNeighbors)
+	seenNeighbors := map[string]struct{}{}
+	for _, s := range scoredTriples {
+		if len(out) >= maxNeighbors {
+			break
+		}
+		neighbor := s.t.Dst
+		if s.t.Dst == focusNodeID {
+			neighbor = s.t.Src
+		}
+		if _, ok := seenNeighbors[neighbor]; ok {
+			continue
+		}
+		seenNeighbors[neighbor] = struct{}{}
+		out = append(out, s.t)
+	}
+	return out
+}
+
+func expansionSemanticWeight(relType string) int {
+	switch relType {
+	case "TRUSTS":
+		return 10
+	case "POINTS_TO", "FRONTS":
+		return 6
+	case "USES_CERT":
+		return 3
+	case "OWNED_BY":
+		return 1
+	default:
+		return 1
+	}
 }
 
 const cypherHydrateAssets = `

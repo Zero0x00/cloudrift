@@ -84,6 +84,9 @@ func TestBuildSummaryPayload_withGraph(t *testing.T) {
 	if s.ReachableResourceCount < 1 || s.ReachableAccountsCount < 1 {
 		t.Fatalf("counts: %+v", s)
 	}
+	if s.DominantMotif != "ASSUME_ROLE" {
+		t.Fatalf("expected ASSUME_ROLE dominant motif, got %q", s.DominantMotif)
+	}
 }
 
 func TestBuildExplorerPayload_criticalHighlights(t *testing.T) {
@@ -153,6 +156,9 @@ func TestBuildSummaryPayload_escalationFromPrivilegeSignals(t *testing.T) {
 	if !strings.Contains(strings.ToLower(s.SummaryText), "privilege") {
 		t.Fatalf("expected privilege narrative, got: %s", s.SummaryText)
 	}
+	if s.DominantMotif != "IAM_WRITE" {
+		t.Fatalf("expected IAM_WRITE dominant motif from structured semantics, got %q", s.DominantMotif)
+	}
 }
 
 func TestFindingBlast_nilDriver(t *testing.T) {
@@ -209,6 +215,118 @@ func TestPrincipalBlast_nilDriver_usesEvidenceEnricher(t *testing.T) {
 	}
 	if !strings.Contains(strings.ToLower(sum.SummaryText), "confidence: high") {
 		t.Fatalf("expected confidence marker in summary text, got: %s", sum.SummaryText)
+	}
+}
+
+func TestBuildPathVariants_attackPathPrimaryAndAlternates(t *testing.T) {
+	g := newWorkingGraph()
+	g.addNode("arn:aws:iam::111111111111:role/Root", "Root", "asset", map[string]any{"asset_type": "iam_role", "account_id": "111111111111"})
+	g.addNode("arn:aws:iam::222222222222:role/Cross", "Cross", "asset", map[string]any{"asset_type": "iam_role", "account_id": "222222222222"})
+	g.addNode("arn:aws:iam::111111111111:role/LocalA", "LocalA", "asset", map[string]any{"asset_type": "iam_role", "account_id": "111111111111"})
+	g.addNode("arn:aws:iam::111111111111:role/LocalB", "LocalB", "asset", map[string]any{"asset_type": "iam_role", "account_id": "111111111111"})
+	g.addNode("arn:aws:iam::999999999999:root", "Ext", "asset", map[string]any{"asset_type": "external_principal", "account_id": "999999999999"})
+	g.addNode("arn:aws:s3:::sensitive-bucket", "Bucket", "asset", map[string]any{"asset_type": "s3_bucket", "account_id": "111111111111"})
+	g.addEdge("arn:aws:iam::111111111111:role/Root", "arn:aws:iam::222222222222:role/Cross", "TRUSTS")
+	g.addEdge("arn:aws:iam::111111111111:role/Root", "arn:aws:iam::999999999999:root", "TRUSTS")
+	g.addEdge("arn:aws:iam::111111111111:role/Root", "arn:aws:iam::111111111111:role/LocalA", "TRUSTS")
+	g.addEdge("arn:aws:iam::111111111111:role/LocalA", "arn:aws:iam::111111111111:role/LocalB", "POINTS_TO")
+	g.addEdge("arn:aws:iam::111111111111:role/LocalB", "arn:aws:s3:::sensitive-bucket", "FRONTS")
+
+	variants, selectedID, pathIDs := buildPathVariants("arn:aws:iam::111111111111:role/Root", g, ModeAttackPath)
+	if selectedID != "primary" {
+		t.Fatalf("expected primary selected id, got %q", selectedID)
+	}
+	if len(variants) < 2 || len(variants) > 3 {
+		t.Fatalf("expected 2-3 variants, got %d", len(variants))
+	}
+	if len(pathIDs) != len(variants) {
+		t.Fatalf("path id mismatch %d vs %d", len(pathIDs), len(variants))
+	}
+	if variants[0].Kind != "primary" {
+		t.Fatalf("first variant should be primary: %#v", variants[0])
+	}
+	if len(variants[1].NodeIDs) > 1 && len(variants[0].NodeIDs) > 1 && variants[1].NodeIDs[1] == variants[0].NodeIDs[1] {
+		t.Fatalf("alternate should differ by first pivot node")
+	}
+}
+
+func TestBuildPathVariants_noAlternatesForSingleBranch(t *testing.T) {
+	g := newWorkingGraph()
+	g.addNode("arn:aws:iam::111111111111:role/Root", "Root", "asset", map[string]any{"asset_type": "iam_role", "account_id": "111111111111"})
+	g.addNode("arn:aws:iam::111111111111:role/A", "A", "asset", map[string]any{"asset_type": "iam_role", "account_id": "111111111111"})
+	g.addNode("arn:aws:iam::111111111111:role/B", "B", "asset", map[string]any{"asset_type": "iam_role", "account_id": "111111111111"})
+	g.addEdge("arn:aws:iam::111111111111:role/Root", "arn:aws:iam::111111111111:role/A", "TRUSTS")
+	g.addEdge("arn:aws:iam::111111111111:role/A", "arn:aws:iam::111111111111:role/B", "POINTS_TO")
+
+	variants, _, _ := buildPathVariants("arn:aws:iam::111111111111:role/Root", g, ModeAttackPath)
+	if len(variants) != 1 {
+		t.Fatalf("expected only primary variant, got %d", len(variants))
+	}
+}
+
+func TestBuildExplorerPayload_pathVariantsAttackPathOnly(t *testing.T) {
+	g := newWorkingGraph()
+	g.addNode("arn:aws:iam::111111111111:role/Root", "Root", "asset", map[string]any{"asset_type": "iam_role", "account_id": "111111111111"})
+	g.addNode("arn:aws:iam::222222222222:role/Cross", "Cross", "asset", map[string]any{"asset_type": "iam_role", "account_id": "222222222222"})
+	g.addNode("arn:aws:iam::999999999999:root", "Ext", "asset", map[string]any{"asset_type": "external_principal", "account_id": "999999999999"})
+	g.addEdge("arn:aws:iam::111111111111:role/Root", "arn:aws:iam::222222222222:role/Cross", "TRUSTS")
+	g.addEdge("arn:aws:iam::111111111111:role/Root", "arn:aws:iam::999999999999:root", "TRUSTS")
+	sum := BuildSummaryPayload(schema.BlastRootPrincipal, "arn:aws:iam::111111111111:role/Root", "s", ModeAttackPath, g, "arn:aws:iam::111111111111:role/Root", "", PrivilegeSignals{}, true, ReasonNone)
+
+	attackPayload := BuildExplorerPayload(sum, "arn:aws:iam::111111111111:role/Root", ModeAttackPath, "", g)
+	if len(attackPayload.PathVariants) == 0 || attackPayload.SelectedPathID == "" {
+		t.Fatalf("expected path variants in attack_path mode")
+	}
+	if len(attackPayload.Display.HighlightPathIDs) == 0 {
+		t.Fatalf("expected highlight path ids in attack_path mode")
+	}
+
+	blastPayload := BuildExplorerPayload(sum, "arn:aws:iam::111111111111:role/Root", ModeBlastRadius, "", g)
+	if len(blastPayload.PathVariants) != 0 || blastPayload.SelectedPathID != "" || len(blastPayload.Display.HighlightPathIDs) != 0 {
+		t.Fatalf("expected no path variants in blast_radius mode")
+	}
+}
+
+func TestPrioritizeOneHopTriples_prefersTrustAndCapsNeighbors(t *testing.T) {
+	in := []PathTriple{
+		{Src: "arn:root", Dst: "arn:cross", Type: "TRUSTS"},
+		{Src: "arn:root", Dst: "arn:external", Type: "TRUSTS"},
+		{Src: "arn:root", Dst: "arn:local", Type: "POINTS_TO"},
+		{Src: "arn:root", Dst: "account:111111111111", Type: "OWNED_BY"},
+	}
+	got := prioritizeOneHopTriples("arn:root", in, ModeAttackPath, 2)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 neighbors, got %d", len(got))
+	}
+	for _, t3 := range got {
+		if t3.Type != "TRUSTS" {
+			t.Fatalf("expected TRUSTS-ranked neighbors first, got %#v", got)
+		}
+	}
+}
+
+func TestBuildExplorerExpansionDelta_returnsOnlyNewElements(t *testing.T) {
+	base := newWorkingGraph()
+	base.addEdge("arn:root", "arn:a", "TRUSTS")
+	base.ensureMinimalNode("arn:root")
+	base.ensureMinimalNode("arn:a")
+
+	delta := newWorkingGraph()
+	delta.addEdge("arn:root", "arn:a", "TRUSTS") // duplicate edge
+	delta.addEdge("arn:root", "arn:b", "TRUSTS") // new edge
+	delta.ensureMinimalNode("arn:root")
+	delta.ensureMinimalNode("arn:a")
+	delta.ensureMinimalNode("arn:b")
+
+	resp := BuildExplorerExpansionDelta("arn:root", base, delta, ModeAttackPath)
+	if !resp.ExpansionApplied {
+		t.Fatalf("expected applied expansion")
+	}
+	if len(resp.Edges) != 1 {
+		t.Fatalf("expected exactly one new edge, got %d", len(resp.Edges))
+	}
+	if len(resp.Nodes) != 1 || resp.Nodes[0].ID != "arn:b" {
+		t.Fatalf("expected only new node arn:b, got %#v", resp.Nodes)
 	}
 }
 

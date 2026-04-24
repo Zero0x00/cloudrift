@@ -1,0 +1,436 @@
+[
+  {
+    "source_arn": "arn:aws:route53:::hostedzone/Z1D633PJN8HTWQ/static.example.com",
+    "target_arn": "arn:aws:s3:::old-campaign-assets",
+    "rel_type": "POINTS_TO",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:route53:::hostedzone/Z3EXAMPLE/api.legacy.corp",
+    "target_arn": "arn:aws:cloudfront::111111111111:distribution/E123EXAMPLE",
+    "rel_type": "POINTS_TO",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:route53:::hostedzone/Z4EXAMPLE/cdn.partner.io",
+    "target_arn": "arn:aws:cloudfront::111111111111:distribution/E123EXAMPLE",
+    "rel_type": "POINTS_TO",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:cloudfront::111111111111:distribution/E123EXAMPLE",
+    "target_arn": "arn:aws:acm:us-east-1:111111111111:certificate/cert-123",
+    "rel_type": "USES_CERT",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:cloudfront::111111111111:distribution/E123EXAMPLE",
+    "target_arn": "arn:aws:s3:::old-campaign-assets",
+    "rel_type": "FRONTS",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111111:role/VendorAccessRole",
+    "target_arn": "arn:cloudrift:external-principal:::aws_account/YXJuOmF3czppYW06Ojk5OTk5OTk5OTk5OTpyb290",
+    "rel_type": "TRUSTS",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::222222222222:role/BreakGlassRole",
+    "target_arn": "arn:cloudrift:external-principal:::aws_account/YXJuOmF3czppYW06Ojg4ODg4ODg4ODg4ODpyb290",
+    "rel_type": "TRUSTS",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111111:role/IntegrationRole",
+    "target_arn": "arn:cloudrift:external-principal:::aws_account/YXJuOmF3czppYW06OjIyMjIyMjIyMjIyMjpyb290",
+    "rel_type": "TRUSTS",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::333333333333:role/ReadOnlyAudit",
+    "target_arn": "arn:cloudrift:external-principal:::aws_account/YXJuOmF3czppYW06OjQ0NDQ0NDQ0NDQ0NDpyb290",
+    "rel_type": "TRUSTS",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111111:role/OidcDevRole",
+    "target_arn": "arn:cloudrift:external-principal:::oidc/aHR0cHM6Ly9kZXYub2t0YS5jb20vb2F1dGgyL2RlZmF1bHQ",
+    "rel_type": "TRUSTS",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::333333333333:role/SamlBillingRole",
+    "target_arn": "arn:cloudrift:external-principal:::saml/YXJuOmF3czppYW06OjAwMDAwMDAwMDAwMDpzYW1sLXByb3ZpZGVyL0NvcnBTQU1M",
+    "rel_type": "TRUSTS",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::222222222222:role/OpsSupportRole",
+    "target_arn": "arn:cloudrift:external-principal:::unknown/YXJuOmF3czppYW06OjU1NTU1NTU1NTU1NTpyb290",
+    "rel_type": "TRUSTS",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111111:role/AppOperatorRole",
+    "target_arn": "account:111111111111",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111112:role/AppOperatorRole",
+    "target_arn": "account:111111111112",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111113:role/AppOperatorRole",
+    "target_arn": "account:111111111113",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111114:role/AppOperatorRole",
+    "target_arn": "account:111111111114",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111115:role/AppOperatorRole",
+    "target_arn": "account:111111111115",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111116:role/AppOperatorRole",
+    "target_arn": "account:111111111116",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111117:role/AppOperatorRole",
+    "target_arn": "account:111111111117",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111118:role/AppOperatorRole",
+    "target_arn": "account:111111111118",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111119:role/AppOperatorRole",
+    "target_arn": "account:111111111119",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111120:role/AppOperatorRole",
+    "target_arn": "account:111111111120",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111121:role/AppOperatorRole",
+    "target_arn": "account:111111111121",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111122:role/AppOperatorRole",
+    "target_arn": "account:111111111122",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111123:role/AppOperatorRole",
+    "target_arn": "account:111111111123",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111124:role/AppOperatorRole",
+    "target_arn": "account:111111111124",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111125:role/AppOperatorRole",
+    "target_arn": "account:111111111125",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111126:role/AppOperatorRole",
+    "target_arn": "account:111111111126",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111127:role/AppOperatorRole",
+    "target_arn": "account:111111111127",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111128:role/AppOperatorRole",
+    "target_arn": "account:111111111128",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111129:role/AppOperatorRole",
+    "target_arn": "account:111111111129",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111130:role/AppOperatorRole",
+    "target_arn": "account:111111111130",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111131:role/AppOperatorRole",
+    "target_arn": "account:111111111131",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111132:role/AppOperatorRole",
+    "target_arn": "account:111111111132",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111133:role/AppOperatorRole",
+    "target_arn": "account:111111111133",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111134:role/AppOperatorRole",
+    "target_arn": "account:111111111134",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111135:role/AppOperatorRole",
+    "target_arn": "account:111111111135",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111136:role/AppOperatorRole",
+    "target_arn": "account:111111111136",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111137:role/AppOperatorRole",
+    "target_arn": "account:111111111137",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111138:role/AppOperatorRole",
+    "target_arn": "account:111111111138",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111139:role/AppOperatorRole",
+    "target_arn": "account:111111111139",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111140:role/AppOperatorRole",
+    "target_arn": "account:111111111140",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111141:role/AppOperatorRole",
+    "target_arn": "account:111111111141",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111142:role/AppOperatorRole",
+    "target_arn": "account:111111111142",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111143:role/AppOperatorRole",
+    "target_arn": "account:111111111143",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111144:role/AppOperatorRole",
+    "target_arn": "account:111111111144",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111145:role/AppOperatorRole",
+    "target_arn": "account:111111111145",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111146:role/AppOperatorRole",
+    "target_arn": "account:111111111146",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111147:role/AppOperatorRole",
+    "target_arn": "account:111111111147",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111148:role/AppOperatorRole",
+    "target_arn": "account:111111111148",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111149:role/AppOperatorRole",
+    "target_arn": "account:111111111149",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111150:role/AppOperatorRole",
+    "target_arn": "account:111111111150",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111151:role/AppOperatorRole",
+    "target_arn": "account:111111111151",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111152:role/AppOperatorRole",
+    "target_arn": "account:111111111152",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111153:role/AppOperatorRole",
+    "target_arn": "account:111111111153",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111154:role/AppOperatorRole",
+    "target_arn": "account:111111111154",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111155:role/AppOperatorRole",
+    "target_arn": "account:111111111155",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111156:role/AppOperatorRole",
+    "target_arn": "account:111111111156",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111157:role/AppOperatorRole",
+    "target_arn": "account:111111111157",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111158:role/AppOperatorRole",
+    "target_arn": "account:111111111158",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111159:role/AppOperatorRole",
+    "target_arn": "account:111111111159",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "source_arn": "arn:aws:iam::111111111160:role/AppOperatorRole",
+    "target_arn": "account:111111111160",
+    "rel_type": "OWNED_BY",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  }
+]

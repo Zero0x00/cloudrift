@@ -132,20 +132,27 @@ function nodeColor(n: BlastGraphNode): string {
 function EdgeLine({
   e,
   a,
-  b
+  b,
+  selectedPathEdgeIDs,
+  expandedEdgeIDs
 }: {
   e: BlastGraphEdge;
   a: THREE.Vector3;
   b: THREE.Vector3;
+  selectedPathEdgeIDs: Set<string> | null;
+  expandedEdgeIDs: Set<string> | null;
 }) {
-  const crit = e.is_critical_path;
+  const inSelectedPath = selectedPathEdgeIDs ? selectedPathEdgeIDs.has(e.id) : false;
+  const isExpanded = expandedEdgeIDs ? expandedEdgeIDs.has(e.id) : false;
+  const crit = selectedPathEdgeIDs ? inSelectedPath : e.is_critical_path;
+  const muted = selectedPathEdgeIDs ? !inSelectedPath : !e.is_critical_path;
   return (
     <Line
       points={[a, b]}
-      color={crit ? "#38bdf8" : "#475569"}
-      lineWidth={crit ? 2.2 : 1}
+      color={crit ? "#38bdf8" : isExpanded ? "#67e8f9" : "#475569"}
+      lineWidth={crit ? 2.2 : isExpanded ? 1.4 : 1}
       transparent
-      opacity={crit ? 0.92 : 0.32}
+      opacity={crit ? 0.95 : muted ? 0.18 : 0.32}
     />
   );
 }
@@ -154,14 +161,22 @@ function NodeBall({
   n,
   position,
   onSelect,
-  selected
+  selected,
+  selectedPathNodeIDs,
+  expandedNodeIDs
 }: {
   n: BlastGraphNode;
   position: THREE.Vector3;
   onSelect: (id: string) => void;
   selected: boolean;
+  selectedPathNodeIDs: Set<string> | null;
+  expandedNodeIDs: Set<string> | null;
 }) {
-  const dim = !n.is_critical_path && !n.is_focus && !selected;
+  const inSelectedPath = selectedPathNodeIDs ? selectedPathNodeIDs.has(n.id) : false;
+  const isExpanded = expandedNodeIDs ? expandedNodeIDs.has(n.id) : false;
+  const dim = selectedPathNodeIDs
+    ? !inSelectedPath && !n.is_focus && !selected
+    : !n.is_critical_path && !n.is_focus && !selected;
   const col = nodeColor(n);
   const [hover, setHover] = useState(false);
   return (
@@ -177,10 +192,10 @@ function NodeBall({
       <sphereGeometry args={[n.type === "finding" ? 0.48 : 0.34, 20, 20]} />
       <meshStandardMaterial
         color={col}
-        emissive={hover || selected ? col : "#000000"}
-        emissiveIntensity={hover || selected ? 0.35 : 0}
+        emissive={hover || selected || isExpanded ? col : "#000000"}
+        emissiveIntensity={hover || selected ? 0.35 : isExpanded ? 0.14 : 0}
         transparent
-        opacity={dim ? 0.3 : 0.96}
+        opacity={dim ? 0.3 : isExpanded ? 0.98 : 0.96}
       />
     </mesh>
   );
@@ -189,14 +204,36 @@ function NodeBall({
 export type BlastExplorerCanvasProps = {
   data: BlastExplorerResponse;
   selectedNodeId: string | null;
+  selectedPathNodeIDs: string[] | null;
+  selectedPathEdgeIDs: string[] | null;
+  expandedNodeIDs: string[];
+  expandedEdgeIDs: string[];
   onSelectNode: (id: string) => void;
 };
 
-export function BlastExplorerCanvas({ data, selectedNodeId, onSelectNode }: BlastExplorerCanvasProps) {
+export function BlastExplorerCanvas({
+  data,
+  selectedNodeId,
+  selectedPathNodeIDs,
+  selectedPathEdgeIDs,
+  expandedNodeIDs,
+  expandedEdgeIDs,
+  onSelectNode
+}: BlastExplorerCanvasProps) {
   const nodes = data.nodes ?? [];
   const edges = data.edges ?? [];
   const focusId = data.display.default_focus_id || nodes.find((x) => x.is_focus)?.id;
   const blastMode = data.focus?.blast_mode ?? "blast_radius";
+  const selectedPathNodeSet = useMemo(
+    () => (selectedPathNodeIDs && selectedPathNodeIDs.length > 0 ? new Set(selectedPathNodeIDs) : null),
+    [selectedPathNodeIDs]
+  );
+  const selectedPathEdgeSet = useMemo(
+    () => (selectedPathEdgeIDs && selectedPathEdgeIDs.length > 0 ? new Set(selectedPathEdgeIDs) : null),
+    [selectedPathEdgeIDs]
+  );
+  const expandedNodeSet = useMemo(() => new Set(expandedNodeIDs), [expandedNodeIDs]);
+  const expandedEdgeSet = useMemo(() => new Set(expandedEdgeIDs), [expandedEdgeIDs]);
   const layout = useMemo(
     () => {
       if (blastMode === "attack_path") {
@@ -233,7 +270,16 @@ export function BlastExplorerCanvas({ data, selectedNodeId, onSelectNode }: Blas
           if (!a || !b) {
             return null;
           }
-          return <EdgeLine key={e.id} e={e} a={a} b={b} />;
+          return (
+            <EdgeLine
+              key={e.id}
+              e={e}
+              a={a}
+              b={b}
+              selectedPathEdgeIDs={selectedPathEdgeSet}
+              expandedEdgeIDs={expandedEdgeSet}
+            />
+          );
         })}
         {nodes.map((n) => {
           const p = layout.get(n.id);
@@ -247,6 +293,8 @@ export function BlastExplorerCanvas({ data, selectedNodeId, onSelectNode }: Blas
               position={p}
               onSelect={onSelectNode}
               selected={selectedNodeId === n.id}
+              selectedPathNodeIDs={selectedPathNodeSet}
+              expandedNodeIDs={expandedNodeSet}
             />
           );
         })}

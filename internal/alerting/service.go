@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"cloudrift/internal/blastradius"
 )
 
 type Service struct {
@@ -12,10 +14,14 @@ type Service struct {
 	providers map[ChannelType]Provider
 }
 
-func NewService(outputDir, appBaseURL string) *Service {
+func NewService(outputDir, appBaseURL string, blastSvc ...*blastradius.Service) *Service {
+	var provider BlastSummaryProvider
+	if len(blastSvc) > 0 {
+		provider = newBlastSummaryAdapter(blastSvc[0])
+	}
 	return &Service{
 		store:     NewStore(outputDir),
-		evaluator: NewEvaluator(outputDir, appBaseURL),
+		evaluator: NewEvaluator(outputDir, appBaseURL, provider),
 		providers: map[ChannelType]Provider{
 			ChannelSlackWebhook: NewSlackProvider(nil),
 		},

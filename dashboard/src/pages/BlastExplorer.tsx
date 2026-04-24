@@ -1,10 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { apiClient } from "../api/client";
 import { formatQueryError } from "../api/httpError";
 import { queryKeys } from "../api/queryKeys";
-import type { BlastGraphNode } from "../api/types";
+import type { BlastGraphEdge, BlastGraphNode } from "../api/types";
 import { BlastExplorerCanvas } from "../components/blast/BlastExplorerCanvas";
 import { PageHeader } from "../components/PageHeader";
 import { StatePanel } from "../components/StatePanel";
@@ -26,6 +26,12 @@ export function BlastExplorerPage() {
   const mode = modeFrom(sp.get("mode"));
 
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [selectedPathId, setSelectedPathId] = useState<string | null>(null);
+  const [graphNodes, setGraphNodes] = useState<BlastGraphNode[]>([]);
+  const [graphEdges, setGraphEdges] = useState<BlastGraphEdge[]>([]);
+  const [expandedNodeIds, setExpandedNodeIds] = useState<string[]>([]);
+  const [expandedEdgeIds, setExpandedEdgeIds] = useState<string[]>([]);
+  const [expandedFromNodeIds, setExpandedFromNodeIds] = useState<string[]>([]);
 
   const rootCount = Number(Boolean(finding)) + Number(Boolean(entity)) + Number(Boolean(principal));
   const byPrincipal = Boolean(principal);
@@ -48,8 +54,84 @@ export function BlastExplorerPage() {
   });
 
   const payload = q.data;
-  const nodes = payload?.nodes ?? [];
-  const edges = payload?.edges ?? [];
+  const nodes = graphNodes;
+  const edges = graphEdges;
+  const pathVariants = payload?.path_variants ?? [];
+  const showPathSwitcher = mode === "attack_path" && pathVariants.length > 1;
+  const activePath =
+    pathVariants.find((p) => p.id === selectedPathId) ??
+    pathVariants.find((p) => p.id === payload?.selected_path_id) ??
+    pathVariants[0] ??
+    null;
+
+  useEffect(() => {
+    if (!payload) {
+      setSelectedPathId(null);
+      return;
+    }
+    setGraphNodes(payload.nodes ?? []);
+    setGraphEdges(payload.edges ?? []);
+    setExpandedNodeIds([]);
+    setExpandedEdgeIds([]);
+    setExpandedFromNodeIds([]);
+    if (payload.selected_path_id) {
+      setSelectedPathId(payload.selected_path_id);
+      return;
+    }
+    setSelectedPathId(payload.path_variants?.[0]?.id ?? null);
+  }, [payload]);
+
+  const expandMutation = useMutation({
+    mutationFn: async (nodeID: string) => {
+      const rootParams = byPrincipal
+        ? { principal_id: principal }
+        : byEntity
+          ? { entity_id: entity }
+          : { finding_id: finding };
+      return apiClient.getBlastExplorerExpansion(scan, {
+        node_id: nodeID,
+        mode,
+        ...rootParams
+      });
+    },
+    onSuccess: (delta) => {
+      if (!delta.expansion_applied) {
+        return;
+      }
+      const newNodes = delta.nodes ?? [];
+      const newEdges = delta.edges ?? [];
+      setGraphNodes((prev) => {
+        const seen = new Set(prev.map((n) => n.id));
+        const add = newNodes.filter((n) => !seen.has(n.id));
+        return add.length ? [...prev, ...add] : prev;
+      });
+      setGraphEdges((prev) => {
+        const seen = new Set(prev.map((e) => e.id));
+        const add = newEdges.filter((e) => !seen.has(e.id));
+        return add.length ? [...prev, ...add] : prev;
+      });
+      setExpandedNodeIds((prev) => {
+        const merged = new Set(prev);
+        for (const n of newNodes) {
+          merged.add(n.id);
+        }
+        return Array.from(merged);
+      });
+      setExpandedEdgeIds((prev) => {
+        const merged = new Set(prev);
+        for (const e of newEdges) {
+          merged.add(e.id);
+        }
+        return Array.from(merged);
+      });
+      setExpandedFromNodeIds((prev) => {
+        const merged = new Set(prev);
+        merged.add(delta.expanded_from_node_id);
+        return Array.from(merged);
+      });
+    }
+  });
+
   const selectedNodeObj = useMemo(
     () => nodes.find((n) => n.id === selectedNode) ?? null,
     [nodes, selectedNode]
@@ -130,6 +212,10 @@ export function BlastExplorerPage() {
             <BlastExplorerCanvas
               data={{ ...payload, nodes, edges }}
               selectedNodeId={selectedNode}
+              selectedPathNodeIDs={activePath?.node_ids ?? null}
+              selectedPathEdgeIDs={activePath?.edge_ids ?? null}
+              expandedNodeIDs={expandedNodeIds}
+              expandedEdgeIDs={expandedEdgeIds}
               onSelectNode={(id) => {
                 setSelectedNode(id);
               }}
@@ -158,11 +244,49 @@ export function BlastExplorerPage() {
                   : "Impact from Finding Context"}
             </p>
             <p className="text-slate-800 dark:text-slate-200">{payload.summary.summary_text}</p>
+            {mode === "attack_path" && pathVariants.length > 1 ? (
+              <p className="text-xs text-cyan-700 dark:text-cyan-300">
+                {pathVariants.length - 1} alternate path{pathVariants.length - 1 > 1 ? "s" : ""} available
+                {pathVariants.some((v) => v.dominant_semantics?.includes("CROSS_ACCOUNT_ASSUME_ROLE"))
+                  ? "; strongest alternate includes cross-account trust."
+                  : "."}
+              </p>
+            ) : null}
             <ul className="list-inside list-disc text-xs text-slate-600 dark:text-slate-400">
               <li>Resources: {payload.summary.reachable_resource_count}</li>
               <li>Accounts: {payload.summary.reachable_accounts_count}</li>
               <li>Escalation: {payload.summary.escalation_possible ? "yes (trust/pivots or evidence)" : "not flagged"}</li>
             </ul>
+            {showPathSwitcher ? (
+              <div className="space-y-2 rounded border border-cyan-500/30 bg-cyan-500/5 p-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Chain view</h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {pathVariants.map((variant) => {
+                    const active = activePath?.id === variant.id;
+                    return (
+                      <button
+                        key={variant.id}
+                        type="button"
+                        onClick={() => setSelectedPathId(variant.id)}
+                        className={`rounded px-2 py-1 text-[11px] font-medium ${
+                          active
+                            ? "bg-cyan-500/25 text-cyan-900 dark:text-cyan-100"
+                            : "bg-slate-200/70 text-slate-700 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                        }`}
+                      >
+                        {variant.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {activePath ? (
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                    {activePath.summary}
+                    {activePath.risk_hint ? ` ${activePath.risk_hint}` : ""}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Legend</h3>
             <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-[11px] text-slate-600 dark:text-slate-400">
               <dt className="font-mono text-[10px] text-cyan-700 dark:text-cyan-300">ASSUME_ROLE</dt>
@@ -180,6 +304,37 @@ export function BlastExplorerPage() {
             </dl>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Selection</h3>
             {selectedNodeObj ? <NodeDetail n={selectedNodeObj} /> : <p className="text-xs text-slate-500">No node selected.</p>}
+            {selectedNodeObj && payload.summary.graph_available ? (
+              <div className="space-y-1">
+                <button
+                  type="button"
+                  className="rounded border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                  disabled={
+                    expandMutation.isPending ||
+                    expandedFromNodeIds.includes(selectedNodeObj.id) ||
+                    selectedNodeObj.type === "finding"
+                  }
+                  onClick={() => {
+                    if (!expandedFromNodeIds.includes(selectedNodeObj.id)) {
+                      expandMutation.mutate(selectedNodeObj.id);
+                    }
+                  }}
+                >
+                  {expandedFromNodeIds.includes(selectedNodeObj.id)
+                    ? "1-hop expansion added"
+                    : expandMutation.isPending
+                      ? "Expanding…"
+                      : "Expand 1 hop"}
+                </button>
+                {expandMutation.isSuccess && !expandMutation.data.expansion_applied ? (
+                  <p className="text-[11px] text-slate-500">
+                    {expandMutation.data.expansion_reason === "no_additional_high_signal_neighbors"
+                      ? "No additional high-signal neighbors."
+                      : "No additional expansion available."}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             {!selectedNodeObj && edges.length > 0 ? (
               <p className="text-[11px] text-slate-500">
                 Tip: select nodes in the 3D view. Edge list: {edges.length} (curated cap).

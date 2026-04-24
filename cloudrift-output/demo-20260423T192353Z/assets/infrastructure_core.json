@@ -1,0 +1,38 @@
+[
+  {
+    "arn": "arn:aws:cloudfront::111111111111:distribution/E123EXAMPLE",
+    "asset_type": "cloudfront_dist",
+    "name": "legacy-api-dist",
+    "account_id": "111111111111",
+    "region": "us-east-1",
+    "properties": null,
+    "scan_id": "demo-20260423T192353Z"
+  },
+  {
+    "arn": "arn:aws:acm:us-east-1:111111111111:certificate/cert-123",
+    "asset_type": "acm_cert",
+    "name": "legacy-api-cert",
+    "account_id": "111111111111",
+    "region": "us-east-1",
+    "properties": null,
+    "scan_id": "demo-20260423T192353Z"
+  },
+  {
+    "arn": "arn:aws:s3:::old-campaign-assets",
+    "asset_type": "s3_bucket",
+    "name": "old-campaign-assets",
+    "account_id": "111111111111",
+    "region": "us-east-1",
+    "properties": null,
+    "scan_id": "demo-20260423T192353Z"
+  },
+  {
+    "arn": "arn:aws:s3:::telemetry-archive",
+    "asset_type": "s3_bucket",
+    "name": "telemetry-archive",
+    "account_id": "222222222222",
+    "region": "us-west-2",
+    "properties": null,
+    "scan_id": "demo-20260423T192353Z"
+  }
+]

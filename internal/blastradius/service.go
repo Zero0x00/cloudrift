@@ -11,6 +11,11 @@ import (
 	"cloudrift/internal/scans"
 )
 
+type ExpansionRootContext struct {
+	RootType schema.BlastRootKind
+	RootID   string
+}
+
 // Service wires optional Neo4j read access to scan JSON. When Driver is nil, APIs still return
 // structured, explainable fallbacks.
 type Service struct {
@@ -243,4 +248,91 @@ func (s *Service) ExplorerFromPrincipalID(ctx context.Context, scanID, principal
 		focus = "principal:" + principalID
 	}
 	return BuildExplorerPayload(sum, focus, mode, "", g)
+}
+
+// ExplorerExpandOneHop returns a bounded one-hop graph delta from a node within the current root context.
+func (s *Service) ExplorerExpandOneHop(
+	ctx context.Context,
+	scanID string,
+	root ExpansionRootContext,
+	nodeID string,
+	mode BlastMode,
+) schema.BlastExplorerExpansionResponse {
+	nodeID = strings.TrimSpace(nodeID)
+	if nodeID == "" {
+		return schema.BlastExplorerExpansionResponse{
+			ExpandedFromNodeID: nodeID,
+			ExpansionApplied:   false,
+			ExpansionReason:    "invalid_node_id",
+		}
+	}
+	if s == nil || s.Driver == nil {
+		return schema.BlastExplorerExpansionResponse{
+			ExpandedFromNodeID:     nodeID,
+			ExpansionApplied:       false,
+			GraphUnavailable:       true,
+			GraphUnavailableReason: string(ReasonNeo4jDisabled),
+			ExpansionReason:        "graph_unavailable",
+		}
+	}
+	_, base, reason := s.resolveRootGraph(ctx, scanID, root, mode)
+	if base == nil {
+		return schema.BlastExplorerExpansionResponse{
+			ExpandedFromNodeID:     nodeID,
+			ExpansionApplied:       false,
+			GraphUnavailable:       true,
+			GraphUnavailableReason: string(reason),
+			ExpansionReason:        "graph_unavailable",
+		}
+	}
+	if _, ok := base.Nodes[nodeID]; !ok {
+		return schema.BlastExplorerExpansionResponse{
+			ExpandedFromNodeID: nodeID,
+			ExpansionApplied:   false,
+			ExpansionReason:    "node_not_in_root_context",
+		}
+	}
+	deltaGraph, triples, err := expandOneHopFromNode(ctx, s.Driver, s.DBName, nodeID, scanID, mode)
+	if err != nil {
+		return schema.BlastExplorerExpansionResponse{
+			ExpandedFromNodeID:     nodeID,
+			ExpansionApplied:       false,
+			GraphUnavailable:       true,
+			GraphUnavailableReason: string(ReasonNeo4jConnectError),
+			ExpansionReason:        "graph_unavailable",
+		}
+	}
+	if len(triples) == 0 {
+		return schema.BlastExplorerExpansionResponse{
+			ExpandedFromNodeID: nodeID,
+			ExpansionApplied:   false,
+			ExpansionReason:    "no_additional_high_signal_neighbors",
+		}
+	}
+	resp := BuildExplorerExpansionDelta(nodeID, base, deltaGraph, mode)
+	if !resp.ExpansionApplied {
+		resp.ExpansionReason = "no_additional_high_signal_neighbors"
+	}
+	return resp
+}
+
+func (s *Service) resolveRootGraph(
+	ctx context.Context,
+	scanID string,
+	root ExpansionRootContext,
+	mode BlastMode,
+) (schema.BlastRadiusSummary, *workingGraph, UnavailableReason) {
+	switch root.RootType {
+	case schema.BlastRootFinding:
+		sum, g, _, reason := s.FindingBlast(ctx, scanID, root.RootID, mode)
+		return sum, g, reason
+	case schema.BlastRootExternalEntity:
+		sum, g, reason := s.ExternalEntityBlast(ctx, scanID, root.RootID, mode)
+		return sum, g, reason
+	case schema.BlastRootPrincipal:
+		sum, g, reason := s.PrincipalBlastByID(ctx, scanID, root.RootID, mode)
+		return sum, g, reason
+	default:
+		return schema.BlastRadiusSummary{}, nil, ReasonUnknownRoot
+	}
 }

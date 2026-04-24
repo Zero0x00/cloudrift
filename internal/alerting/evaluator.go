@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"cloudrift/internal/blastradius"
 	"cloudrift/internal/models"
 	"cloudrift/internal/scans"
 	"cloudrift/internal/scorers"
@@ -14,14 +15,19 @@ import (
 type Evaluator struct {
 	outputDir  string
 	appBaseURL string
+	blast      BlastSummaryProvider
 }
 
-func NewEvaluator(outputDir, appBaseURL string) *Evaluator {
+func NewEvaluator(outputDir, appBaseURL string, blastProvider ...BlastSummaryProvider) *Evaluator {
 	base := strings.TrimRight(strings.TrimSpace(appBaseURL), "/")
 	if base == "" {
 		base = "http://127.0.0.1:8080"
 	}
-	return &Evaluator{outputDir: outputDir, appBaseURL: base}
+	var bp BlastSummaryProvider
+	if len(blastProvider) > 0 {
+		bp = blastProvider[0]
+	}
+	return &Evaluator{outputDir: outputDir, appBaseURL: base, blast: bp}
 }
 
 func (e *Evaluator) Evaluate(rule AlertRule, scanID string) (AlertEvaluationResult, error) {
@@ -135,14 +141,19 @@ func (e *Evaluator) evalScanCompletion(rule AlertRule, scanID string, findings [
 		ActionLabel: "Open scan overview",
 		ActionURL:   e.url("/overview", map[string]string{"scan_id": scanID, "view": "executive"}),
 	}
-	return makeResult(rule, scanID, true, payload, len(findings), map[string]any{
+	meta := map[string]any{
 		"critical_count":     critical,
 		"high_count":         high,
 		"new_count":          newCount,
 		"resolved_count":     resolvedCount,
 		"modeled_risk_usd":   currRisk,
 		"prior_modeled_risk": prevRisk,
-	}), nil
+	}
+	res := makeResult(rule, scanID, true, payload, len(findings), meta)
+	if top, ok := topFindingByPriority(filterCriticalHigh(findings)); ok {
+		res.Context.BlastSummary = e.maybeEnrichAlertWithBlast(scanID, blastradius.ModeBlastRadius, &top, &res.Context.Payload, res.Context.Metadata)
+	}
+	return res, nil
 }
 
 func (e *Evaluator) evalNewCritical(rule AlertRule, scanID string, findings []models.Finding) (AlertEvaluationResult, error) {
@@ -229,7 +240,11 @@ func (e *Evaluator) evalNewCritical(rule AlertRule, scanID string, findings []mo
 	if top, ok := topFindingByPriority(newCritical); ok {
 		meta["top_priority_score"] = scorers.PriorityScore(top)
 	}
-	return makeResult(rule, scanID, len(newCritical) > 0, payload, len(newCritical), meta), nil
+	res := makeResult(rule, scanID, len(newCritical) > 0, payload, len(newCritical), meta)
+	if top, ok := topFindingByPriority(newCritical); ok {
+		res.Context.BlastSummary = e.maybeEnrichAlertWithBlast(scanID, blastradius.ModeAttackPath, &top, &res.Context.Payload, res.Context.Metadata)
+	}
+	return res, nil
 }
 
 func (e *Evaluator) evalReclaimable(rule AlertRule, scanID string, findings []models.Finding) (AlertEvaluationResult, error) {
@@ -273,12 +288,17 @@ func (e *Evaluator) evalReclaimable(rule AlertRule, scanID string, findings []mo
 		ActionLabel: "Review reclaimable fixes",
 		ActionURL:   e.url("/findings", map[string]string{"scan_id": scanID, "claimability": "reclaimable"}),
 	}
-	return makeResult(rule, scanID, triggered, payload, len(reclaimable), map[string]any{
+	meta := map[string]any{
 		"count_min":            rule.Threshold.CountMin,
 		"risk_cost_usd_min":    rule.Threshold.RiskCostUSDMin,
 		"reclaimable_count":    len(reclaimable),
 		"reclaimable_risk_usd": reclaimRisk,
-	}), nil
+	}
+	res := makeResult(rule, scanID, triggered, payload, len(reclaimable), meta)
+	if top, ok := topFindingByPriority(reclaimable); ok && top.MonthlyRiskCost >= 50 {
+		res.Context.BlastSummary = e.maybeEnrichAlertWithBlast(scanID, blastradius.ModeBlastRadius, &top, &res.Context.Payload, res.Context.Metadata)
+	}
+	return res, nil
 }
 
 func (e *Evaluator) evalStaleExternalPrivileged(rule AlertRule, scanID string, findings []models.Finding) (AlertEvaluationResult, error) {
@@ -327,11 +347,16 @@ func (e *Evaluator) evalStaleExternalPrivileged(rule AlertRule, scanID string, f
 		ActionLabel: "Inspect external access",
 		ActionURL:   e.url("/external-entities", map[string]string{"scan_id": scanID, "has_stale_role": "true", "has_privileged_role": "true"}),
 	}
-	return makeResult(rule, scanID, triggered, payload, len(matches), map[string]any{
+	meta := map[string]any{
 		"count_min":   countMin,
 		"top_entity":  topEntity,
 		"match_count": len(matches),
-	}), nil
+	}
+	res := makeResult(rule, scanID, triggered, payload, len(matches), meta)
+	if top, ok := topFindingByPriority(matches); ok {
+		res.Context.BlastSummary = e.maybeEnrichAlertWithBlast(scanID, blastradius.ModeAttackPath, &top, &res.Context.Payload, res.Context.Metadata)
+	}
+	return res, nil
 }
 
 func (e *Evaluator) previousScanID(current string) string {
@@ -584,4 +609,14 @@ func topMapKey(counts map[string]int) string {
 		}
 	}
 	return best
+}
+
+func filterCriticalHigh(findings []models.Finding) []models.Finding {
+	out := make([]models.Finding, 0, len(findings))
+	for _, f := range findings {
+		if strings.EqualFold(string(f.Severity), "critical") || strings.EqualFold(string(f.Severity), "high") {
+			out = append(out, f)
+		}
+	}
+	return out
 }

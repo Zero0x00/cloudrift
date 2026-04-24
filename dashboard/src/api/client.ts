@@ -26,6 +26,7 @@ import type {
   AlertRulesResponse,
   AlertTestResponse,
   BlastExplorerResponse,
+  BlastExplorerExpansionResponse,
   BlastRadiusSummary
 } from "./types";
 import { ApiRequestError, parseAPIErrorBody } from "./httpError";
@@ -174,6 +175,20 @@ export const apiClient = {
         principal_id: principalId,
         ...params
       })}`
+    );
+  },
+  getBlastExplorerExpansion(
+    scanId: string,
+    params: {
+      node_id: string;
+      mode?: "blast_radius" | "attack_path";
+      finding_id?: string;
+      entity_id?: string;
+      principal_id?: string;
+    }
+  ): Promise<BlastExplorerExpansionResponse> {
+    return fetchJSON<BlastExplorerExpansionResponse>(
+      `/scans/${encodeURIComponent(scanId)}/blast-radius/explorer/expand${makeQueryString(params)}`
     );
   },
   getAccounts(scanId: string): Promise<AccountsBreakdownResponse> {

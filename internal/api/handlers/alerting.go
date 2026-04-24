@@ -513,11 +513,23 @@ func toSchemaEvent(event alerting.AlertEvent) schema.AlertEvent {
 }
 
 func schemaFromAlertContext(ctx alerting.AlertContext) schema.AlertContext {
+	var blastSummary *schema.AlertBlastSummary
+	if ctx.BlastSummary != nil {
+		blastSummary = &schema.AlertBlastSummary{
+			ReachableResources: ctx.BlastSummary.ReachableResources,
+			ReachableAccounts:  ctx.BlastSummary.ReachableAccounts,
+			EscalationPossible: ctx.BlastSummary.EscalationPossible,
+			TopAccount:         ctx.BlastSummary.TopAccount,
+			DominantMotif:      ctx.BlastSummary.DominantMotif,
+			ActionLabel:        ctx.BlastSummary.ActionLabel,
+		}
+	}
 	return schema.AlertContext{
-		ScanID:      ctx.ScanID,
-		RuleType:    string(ctx.RuleType),
-		SignalCount: ctx.SignalCount,
-		Metadata:    ctx.Metadata,
+		ScanID:       ctx.ScanID,
+		RuleType:     string(ctx.RuleType),
+		SignalCount:  ctx.SignalCount,
+		Metadata:     ctx.Metadata,
+		BlastSummary: blastSummary,
 		Payload: schema.AlertPayload{
 			Title:       ctx.Payload.Title,
 			Severity:    string(ctx.Payload.Severity),

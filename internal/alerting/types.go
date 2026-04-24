@@ -75,12 +75,22 @@ type AlertPayload struct {
 	ActionURL   string   `json:"action_url"`
 }
 
+type AlertBlastSummary struct {
+	ReachableResources int    `json:"reachable_resources"`
+	ReachableAccounts  int    `json:"reachable_accounts"`
+	EscalationPossible bool   `json:"escalation_possible"`
+	TopAccount         string `json:"top_account,omitempty"`
+	DominantMotif      string `json:"dominant_motif,omitempty"`
+	ActionLabel        string `json:"action_label,omitempty"`
+}
+
 type AlertContext struct {
-	ScanID      string         `json:"scan_id"`
-	RuleType    RuleType       `json:"rule_type"`
-	SignalCount int            `json:"signal_count"`
-	Metadata    map[string]any `json:"metadata,omitempty"`
-	Payload     AlertPayload   `json:"payload"`
+	ScanID       string             `json:"scan_id"`
+	RuleType     RuleType           `json:"rule_type"`
+	SignalCount  int                `json:"signal_count"`
+	Metadata     map[string]any     `json:"metadata,omitempty"`
+	BlastSummary *AlertBlastSummary `json:"blast_summary,omitempty"`
+	Payload      AlertPayload       `json:"payload"`
 }
 
 // EvaluationRunMeta is set by the API layer for preview/test clarity (scan resolution).

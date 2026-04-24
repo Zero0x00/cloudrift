@@ -1,0 +1,38 @@
+[
+  {
+    "arn": "arn:aws:route53:::hostedzone/Z1D633PJN8HTWQ/static.example.com",
+    "asset_type": "dns_record",
+    "name": "static.example.com",
+    "account_id": "111111111111",
+    "region": "global",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "arn": "arn:aws:route53:::hostedzone/Z2EXAMPLE/old-marketing.example.com",
+    "asset_type": "dns_record",
+    "name": "old-marketing.example.com",
+    "account_id": "111111111111",
+    "region": "global",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "arn": "arn:aws:route53:::hostedzone/Z3EXAMPLE/api.legacy.corp",
+    "asset_type": "dns_record",
+    "name": "api.legacy.corp",
+    "account_id": "111111111111",
+    "region": "global",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  },
+  {
+    "arn": "arn:aws:route53:::hostedzone/Z4EXAMPLE/cdn.partner.io",
+    "asset_type": "dns_record",
+    "name": "cdn.partner.io",
+    "account_id": "222222222222",
+    "region": "global",
+    "properties": null,
+    "scan_id": "demo-20260423T192244Z"
+  }
+]

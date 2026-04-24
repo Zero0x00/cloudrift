@@ -98,6 +98,7 @@ func BuildExplorerPayload(
 			highlightNodes = append(highlightNodes, id)
 		}
 	}
+	pathVariants, selectedPathID, highlightPathIDs := buildPathVariants(focusID, g, mode)
 	return schema.BlastExplorerResponse{
 		Focus: schema.BlastFocus{
 			RootID:      s.RootID,
@@ -111,10 +112,14 @@ func BuildExplorerPayload(
 		Summary: s,
 		Nodes:   nodes,
 		Edges:   edges,
+		// attack_path only: compact curated chain variants for fast operator comparison.
+		PathVariants:   pathVariants,
+		SelectedPathID: selectedPathID,
 		Display: schema.BlastDisplayHints{
 			DefaultFocusID:   focusID,
 			HighlightNodeIDs: dedupeStr(highlightNodes, 20),
 			HighlightEdgeIDs: highlightEdgeIDs(ce, g),
+			HighlightPathIDs: highlightPathIDs,
 		},
 	}
 }
@@ -339,4 +344,110 @@ func dedupeStr(in []string, cap int) []string {
 		}
 	}
 	return out
+}
+
+// BuildExplorerExpansionDelta builds an incremental node/edge payload for one-hop expansion.
+func BuildExplorerExpansionDelta(
+	expandedFromNodeID string,
+	base *workingGraph,
+	delta *workingGraph,
+	mode BlastMode,
+) schema.BlastExplorerExpansionResponse {
+	if delta == nil || len(delta.Edges) == 0 {
+		return schema.BlastExplorerExpansionResponse{
+			ExpandedFromNodeID: expandedFromNodeID,
+			ExpansionApplied:   false,
+		}
+	}
+	// Keep only truly new nodes/edges relative to existing base context.
+	newNodes := make(map[string]rawNode)
+	for id, n := range delta.Nodes {
+		if base == nil {
+			newNodes[id] = n
+			continue
+		}
+		if _, ok := base.Nodes[id]; !ok {
+			newNodes[id] = n
+		}
+	}
+	newEdges := make(map[string]rawEdge)
+	for id, e := range delta.Edges {
+		if base == nil {
+			newEdges[id] = e
+			continue
+		}
+		if _, ok := base.Edges[id]; !ok {
+			newEdges[id] = e
+		}
+	}
+	if len(newEdges) == 0 {
+		return schema.BlastExplorerExpansionResponse{
+			ExpandedFromNodeID: expandedFromNodeID,
+			ExpansionApplied:   false,
+		}
+	}
+
+	nodeIDs := make([]string, 0, len(newNodes))
+	for id := range newNodes {
+		nodeIDs = append(nodeIDs, id)
+	}
+	sort.Strings(nodeIDs)
+	nodes := make([]schema.BlastGraphNode, 0, len(nodeIDs))
+	for _, id := range nodeIDs {
+		n := newNodes[id]
+		st := firstStringProp(n.Props, "asset_type", "account_id", "title")
+		nodes = append(nodes, schema.BlastGraphNode{
+			ID:              id,
+			Label:           displayLabel(n),
+			Type:            n.NType,
+			Subtype:         st,
+			AccountID:       firstStringProp(n.Props, "account_id"),
+			SeverityOrTier:  firstStringProp(n.Props, "severity", "asset_type"),
+			IsFocus:         id == expandedFromNodeID,
+			IsCriticalPath:  false,
+			IsReachable:     true,
+			IsExternal:      strings.EqualFold(firstStringProp(n.Props, "asset_type"), "external_principal"),
+			ImpactScore:     nodeImpactScore(id, n, delta, map[string]bool{}),
+			DisplayNameHint: st,
+		})
+	}
+
+	edgeIDs := make([]string, 0, len(newEdges))
+	for id := range newEdges {
+		edgeIDs = append(edgeIDs, id)
+	}
+	sort.Strings(edgeIDs)
+	edges := make([]schema.BlastGraphEdge, 0, len(edgeIDs))
+	for _, id := range edgeIDs {
+		e := newEdges[id]
+		sem := semanticEdgeType(delta, e)
+		edges = append(edges, schema.BlastGraphEdge{
+			ID:             e.ID,
+			Source:         e.Src,
+			Target:         e.Tgt,
+			Type:           sem,
+			Label:          sem,
+			IsCriticalPath: mode == ModeAttackPath && (sem == "ASSUME_ROLE" || sem == "CROSS_ACCOUNT_ASSUME_ROLE" || sem == "EXTERNAL_TRUST"),
+			Explanation:    edgeExpl(sem),
+		})
+	}
+
+	newNodeIDs := make([]string, 0, len(nodes))
+	for _, n := range nodes {
+		newNodeIDs = append(newNodeIDs, n.ID)
+	}
+	newEdgeIDs := make([]string, 0, len(edges))
+	for _, e := range edges {
+		newEdgeIDs = append(newEdgeIDs, e.ID)
+	}
+	return schema.BlastExplorerExpansionResponse{
+		ExpandedFromNodeID: expandedFromNodeID,
+		ExpansionApplied:   true,
+		Nodes:              nodes,
+		Edges:              edges,
+		Display: schema.BlastDisplayHints{
+			HighlightNodeIDs: dedupeStr(newNodeIDs, 20),
+			HighlightEdgeIDs: dedupeStr(newEdgeIDs, 20),
+		},
+	}
 }

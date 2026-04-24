@@ -50,26 +50,28 @@ Optional TOML (defaults apply if missing). Search order includes `CLOUDRIFT_CONF
 
 Notable sections:
 
-- **`[aws]`** — Org role name, management profile, regions  
-- **`[scan]`** — HTTP concurrency, role assumption concurrency, timeouts  
-- **`[cost]`** — `use_cur` for optional Cost Explorer enrichment  
-- **`[trust]`** — `approved_external_accounts`, stale/ghost day thresholds  
-- **`[output]`** — `output_dir` (default `./cloudrift-output`)  
+- `**[aws]**` — Org role name, management profile, regions  
+- `**[scan]**` — HTTP concurrency, role assumption concurrency, timeouts  
+- `**[cost]**` — `use_cur` for optional Cost Explorer enrichment  
+- `**[trust]**` — `approved_external_accounts`, stale/ghost day thresholds  
+- `**[output]**` — `output_dir` (default `./cloudrift-output`)  
 - **Environment:** `CLOUDRIFT_APP_BASE_URL` — optional base URL for **alert action links** in Slack (e.g. `https://your-host:8080`). Defaults to `http://127.0.0.1:8080` when unset.
-- **`[embeddings]`** (Phase 3) — **Default `provider` is `openai`** (set in `internal/config/config.go` `Default()`). That is the **only operational** embedding path today (OpenAI `text-embedding-3-small` with `dimensions=384` for Neo4j). **`provider = "local"` is planned only** (future on-box MiniLM); it is **not supported** yet and will error if embeddings are invoked. Set `OPENAI_API_KEY` (or the env name in `openai_api_key_env`) when using graph embedding features.
+- `**[embeddings]`** (Phase 3) — **Default `provider` is `openai`** (set in `internal/config/config.go` `Default()`). That is the **only operational** embedding path today (OpenAI `text-embedding-3-small` with `dimensions=384` for Neo4j). `**provider = "local"` is planned only** (future on-box MiniLM); it is **not supported** yet and will error if embeddings are invoked. Set `OPENAI_API_KEY` (or the env name in `openai_api_key_env`) when using graph embedding features.
 
 ---
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `cloudrift scan` | Creates a new scan directory under `--output-dir` / config with `scan-metadata.json` and `findings.json`. **Current implementation writes an empty findings list**; the scoring/collection stack lives in `internal/` and is used heavily in tests—see [docs/TECHNICAL.md §2](docs/TECHNICAL.md#2-codebase-structure). Optional **`--neo4j`** exports that scan’s artifacts to Neo4j (Phase 3 projection; JSON remains source of truth). |
-| `cloudrift demo generate` | Writes a **deterministic** demo scan under `./cloudrift-output/demo-<UTC-timestamp>/`: `findings.json` (mixed severities, orphaned-edge + `external_access`), `scan-metadata.json` (counts aligned with findings), `relationships.json` (including `TRUSTS`), and `assets/*.json`. Use **`--neo4j`** to run the same Neo4j export as `scan --neo4j` after generation. Output dir: **`--output-dir`** (defaults to config / `./cloudrift-output`). |
-| `cloudrift report` | Reads `findings.json` for `--scan-id` (default `latest`) and emits `table` (stdout), `json`, `csv`, or `markdown`. Explicit scan IDs must be **path-safe** (same rules as the API); see [docs/TECHNICAL.md — Scan IDs](docs/TECHNICAL.md#scan-id-resolution-and-path-safety). |
-| `cloudrift query` | Phase 3 **retrieval-only**: embeds query text, runs hybrid vector retrieval against Neo4j for `--scan-id`, prints grounded hits plus operator notes / empty hints (**no LLM answer synthesis**). Requires Neo4j URI + credentials in config, **OpenAI** embedding key by default, vector index applied, and findings embedded in the graph. Flags: `--output-dir`, `--scan-id` (default `latest`), `--query` or positional text, `--format table|json`, `--top-k`, `--require-stored-embedding-identity`. Details: [docs/TECHNICAL.md — CLI query](docs/TECHNICAL.md#cli-cloudrift-query-phase-3). |
-| `cloudrift dashboard` | Serves REST API + embedded SPA on `--port` (default `8080`), reading scans from `--output-dir` or config. Flags: `--open`, optional `--scan-id` for the browser URL. |
-| `cloudrift version` | Prints version string. |
+
+| Command                   | Description                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cloudrift scan`          | Creates a new scan directory under `--output-dir` / config with `scan-metadata.json` and `findings.json`. **Current implementation writes an empty findings list**; the scoring/collection stack lives in `internal/` and is used heavily in tests—see [docs/TECHNICAL.md §2](docs/TECHNICAL.md#2-codebase-structure). Optional `**--neo4j`** exports that scan’s artifacts to Neo4j (Phase 3 projection; JSON remains source of truth).          |
+| `cloudrift demo generate` | Writes a **deterministic** demo scan under `./cloudrift-output/demo-<UTC-timestamp>/`: `findings.json` (mixed severities, orphaned-edge + `external_access`), `scan-metadata.json` (counts aligned with findings), `relationships.json` (including `TRUSTS`), and `assets/*.json`. Use `**--neo4j`** to run the same Neo4j export as `scan --neo4j` after generation. Add `**--dense**` to inject deterministic multi-hop, cross-account trust chains for richer blast-radius exploration. Output dir: `**--output-dir**` (defaults to config / `./cloudrift-output`). |
+| `cloudrift report`        | Reads `findings.json` for `--scan-id` (default `latest`) and emits `table` (stdout), `json`, `csv`, or `markdown`. Explicit scan IDs must be **path-safe** (same rules as the API); see [docs/TECHNICAL.md — Scan IDs](docs/TECHNICAL.md#scan-id-resolution-and-path-safety).                                                                                                                                                                     |
+| `cloudrift query`         | Phase 3 **retrieval-only**: embeds query text, runs hybrid vector retrieval against Neo4j for `--scan-id`, prints grounded hits plus operator notes / empty hints (**no LLM answer synthesis**). Requires Neo4j URI + credentials in config, **OpenAI** embedding key by default, vector index applied, and findings embedded in the graph. Flags: `--output-dir`, `--scan-id` (default `latest`), `--query` or positional text, `--format table  |
+| `cloudrift dashboard`     | Serves REST API + embedded SPA on `--port` (default `8080`), reading scans from `--output-dir` or config. Flags: `--open`, optional `--scan-id` for the browser URL.                                                                                                                                                                                                                                                                              |
+| `cloudrift version`       | Prints version string.                                                                                                                                                                                                                                                                                                                                                                                                                            |
+
 
 **API diff (not a separate CLI subcommand):** `GET /api/diff?old=…&new=…` — see technical doc.
 
@@ -83,18 +85,20 @@ Notable sections:
 
 Open `http://127.0.0.1:8080` (optional `?scan_id=<id>`). Routes:
 
-| Path | Purpose |
-|------|---------|
-| `/overview` | Product-style dashboard with in-page modes: **Executive Summary**, **High-Signal**, **Operations** (`?view=...`) and drilldowns into findings/trust/entities |
-| `/scan-control` | Start scans from the UI (profile/module/`no_http`/`neo4j`), validate AWS profile, runtime capability badges, run status + WebSocket progress (socket failure is non-fatal; polling remains active) |
-| `/findings` | Paginated findings table, filters (including **`external_principal`**, **`external_account_id`** for `external_access` drill-down) |
-| `/triage` | Findings view in triage mode (same data, alternate layout) |
-| `/accounts` | Per-account rollups |
-| `/diff` | Compare two scans |
-| `/trust-report` | Trust-focused view for `external_access` findings, including principal blast entry points |
-| `/external-entities` | Entity-centric table: rollups matching `GET /api/scans/{id}/external-entities`, with **entity blast** and conditional **principal blast** actions |
-| `/blast-explorer` | Focused 3D blast explorer for finding-root, entity-root, and principal-root views (`mode=blast_radius|attack_path`) |
-| `/alerting` | Security-ops **alert rules** (Slack webhooks), evaluation preview, test send, and **event history** (persisted to `{output_dir}/_alerting/`) |
+
+| Path                 | Purpose                                                                                                                                                                                            |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/overview`          | Product-style dashboard with in-page modes: **Executive Summary**, **High-Signal**, **Operations** (`?view=...`) and drilldowns into findings/trust/entities                                       |
+| `/scan-control`      | Start scans from the UI (profile/module/`no_http`/`neo4j`), validate AWS profile, runtime capability badges, run status + WebSocket progress (socket failure is non-fatal; polling remains active) |
+| `/findings`          | Paginated findings table, filters (including `**external_principal`**, `**external_account_id**` for `external_access` drill-down)                                                                 |
+| `/triage`            | Findings view in triage mode (same data, alternate layout)                                                                                                                                         |
+| `/accounts`          | Per-account rollups                                                                                                                                                                                |
+| `/diff`              | Compare two scans                                                                                                                                                                                  |
+| `/trust-report`      | Trust-focused view for `external_access` findings, including principal blast entry points                                                                                                          |
+| `/external-entities` | Entity-centric table: rollups matching `GET /api/scans/{id}/external-entities`, with **entity blast** and conditional **principal blast** actions                                                  |
+| `/blast-explorer`    | Focused 3D blast explorer for finding-root, entity-root, and principal-root views (`mode=blast_radius                                                                                              |
+| `/alerting`          | Security-ops **alert rules** (Slack webhooks), evaluation preview, test send, and **event history** (persisted to `{output_dir}/_alerting/`)                                                       |
+
 
 **Theme + readability:** The SPA supports **light** and **dark** themes. Use the header control to toggle; preference is stored in the browser as `localStorage` key `cloudrift-dashboard-theme` (default **dark**). Current UI tokens are tuned for dark-mode contrast (helper text, table headers, subtle borders, legend labels, and focus-visible rings) so dashboard surfaces remain readable in both themes.
 
@@ -109,8 +113,8 @@ Open `http://127.0.0.1:8080` (optional `?scan_id=<id>`). Routes:
 ### Neo4j (optional graph)
 
 1. Run Neo4j 5+ with Bolt reachable from your machine; create a database user.
-2. Set **`[neo4j]`** in TOML: `uri`, `username`, `password_env` (env var name whose value is the password). Same config keys the CLI export uses (`internal/config`).
-3. Export: `cloudrift scan --neo4j` after a scan directory exists, or **`cloudrift demo generate --neo4j`** for a sample graph.
+2. Set `**[neo4j]`** in TOML: `uri`, `username`, `password_env` (env var name whose value is the password). Same config keys the CLI export uses (`internal/config`).
+3. Export: `cloudrift scan --neo4j` after a scan directory exists, or `**cloudrift demo generate --neo4j**` for a sample graph.
 4. **Viewing data:** open **Neo4j Browser** (or Neo4j Aura workspace) → connect with the same Bolt URI and credentials → run Cypher (examples):
 
 ```cypher
@@ -153,7 +157,7 @@ password_env = "CLOUDRIFT_NEO4J_PASSWORD"
 Then:
 
 ```bash
-cloudrift demo generate --neo4j
+cloudrift demo generate --neo4j --dense
 # or
 cloudrift scan --neo4j
 ```
@@ -210,7 +214,7 @@ cloudrift-output/
 
 The dashboard and API **only read** these artifacts.
 
-**`latest`:** Resolved by newest `scan-metadata.json` **timestamp** (descending), with **directory name ascending** as a tie-break; malformed directories are skipped (`internal/scans`).
+`**latest`:** Resolved by newest `scan-metadata.json` **timestamp** (descending), with **directory name ascending** as a tie-break; malformed directories are skipped (`internal/scans`).
 
 ---
 
@@ -228,7 +232,7 @@ See [docs/iam-setup.md](docs/iam-setup.md) and `iam/stackset-template.yaml` for 
 
 ## Scope limitation
 
-The **`reclaimable`** verdict is only valid within the **set of accounts scanned**. If an account is excluded, bucket existence cross-checks may be incomplete—treat edge findings accordingly.
+The `**reclaimable`** verdict is only valid within the **set of accounts scanned**. If an account is excluded, bucket existence cross-checks may be incomplete—treat edge findings accordingly.
 
 ---
 
@@ -236,7 +240,7 @@ The **`reclaimable`** verdict is only valid within the **set of accounts scanned
 
 - **Packages:** Prefer keeping AWS I/O in `collectors`, pure logic in `scorers` / `validators`, HTTP in `internal/api`.
 - **Tests:** `go test ./...` includes API handler tests, scorer golden behavior, and collector fakes.
-- **Frontend:** `dashboard/` — React 18, Vite5, Tailwind (`darkMode: class`), TanStack Query; production `fetch('/api/...')` is same-origin with the Go server. **`npm run dev`** proxies `/api` to `http://127.0.0.1:8080` by default (same as `cloudrift dashboard` default port). If the API listens elsewhere, set `VITE_API_PROXY_TARGET` in `dashboard/.env.local`.
+- **Frontend:** `dashboard/` — React 18, Vite5, Tailwind (`darkMode: class`), TanStack Query; production `fetch('/api/...')` is same-origin with the Go server. `**npm run dev`** proxies `/api` to `http://127.0.0.1:8080` by default (same as `cloudrift dashboard` default port). If the API listens elsewhere, set `VITE_API_PROXY_TARGET` in `dashboard/.env.local`.
 
 ---
 
@@ -244,7 +248,8 @@ The **`reclaimable`** verdict is only valid within the **set of accounts scanned
 
 Version constant: `cmd/cloudrift/main.go` (`0.1.0` at time of writing). Add SPDX / license file if open-sourcing.
 
---------------------------------
+---
+
 Commands to reproduce later
 Terminal 1 — backend
 
@@ -253,10 +258,11 @@ go run ./cmd/cloudrift dashboard --output-dir ./cloudrift-output --port 8080
 Terminal 2 — frontend
 
 cd dashboard && npm run dev
-Use the URL Vite prints (often http://localhost:5173/ or the next free port). `/api` is proxied to `http://127.0.0.1:8080` by default.
+Use the URL Vite prints (often [http://localhost:5173/](http://localhost:5173/) or the next free port). `/api` is proxied to `http://127.0.0.1:8080` by default.
 
 If the API runs on another port (e.g. 9090), add `dashboard/.env.local`:
 
 ```bash
 VITE_API_PROXY_TARGET=http://127.0.0.1:9090
 ```
+

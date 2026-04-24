@@ -20,6 +20,8 @@ type BlastRadiusSummary struct {
 	TopResourceTypes       []string      `json:"top_resource_types"`
 	TopImpactedAccounts    []string      `json:"top_impacted_accounts"`
 	TopImpactedResources   []string      `json:"top_impacted_resources"`
+	// DominantMotif is a stable semantic motif for downstream consumers (alerts/UI), not inferred prose.
+	DominantMotif          string        `json:"dominant_motif,omitempty"`
 	EscalationPossible     bool          `json:"escalation_possible"`
 	SummaryText            string        `json:"summary_text"`
 	RecommendedActionLabel string        `json:"recommended_action_label"`
@@ -40,11 +42,13 @@ type BlastRadiusSummary struct {
 
 // BlastExplorerResponse is the visual explorer payload; still curated, not a raw Neo4j dump.
 type BlastExplorerResponse struct {
-	Focus   BlastFocus         `json:"focus"`
-	Summary BlastRadiusSummary `json:"summary"`
-	Nodes   []BlastGraphNode   `json:"nodes"`
-	Edges   []BlastGraphEdge   `json:"edges"`
-	Display BlastDisplayHints  `json:"display"`
+	Focus          BlastFocus         `json:"focus"`
+	Summary        BlastRadiusSummary `json:"summary"`
+	Nodes          []BlastGraphNode   `json:"nodes"`
+	Edges          []BlastGraphEdge   `json:"edges"`
+	PathVariants   []BlastPathVariant `json:"path_variants,omitempty"`
+	SelectedPathID string             `json:"selected_path_id,omitempty"`
+	Display        BlastDisplayHints  `json:"display"`
 }
 
 // BlastFocus ties the visualization to one operational story.
@@ -90,4 +94,29 @@ type BlastDisplayHints struct {
 	DefaultFocusID   string   `json:"default_focus_id,omitempty"`
 	HighlightNodeIDs []string `json:"highlight_node_ids,omitempty"`
 	HighlightEdgeIDs []string `json:"highlight_edge_ids,omitempty"`
+	HighlightPathIDs []string `json:"highlight_path_ids,omitempty"`
+}
+
+// BlastPathVariant is a compact path candidate for attack_path mode.
+type BlastPathVariant struct {
+	ID                string   `json:"id"`
+	Label             string   `json:"label"`
+	Kind              string   `json:"kind"` // "primary" | "alternate"
+	Summary           string   `json:"summary"`
+	NodeIDs           []string `json:"node_ids"`
+	EdgeIDs           []string `json:"edge_ids"`
+	DominantSemantics []string `json:"dominant_semantics,omitempty"`
+	RiskHint          string   `json:"risk_hint,omitempty"`
+}
+
+// BlastExplorerExpansionResponse returns a bounded one-hop delta for a selected node.
+type BlastExplorerExpansionResponse struct {
+	ExpandedFromNodeID     string            `json:"expanded_from_node_id"`
+	ExpansionApplied       bool              `json:"expansion_applied"`
+	ExpansionReason        string            `json:"expansion_reason,omitempty"`
+	GraphUnavailable       bool              `json:"graph_unavailable"`
+	GraphUnavailableReason string            `json:"graph_unavailable_reason,omitempty"`
+	Nodes                  []BlastGraphNode  `json:"nodes,omitempty"`
+	Edges                  []BlastGraphEdge  `json:"edges,omitempty"`
+	Display                BlastDisplayHints `json:"display,omitempty"`
 }

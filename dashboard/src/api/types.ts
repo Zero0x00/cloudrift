@@ -392,6 +392,14 @@ export interface AlertContext {
   rule_type: string;
   signal_count: number;
   metadata?: Record<string, unknown>;
+  blast_summary?: {
+    reachable_resources: number;
+    reachable_accounts: number;
+    escalation_possible: boolean;
+    top_account?: string;
+    dominant_motif?: string;
+    action_label?: string;
+  };
   payload: AlertPayload;
 }
 
@@ -541,6 +549,7 @@ export interface BlastRadiusSummary {
   top_resource_types: string[];
   top_impacted_accounts: string[];
   top_impacted_resources: string[];
+  dominant_motif?: string;
   escalation_possible: boolean;
   summary_text: string;
   recommended_action_label: string;
@@ -592,6 +601,18 @@ export interface BlastDisplayHints {
   default_focus_id?: string;
   highlight_node_ids?: string[];
   highlight_edge_ids?: string[];
+  highlight_path_ids?: string[];
+}
+
+export interface BlastPathVariant {
+  id: string;
+  label: string;
+  kind: "primary" | "alternate";
+  summary: string;
+  node_ids: string[];
+  edge_ids: string[];
+  dominant_semantics?: string[];
+  risk_hint?: string;
 }
 
 export interface BlastExplorerResponse {
@@ -599,5 +620,18 @@ export interface BlastExplorerResponse {
   summary: BlastRadiusSummary;
   nodes: BlastGraphNode[];
   edges: BlastGraphEdge[];
+  path_variants?: BlastPathVariant[];
+  selected_path_id?: string;
   display: BlastDisplayHints;
+}
+
+export interface BlastExplorerExpansionResponse {
+  expanded_from_node_id: string;
+  expansion_applied: boolean;
+  expansion_reason?: string;
+  graph_unavailable: boolean;
+  graph_unavailable_reason?: string;
+  nodes?: BlastGraphNode[];
+  edges?: BlastGraphEdge[];
+  display?: BlastDisplayHints;
 }

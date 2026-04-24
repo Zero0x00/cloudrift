@@ -129,6 +129,10 @@ export function BlastRadiusSection({ scanId, findingId, severity }: Props) {
                 edges: explorerQuery.data.edges ?? []
               }}
               selectedNodeId={selectedNodeId}
+              selectedPathNodeIDs={null}
+              selectedPathEdgeIDs={null}
+              expandedNodeIDs={[]}
+              expandedEdgeIDs={[]}
               onSelectNode={setSelectedNodeId}
             />
           ) : (

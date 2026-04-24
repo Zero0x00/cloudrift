@@ -182,3 +182,46 @@ func TestBlastRadiusPrincipalExplorer_neo4jDisabled(t *testing.T) {
 		t.Fatalf("expected graph unavailable with nil driver")
 	}
 }
+
+func TestBlastRadiusExplorerExpand_requiresRootContext(t *testing.T) {
+	dir := t.TempDir()
+	writeScan(t, dir, "scan-a", time.Now().UTC(), []models.Finding{})
+	svc := blastradius.NewService(nil, dir)
+	req := withParam(
+		httptest.NewRequest(http.MethodGet, "/api/scans/scan-a/blast-radius/explorer/expand?node_id=arn:x", nil),
+		"id", "scan-a",
+	)
+	rr := httptest.NewRecorder()
+	BlastRadiusExplorerExpand(svc, dir)(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status %d", rr.Code)
+	}
+}
+
+func TestBlastRadiusExplorerExpand_graphUnavailable(t *testing.T) {
+	dir := t.TempDir()
+	writeScan(t, dir, "scan-a", time.Now().UTC(), []models.Finding{{
+		ID:          "f1",
+		Title:       "x",
+		Severity:    models.SeverityCritical,
+		Module:      models.ModuleOrphanedEdge,
+		AffectedARN: "arn:aws:iam::1:role/R",
+	}})
+	svc := blastradius.NewService(nil, dir)
+	req := withParam(
+		httptest.NewRequest(http.MethodGet, "/api/scans/scan-a/blast-radius/explorer/expand?node_id=arn:aws:iam::1:role/R&finding_id=f1&mode=attack_path", nil),
+		"id", "scan-a",
+	)
+	rr := httptest.NewRecorder()
+	BlastRadiusExplorerExpand(svc, dir)(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status %d", rr.Code)
+	}
+	var resp schema.BlastExplorerExpansionResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if !resp.GraphUnavailable || resp.GraphUnavailableReason == "" {
+		t.Fatalf("expected graph unavailable response: %#v", resp)
+	}
+}

@@ -14,7 +14,7 @@ import (
 
 func TestGenerateDemoScan_WritesExpectedArtifacts(t *testing.T) {
 	root := t.TempDir()
-	scanPath, err := generateDemoScan(root, time.Date(2026, 4, 19, 12, 34, 56, 0, time.UTC), "")
+	scanPath, err := generateDemoScan(root, time.Date(2026, 4, 19, 12, 34, 56, 0, time.UTC), "", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestGenerateDemoScan_WritesExpectedArtifacts(t *testing.T) {
 
 func TestGenerateDemoScan_CompatibleWithGraphLoader(t *testing.T) {
 	root := t.TempDir()
-	scanPath, err := generateDemoScan(root, time.Date(2026, 4, 19, 1, 2, 3, 0, time.UTC), "")
+	scanPath, err := generateDemoScan(root, time.Date(2026, 4, 19, 1, 2, 3, 0, time.UTC), "", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,6 +110,44 @@ func TestDemoCommand_RegistersGenerateSubcommand(t *testing.T) {
 	if generate.Flags().Lookup("scan-id") == nil {
 		t.Fatal("expected demo generate to have --scan-id flag")
 	}
+	if generate.Flags().Lookup("dense") == nil {
+		t.Fatal("expected demo generate to have --dense flag")
+	}
+}
+
+func TestGenerateDemoScan_DenseAddsCrossAccountTrustChains(t *testing.T) {
+	root := t.TempDir()
+	scanPath, err := generateDemoScan(root, time.Date(2026, 4, 19, 1, 2, 3, 0, time.UTC), "demo-dense-test", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rels []models.Relationship
+	readJSON(t, filepath.Join(scanPath, "relationships.json"), &rels)
+	cross := 0
+	for _, rel := range rels {
+		if rel.RelType != models.RelTrusts {
+			continue
+		}
+		if !strings.Contains(rel.SourceARN, ":role/") || !strings.Contains(rel.TargetARN, ":role/") {
+			continue
+		}
+		srcAccount := roleAccountID(rel.SourceARN)
+		dstAccount := roleAccountID(rel.TargetARN)
+		if srcAccount != "" && dstAccount != "" && srcAccount != dstAccount {
+			cross++
+		}
+	}
+	if cross < 2 {
+		t.Fatalf("expected dense mode to create cross-account role trust edges, got %d", cross)
+	}
+}
+
+func roleAccountID(arn string) string {
+	parts := strings.Split(arn, ":")
+	if len(parts) < 6 || parts[0] != "arn" || parts[2] != "iam" {
+		return ""
+	}
+	return parts[4]
 }
 
 func readJSON(t *testing.T, path string, out any) {

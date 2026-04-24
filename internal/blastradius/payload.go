@@ -41,6 +41,7 @@ func BuildSummaryPayload(
 		TopResourceTypes:       []string{},
 		TopImpactedAccounts:    []string{},
 		TopImpactedResources:   []string{},
+		DominantMotif:          "",
 		EscalationPossible:     esc,
 		SummaryText:            "",
 		RecommendedActionLabel: defaultActionLabel(esc, graphAvailable),
@@ -48,13 +49,32 @@ func BuildSummaryPayload(
 		GraphUnavailableReason: string(reason),
 	}
 	if g != nil && graphAvailable {
+		m := detectGraphMotifs(g)
 		summary.TopResourceTypes = g.topAssetTypes(6)
 		summary.TopImpactedAccounts = topImpactedAccounts(g, 6)
 		summary.TopImpactedResources = topImpactedARNS(g, focusARN, 8, signals)
 		summary.RecommendedActionLabel = actionLabelForGraph(g, signals, esc)
+		summary.DominantMotif = dominantMotifForSummary(m, signals)
 	}
 	summary.SummaryText = buildSummaryNarrative(&summary, focusARN, focusFindingID, graphAvailable, reason, signals)
 	return summary
+}
+
+func dominantMotifForSummary(m graphMotifs, signals PrivilegeSignals) string {
+	switch {
+	case m.CrossAccountAssumeEdges > 0:
+		return "CROSS_ACCOUNT_ASSUME_ROLE"
+	case m.ExternalTrustEdges > 0:
+		return "EXTERNAL_TRUST"
+	case signals.IAMWriteAccess:
+		return "IAM_WRITE"
+	case m.TrustEdges > 0:
+		return "ASSUME_ROLE"
+	case m.BroadResourceAccess:
+		return "RESOURCE_ACCESS"
+	default:
+		return ""
+	}
 }
 
 func defaultActionLabel(esc, graphOK bool) string {

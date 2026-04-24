@@ -111,8 +111,11 @@ func formatSlackBlocks(payload AlertPayload) []map[string]any {
 		},
 	}
 	if len(payload.Bullets) > 0 {
-		parts := make([]string, 0, len(payload.Bullets))
+		parts := make([]string, 0, 3)
 		for _, b := range payload.Bullets {
+			if len(parts) >= 3 {
+				break
+			}
 			parts = append(parts, "• "+b)
 		}
 		blocks = append(blocks, map[string]any{
