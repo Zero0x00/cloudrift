@@ -16,6 +16,7 @@ import (
 	"cloudrift/internal/api/handlers"
 	"cloudrift/internal/blastradius"
 	"cloudrift/internal/config"
+	"cloudrift/internal/queryv2"
 )
 
 func NewRouter(outputDir, configPath string, staticFS fs.FS) http.Handler {
@@ -39,6 +40,8 @@ func apiRouter(outputDir, configPath string) http.Handler {
 	blast := blastradius.NewService(neo, outputDir)
 
 	alertSvc := alerting.NewService(outputDir, strings.TrimSpace(os.Getenv("CLOUDRIFT_APP_BASE_URL")), blast)
+	querySvc := queryv2.NewService(outputDir, cfg, blast)
+	queryHandler := handlers.NewQueryHandler(querySvc)
 	control := handlers.NewScanControlCenter(outputDir, configPath)
 	control.SetAlertService(alertSvc)
 	alertingHandler := handlers.NewAlertingHandler(outputDir, alertSvc)
@@ -76,6 +79,7 @@ func apiRouter(outputDir, configPath string) http.Handler {
 	r.Post("/alerts/rules/{ruleID}/preview", alertingHandler.PreviewRule())
 	r.Post("/alerts/rules/{ruleID}/test", alertingHandler.TestRule())
 	r.Get("/alerts/events", alertingHandler.ListEvents())
+	r.Post("/query", queryHandler.Query())
 	return r
 }
 
@@ -139,7 +143,11 @@ func securityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Referrer-Policy", "no-referrer")
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; frame-ancestors 'none'; base-uri 'self'")
+		// Blast explorer labels (troika text via drei) rely on a blob: worker. Allow workers from self + blob.
+		w.Header().Set(
+			"Content-Security-Policy",
+			"default-src 'self' 'unsafe-inline'; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'",
+		)
 		next.ServeHTTP(w, r)
 	})
 }

@@ -635,3 +635,44 @@ export interface BlastExplorerExpansionResponse {
   edges?: BlastGraphEdge[];
   display?: BlastDisplayHints;
 }
+
+export interface InvestigationQueryRequest {
+  query: string;
+  scan_id?: string;
+  account_id?: string;
+  mode_hint?: string;
+  top_k?: number;
+  finding_id?: string;
+  entity_id?: string;
+  principal_id?: string;
+}
+
+export interface InvestigationSupportingFact {
+  label: string;
+  value: string;
+  source: string;
+}
+
+export interface InvestigationRelatedObject {
+  type: string;
+  id: string;
+  label?: string;
+  url?: string;
+}
+
+export interface InvestigationQueryResponse {
+  answer: string;
+  answer_type: string;
+  intent: string;
+  confidence: string;
+  support_level: string;
+  scan_id?: string;
+  graph_used: boolean;
+  semantic_used: boolean;
+  domain_used: boolean;
+  supporting_facts: InvestigationSupportingFact[];
+  related_objects: InvestigationRelatedObject[];
+  recommended_actions?: string[];
+  follow_up_suggestions?: string[];
+  notes?: string[];
+}

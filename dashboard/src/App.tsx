@@ -9,6 +9,7 @@ import { ScanControlCenterPage } from "./pages/ScanControlCenter";
 import { ExternalEntitiesPage } from "./pages/ExternalEntities";
 import { TrustReportPage } from "./pages/TrustReport";
 import { AlertingPage } from "./pages/Alerting";
+import { QueryPage } from "./pages/Query";
 
 const BlastExplorerPage = lazy(async () => {
   const mod = await import("./pages/BlastExplorer");
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="/trust-report" element={<TrustReportPage />} />
         <Route path="/external-entities" element={<ExternalEntitiesPage />} />
         <Route path="/alerting" element={<AlertingPage />} />
+        <Route path="/query" element={<QueryPage />} />
         <Route
           path="/blast-explorer"
           element={

@@ -27,7 +27,9 @@ import type {
   AlertTestResponse,
   BlastExplorerResponse,
   BlastExplorerExpansionResponse,
-  BlastRadiusSummary
+  BlastRadiusSummary,
+  InvestigationQueryRequest,
+  InvestigationQueryResponse
 } from "./types";
 import { ApiRequestError, parseAPIErrorBody } from "./httpError";
 
@@ -269,5 +271,11 @@ export const apiClient = {
   },
   getAlertEvents(limit = 50): Promise<AlertEventsResponse> {
     return fetchJSON<AlertEventsResponse>(`/alerts/events${makeQueryString({ limit })}`);
+  },
+  queryInvestigation(payload: InvestigationQueryRequest): Promise<InvestigationQueryResponse> {
+    return fetchJSON<InvestigationQueryResponse>("/query", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
   }
 };

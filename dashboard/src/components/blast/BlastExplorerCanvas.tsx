@@ -1,5 +1,5 @@
 import { Canvas } from "@react-three/fiber";
-import { Line, OrbitControls } from "@react-three/drei";
+import { Html, Line, OrbitControls } from "@react-three/drei";
 import { useMemo, useState } from "react";
 import * as THREE from "three";
 import type { BlastExplorerResponse, BlastGraphEdge, BlastGraphNode } from "../../api/types";
@@ -129,6 +129,85 @@ function nodeColor(n: BlastGraphNode): string {
   return "#94a3b8";
 }
 
+function nodeTextLabel(n: BlastGraphNode): string {
+  const raw = (n.display_name_hint || n.label || n.id || "").trim();
+  if (!raw) {
+    return "node";
+  }
+  const compact =
+    raw.startsWith("arn:") && raw.includes("/")
+      ? raw.slice(raw.lastIndexOf("/") + 1)
+      : raw;
+  return compact.length > 24 ? `${compact.slice(0, 21)}...` : compact;
+}
+
+function nodeIconToken(n: BlastGraphNode): string {
+  const t = `${n.subtype || ""} ${n.label || ""} ${n.id || ""}`.toLowerCase();
+  if (n.type === "finding") {
+    return "!";
+  }
+  if (n.type === "account") {
+    return "AWS";
+  }
+  if (n.is_external || t.includes("external")) {
+    return "EXT";
+  }
+  if (t.includes("iam") || t.includes(":role/")) {
+    return "IAM";
+  }
+  if (t.includes("s3")) {
+    return "S3";
+  }
+  if (t.includes("cloudfront")) {
+    return "CF";
+  }
+  if (t.includes("route53") || t.includes("dns")) {
+    return "R53";
+  }
+  if (t.includes("acm") || t.includes("certificate") || t.includes("cert")) {
+    return "ACM";
+  }
+  return "AWS";
+}
+
+function nodeIconPath(n: BlastGraphNode): string | null {
+  const t = `${n.subtype || ""} ${n.label || ""} ${n.id || ""}`.toLowerCase();
+  if (t.includes("lambda")) {
+    return "/icons/aws/lambda.svg";
+  }
+  if (t.includes("rds")) {
+    return "/icons/aws/rds.svg";
+  }
+  if (t.includes("virtual private cloud") || t.includes("vpc")) {
+    return "/icons/aws/vpc.svg";
+  }
+  if (t.includes("load balancing") || t.includes("load balancer") || t.includes("elb") || t.includes("alb") || t.includes("nlb")) {
+    return "/icons/aws/elb.svg";
+  }
+  if (t.includes("efs")) {
+    return "/icons/aws/efs.svg";
+  }
+  if (t.includes("ec2")) {
+    return "/icons/aws/ec2.svg";
+  }
+  if (t.includes("iam") || t.includes(":role/")) {
+    return "/icons/aws/iam.svg";
+  }
+  if (t.includes("s3")) {
+    return "/icons/aws/s3.svg";
+  }
+  if (t.includes("cloudfront")) {
+    return "/icons/aws/cloudfront.svg";
+  }
+  if (t.includes("route53") || t.includes("dns")) {
+    return "/icons/aws/route53.svg";
+  }
+  if (t.includes("acm") || t.includes("certificate") || t.includes("cert")) {
+    return "/icons/aws/acm.svg";
+  }
+  return null;
+}
+
 function EdgeLine({
   e,
   a,
@@ -179,25 +258,69 @@ function NodeBall({
     : !n.is_critical_path && !n.is_focus && !selected;
   const col = nodeColor(n);
   const [hover, setHover] = useState(false);
+  const iconPath = nodeIconPath(n);
   return (
-    <mesh
-      position={position}
-      onClick={(ev) => {
-        ev.stopPropagation();
-        onSelect(n.id);
-      }}
-      onPointerOver={() => setHover(true)}
-      onPointerOut={() => setHover(false)}
-    >
-      <sphereGeometry args={[n.type === "finding" ? 0.48 : 0.34, 20, 20]} />
-      <meshStandardMaterial
-        color={col}
-        emissive={hover || selected || isExpanded ? col : "#000000"}
-        emissiveIntensity={hover || selected ? 0.35 : isExpanded ? 0.14 : 0}
-        transparent
-        opacity={dim ? 0.3 : isExpanded ? 0.98 : 0.96}
-      />
-    </mesh>
+    <group position={position}>
+      <mesh
+        onClick={(ev) => {
+          ev.stopPropagation();
+          onSelect(n.id);
+        }}
+        onPointerOver={() => setHover(true)}
+        onPointerOut={() => setHover(false)}
+      >
+        <sphereGeometry args={[n.type === "finding" ? 0.48 : 0.34, 20, 20]} />
+        <meshStandardMaterial
+          color={col}
+          emissive={hover || selected || isExpanded ? col : "#000000"}
+          emissiveIntensity={hover || selected ? 0.35 : isExpanded ? 0.14 : 0}
+          transparent
+          opacity={dim ? 0.18 : 0.34}
+        />
+      </mesh>
+      <Html center distanceFactor={14} transform={false}>
+        <button
+          type="button"
+          onClick={(ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            onSelect(n.id);
+          }}
+          className="flex select-none items-center justify-center rounded-md px-1.5 py-1 text-[10px] font-semibold text-slate-100 shadow-sm ring-1 ring-slate-200/20"
+          style={{
+            background: selected || n.is_focus ? "#0ea5e9" : col,
+            opacity: dim ? 0.45 : 0.96,
+            minWidth: n.type === "account" ? 34 : 28,
+            minHeight: 28
+          }}
+          title={n.label || n.id}
+        >
+          {iconPath ? (
+            <img
+              src={iconPath}
+              alt={nodeTextLabel(n)}
+              className="pointer-events-none h-4 w-4 object-contain"
+              draggable={false}
+            />
+          ) : (
+            nodeIconToken(n)
+          )}
+        </button>
+      </Html>
+      <Html
+        position={[0, n.type === "finding" ? 0.72 : 0.58, 0]}
+        center
+        distanceFactor={14}
+        transform={false}
+      >
+        <div
+          className="pointer-events-none select-none whitespace-nowrap rounded bg-slate-950/80 px-1.5 py-0.5 text-[10px] font-medium text-slate-200 ring-1 ring-slate-700/60"
+          style={{ color: selected || n.is_focus ? "#f8fafc" : "#cbd5e1" }}
+        >
+          {nodeTextLabel(n)}
+        </div>
+      </Html>
+    </group>
   );
 }
 

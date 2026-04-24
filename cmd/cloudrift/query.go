@@ -14,8 +14,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"cloudrift/internal/config"
+	"cloudrift/internal/blastradius"
 	"cloudrift/internal/graph"
 	"cloudrift/internal/models"
+	"cloudrift/internal/queryv2"
 )
 
 // newQueryCommand registers Phase 3 natural-language retrieval over Neo4j (no LLM synthesis).
@@ -27,6 +29,7 @@ func newQueryCommand(cfgPath *string) *cobra.Command {
 		format          string
 		topK            int
 		requireIdentity bool
+		legacyMode      bool
 	)
 
 	cmd := &cobra.Command{
@@ -63,7 +66,7 @@ exports, empty hints, probe limits, and operator notes.`),
 
 			out := cmd.OutOrStdout()
 			errOut := cmd.ErrOrStderr()
-			return runQueryCLI(cmd.Context(), cfg, queryCLIOptions{
+			opts := queryCLIOptions{
 				OutputDir:                      outputDir,
 				ScanIDInput:                    scanIDInput,
 				QueryText:                      queryText,
@@ -72,7 +75,11 @@ exports, empty hints, probe limits, and operator notes.`),
 				RequireStoredEmbeddingIdentity: requireIdentity,
 				Stdout:                         out,
 				Stderr:                         errOut,
-			})
+			}
+			if legacyMode {
+				return runQueryCLI(cmd.Context(), cfg, opts)
+			}
+			return runQueryCLIV2(cmd.Context(), cfg, opts)
 		},
 	}
 
@@ -82,6 +89,7 @@ exports, empty hints, probe limits, and operator notes.`),
 	cmd.Flags().StringVar(&format, "format", "table", "table (human retrieval summary) | json")
 	cmd.Flags().IntVar(&topK, "top-k", 0, "Max findings after scan scoping (default 10, max 100; also scales vector probe)")
 	cmd.Flags().BoolVar(&requireIdentity, "require-stored-embedding-identity", false, "Reject scans without embedding_provider/dimensions in scan-metadata.json")
+	cmd.Flags().BoolVar(&legacyMode, "legacy-retrieval", false, "Use legacy retrieval-only query mode")
 	return cmd
 }
 
@@ -148,6 +156,60 @@ func runQueryCLI(ctx context.Context, cfg *config.Config, o queryCLIOptions) err
 	default:
 		return writeQueryHuman(o.Stdout, o.Stderr, o.QueryText, meta.ScanID, o.TopK, resp)
 	}
+}
+
+func runQueryCLIV2(ctx context.Context, cfg *config.Config, o queryCLIOptions) error {
+	if o.Stdout == nil {
+		o.Stdout = os.Stdout
+	}
+	if o.Stderr == nil {
+		o.Stderr = os.Stderr
+	}
+	f := strings.TrimSpace(strings.ToLower(o.Format))
+	if f != "table" && f != "json" {
+		return fmt.Errorf("cloudrift query: unsupported format %q (use table or json)", o.Format)
+	}
+	driver, _, _ := openNeo4jDriverForQuery(ctx, cfg)
+	blast := blastradius.NewService(driver, o.OutputDir)
+	svc := queryv2.NewService(o.OutputDir, cfg, blast)
+	resp, err := svc.Execute(ctx, queryv2.QueryRequest{
+		Query:  o.QueryText,
+		ScanID: o.ScanIDInput,
+		TopK:   o.TopK,
+	})
+	if err != nil {
+		return fmt.Errorf("cloudrift query v2: %w", err)
+	}
+	if f == "json" {
+		enc := json.NewEncoder(o.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(resp)
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "Answer: %s\n", resp.Answer)
+	fmt.Fprintf(&b, "Intent: %s · Type: %s · Confidence: %s\n", resp.Intent, resp.AnswerType, resp.Confidence)
+	fmt.Fprintf(&b, "Scope: scan_id=%s\n", resp.ScanID)
+	fmt.Fprintf(&b, "Sources: graph=%t semantic=%t domain=%t\n", resp.GraphUsed, resp.SemanticUsed, resp.DomainUsed)
+	if len(resp.SupportingFacts) > 0 {
+		fmt.Fprintf(&b, "Supporting facts:\n")
+		for _, fact := range resp.SupportingFacts {
+			fmt.Fprintf(&b, "  - [%s] %s: %s\n", fact.Source, fact.Label, fact.Value)
+		}
+	}
+	if len(resp.RecommendedAction) > 0 {
+		fmt.Fprintf(&b, "Recommended actions:\n")
+		for _, action := range resp.RecommendedAction {
+			fmt.Fprintf(&b, "  - %s\n", action)
+		}
+	}
+	if len(resp.Notes) > 0 {
+		fmt.Fprintf(&b, "Notes:\n")
+		for _, n := range resp.Notes {
+			fmt.Fprintf(&b, "  - %s\n", n)
+		}
+	}
+	_, err = io.WriteString(o.Stdout, b.String())
+	return err
 }
 
 // runQueryRetrieval is the test seam: supply a non-nil rowReader to avoid Neo4j (driver ignored).
