@@ -7,7 +7,8 @@
       "Action": [
         "organizations:ListAccounts",
         "organizations:ListParents",
-        "organizations:ListTagsForResource"
+        "organizations:ListTagsForResource",
+        "organizations:DescribeOrganizationalUnit"
       ],
       "Resource": "*"
     },
@@ -45,6 +46,18 @@
       "Effect": "Allow",
       "Action": "sts:AssumeRole",
       "Resource": "arn:aws:iam::*:role/CloudriftAuditRole"
+    },
+    {
+      "Sid": "STSCallerIdentity",
+      "Effect": "Allow",
+      "Action": "sts:GetCallerIdentity",
+      "Resource": "*"
+    },
+    {
+      "Sid": "CostExplorerRead",
+      "Effect": "Allow",
+      "Action": "ce:GetCostAndUsage",
+      "Resource": "*"
     }
   ]
 }
