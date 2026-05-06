@@ -103,6 +103,13 @@ func staticRouter(staticFS fs.FS) http.Handler {
 		if reqPath != "/" {
 			trimmed := strings.TrimPrefix(reqPath, "/")
 			if info, err := fs.Stat(staticFS, trimmed); err == nil && !info.IsDir() {
+				// Hashed assets (JS/CSS in /assets/) are content-addressed: cache forever.
+				// Everything else (fonts, icons, etc.) gets a short TTL.
+				if strings.HasPrefix(reqPath, "/assets/") {
+					w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+				} else {
+					w.Header().Set("Cache-Control", "public, max-age=3600")
+				}
 				fileServer.ServeHTTP(w, r)
 				return
 			}
@@ -112,6 +119,9 @@ func staticRouter(staticFS fs.FS) http.Handler {
 			http.NotFound(w, r)
 			return
 		}
+		// index.html must never be cached: it references hashed bundle filenames that
+		// change on every rebuild. A stale cached index.html causes blank pages.
+		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(index)

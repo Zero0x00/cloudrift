@@ -498,6 +498,33 @@ func demoFindings(scanID string, accounts []demoAccount) []models.Finding {
 			},
 			ScanID: scanID,
 		},
+		{
+			ID:                "demo-orphan-edge-obscured",
+			Title:             "cdn.partner.io -> edge_obscured",
+			Severity:          models.SeverityMedium,
+			Module:            models.ModuleOrphanedEdge,
+			Claimability:      models.ClaimEdgeObscured,
+			AffectedARN:       "arn:aws:route53:::hostedzone/Z4EXAMPLE/cdn.partner.io",
+			AccountID:         "222222222222",
+			AccountName:       "Workload-Prod",
+			OUPath:            "Root/Workloads/Prod",
+			Team:              "Platform",
+			Hostname:          "cdn.partner.io",
+			MonthlyDirectCost: 35.0,
+			MonthlyRiskCost:   35.0,
+			Impact:            "Hostname resolves to a CloudFront IP but is absent from the distribution's AlternateDomainNames list. CloudFront will reject or misroute requests for this hostname; an attacker who gains control of the origin could serve arbitrary content.",
+			Recommendation:    "Add cdn.partner.io to the distribution's alternate domain list, or remove the DNS record if the hostname is no longer in use.",
+			Evidence: map[string]any{
+				"dns_status":           "resolved",
+				"http_status":          403,
+				"fingerprint":          "cloudfront_host_header_mismatch",
+				"cdn_detected":         true,
+				"cdn_vendor":           "cloudfront",
+				"distribution_id":      "E123EXAMPLE",
+				"in_alternate_domains": false,
+			},
+			ScanID: scanID,
+		},
 	}
 
 	lookup := make(map[string]demoAccount, len(accounts))

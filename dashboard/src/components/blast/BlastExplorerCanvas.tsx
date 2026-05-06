@@ -3,6 +3,7 @@ import { Html, Line, OrbitControls } from "@react-three/drei";
 import { useMemo, useState } from "react";
 import * as THREE from "three";
 import type { BlastExplorerResponse, BlastGraphEdge, BlastGraphNode } from "../../api/types";
+import { ErrorBoundary } from "../ErrorBoundary";
 
 function sphereLayout(nodes: BlastGraphNode[], focusHint?: string): Map<string, THREE.Vector3> {
   const pos = new Map<string, THREE.Vector3>();
@@ -378,57 +379,66 @@ export function BlastExplorerCanvas({
   }
 
   return (
-    <div className="h-[380px] max-h-[56vh] min-h-[300px] w-full overflow-hidden rounded-lg border border-slate-700/80 bg-slate-950">
-      <Canvas
-        camera={{ position: [0, 0, 16], fov: 48, near: 0.1, far: 200 }}
-        dpr={[1, 2]}
-        className="touch-none"
-      >
-        <color attach="background" args={["#020617"]} />
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[6, 10, 4]} intensity={0.85} />
-        {edges.map((e) => {
-          const a = layout.get(e.source);
-          const b = layout.get(e.target);
-          if (!a || !b) {
-            return null;
-          }
-          return (
-            <EdgeLine
-              key={e.id}
-              e={e}
-              a={a}
-              b={b}
-              selectedPathEdgeIDs={selectedPathEdgeSet}
-              expandedEdgeIDs={expandedEdgeSet}
-            />
-          );
-        })}
-        {nodes.map((n) => {
-          const p = layout.get(n.id);
-          if (!p) {
-            return null;
-          }
-          return (
-            <NodeBall
-              key={n.id}
-              n={n}
-              position={p}
-              onSelect={onSelectNode}
-              selected={selectedNodeId === n.id}
-              selectedPathNodeIDs={selectedPathNodeSet}
-              expandedNodeIDs={expandedNodeSet}
-            />
-          );
-        })}
-        <OrbitControls
-          makeDefault
-          enableDamping
-          dampingFactor={0.08}
-          minDistance={5}
-          maxDistance={55}
-        />
-      </Canvas>
-    </div>
+    <ErrorBoundary
+      fallback={(err) => (
+        <div className="flex h-[380px] max-h-[56vh] min-h-[300px] flex-col items-start justify-center gap-2 rounded-lg border border-rose-700/60 bg-slate-950 p-4">
+          <p className="text-xs font-semibold text-rose-400">3D canvas error — WebGL may be unavailable</p>
+          <pre className="overflow-auto whitespace-pre-wrap text-[11px] text-rose-300/80">{err.message}</pre>
+        </div>
+      )}
+    >
+      <div className="h-[380px] max-h-[56vh] min-h-[300px] w-full overflow-hidden rounded-lg border border-slate-700/80 bg-slate-950">
+        <Canvas
+          camera={{ position: [0, 0, 16], fov: 48, near: 0.1, far: 200 }}
+          dpr={[1, 2]}
+          className="touch-none"
+        >
+          <color attach="background" args={["#020617"]} />
+          <ambientLight intensity={0.5} />
+          <directionalLight position={[6, 10, 4]} intensity={0.85} />
+          {edges.map((e) => {
+            const a = layout.get(e.source);
+            const b = layout.get(e.target);
+            if (!a || !b) {
+              return null;
+            }
+            return (
+              <EdgeLine
+                key={e.id}
+                e={e}
+                a={a}
+                b={b}
+                selectedPathEdgeIDs={selectedPathEdgeSet}
+                expandedEdgeIDs={expandedEdgeSet}
+              />
+            );
+          })}
+          {nodes.map((n) => {
+            const p = layout.get(n.id);
+            if (!p) {
+              return null;
+            }
+            return (
+              <NodeBall
+                key={n.id}
+                n={n}
+                position={p}
+                onSelect={onSelectNode}
+                selected={selectedNodeId === n.id}
+                selectedPathNodeIDs={selectedPathNodeSet}
+                expandedNodeIDs={expandedNodeSet}
+              />
+            );
+          })}
+          <OrbitControls
+            makeDefault
+            enableDamping
+            dampingFactor={0.08}
+            minDistance={5}
+            maxDistance={55}
+          />
+        </Canvas>
+      </div>
+    </ErrorBoundary>
   );
 }
