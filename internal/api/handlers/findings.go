@@ -179,10 +179,14 @@ func filterFindings(findings []models.Finding, filters schema.FindingsAppliedFil
 		filtered = append(filtered, finding)
 	}
 	sort.Slice(filtered, func(i, j int) bool {
-		if filtered[i].AffectedARN == filtered[j].AffectedARN {
-			return filtered[i].ID < filtered[j].ID
+		ri, rj := severitySortOrder(string(filtered[i].Severity)), severitySortOrder(string(filtered[j].Severity))
+		if ri != rj {
+			return ri < rj
 		}
-		return filtered[i].AffectedARN < filtered[j].AffectedARN
+		if filtered[i].AffectedARN != filtered[j].AffectedARN {
+			return filtered[i].AffectedARN < filtered[j].AffectedARN
+		}
+		return filtered[i].ID < filtered[j].ID
 	})
 	return filtered
 }
@@ -464,11 +468,30 @@ func externalAccountIDMatchesFilter(evidence map[string]any, wantRaw string) boo
 	return strings.EqualFold(got, want)
 }
 
+func severitySortOrder(s string) int {
+	switch strings.ToLower(s) {
+	case "critical":
+		return 0
+	case "high":
+		return 1
+	case "medium":
+		return 2
+	case "low":
+		return 3
+	default:
+		return 4
+	}
+}
+
 func sortFindingItems(items []schema.FindingListItem) {
 	sort.Slice(items, func(i, j int) bool {
-		if items[i].AffectedARN == items[j].AffectedARN {
-			return items[i].ID < items[j].ID
+		ri, rj := severitySortOrder(items[i].Severity), severitySortOrder(items[j].Severity)
+		if ri != rj {
+			return ri < rj
 		}
-		return items[i].AffectedARN < items[j].AffectedARN
+		if items[i].AffectedARN != items[j].AffectedARN {
+			return items[i].AffectedARN < items[j].AffectedARN
+		}
+		return items[i].ID < items[j].ID
 	})
 }
