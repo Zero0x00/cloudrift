@@ -225,7 +225,7 @@ export function BlastExplorerPage() {
               layout.
             </p>
           </div>
-          <aside className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/50 p-4 text-sm dark:border-slate-800 dark:bg-slate-900/40">
+          <aside className="min-w-0 space-y-3 overflow-hidden rounded-lg border border-slate-200 bg-slate-50/50 p-4 text-sm dark:border-slate-800 dark:bg-slate-900/40">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Summary</h3>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">
               {payload.focus.root_type === "principal"
@@ -243,7 +243,7 @@ export function BlastExplorerPage() {
                   ? "Impact from External Principal"
                   : "Impact from Finding Context"}
             </p>
-            <p className="text-slate-800 dark:text-slate-200">{payload.summary.summary_text}</p>
+            <p className="break-words text-slate-800 dark:text-slate-200">{payload.summary.summary_text}</p>
             {mode === "attack_path" && pathVariants.length > 1 ? (
               <p className="text-xs text-cyan-700 dark:text-cyan-300">
                 {pathVariants.length - 1} alternate path{pathVariants.length - 1 > 1 ? "s" : ""} available
@@ -288,19 +288,22 @@ export function BlastExplorerPage() {
               </div>
             ) : null}
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Legend</h3>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-[11px] text-slate-600 dark:text-slate-400">
-              <dt className="font-mono text-[10px] text-cyan-700 dark:text-cyan-300">ASSUME_ROLE</dt>
-              <dd>Trust-based principal pivot (role assumption or vendor trust).</dd>
-              <dt className="font-mono text-[10px] text-cyan-700 dark:text-cyan-300">CROSS_ACCOUNT_ASSUME_ROLE</dt>
-              <dd>Cross-account trust pivot between principals.</dd>
-              <dt className="font-mono text-[10px] text-cyan-700 dark:text-cyan-300">EXTERNAL_TRUST</dt>
-              <dd>External principal trust path into internal roles.</dd>
-              <dt className="font-mono text-[10px] text-cyan-700 dark:text-cyan-300">IAM_WRITE</dt>
-              <dd>IAM control-plane write/reconfiguration pivot path.</dd>
-              <dt className="font-mono text-[10px] text-cyan-700 dark:text-cyan-300">RESOURCE_ACCESS</dt>
-              <dd>Directed infra/resource reachability (route/fronting path).</dd>
-              <dt className="font-mono text-[10px] text-cyan-700 dark:text-cyan-300">CERT_LINK</dt>
-              <dd>TLS/certificate association context in the path.</dd>
+            <dl className="space-y-1.5 text-[11px] text-slate-600 dark:text-slate-400">
+              {(
+                [
+                  ["ASSUME_ROLE", "Trust-based principal pivot (role assumption or vendor trust)."],
+                  ["CROSS_ACCOUNT_ASSUME_ROLE", "Cross-account trust pivot between principals."],
+                  ["EXTERNAL_TRUST", "External principal trust path into internal roles."],
+                  ["IAM_WRITE", "IAM control-plane write/reconfiguration pivot path."],
+                  ["RESOURCE_ACCESS", "Directed infra/resource reachability (route/fronting path)."],
+                  ["CERT_LINK", "TLS/certificate association context in the path."],
+                ] as [string, string][]
+              ).map(([label, desc]) => (
+                <div key={label}>
+                  <dt className="font-mono text-[10px] text-cyan-700 dark:text-cyan-300">{label}</dt>
+                  <dd className="ml-0 text-slate-600 dark:text-slate-400">{desc}</dd>
+                </div>
+              ))}
             </dl>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Selection</h3>
             {selectedNodeObj ? <NodeDetail n={selectedNodeObj} /> : <p className="text-xs text-slate-500">No node selected.</p>}
@@ -349,20 +352,24 @@ export function BlastExplorerPage() {
 
 function NodeDetail({ n }: { n: BlastGraphNode }) {
   return (
-    <div className="rounded border border-slate-200 bg-white/80 p-2 text-xs dark:border-slate-700 dark:bg-slate-950/60">
-      <p className="font-mono text-[10px] text-slate-500 break-all">{n.id}</p>
-      <p className="mt-1 font-medium text-slate-800 dark:text-slate-100">{n.label}</p>
-      <dl className="mt-1 grid grid-cols-2 gap-1 text-[11px] text-slate-600 dark:text-slate-400">
-        <dt>type</dt>
-        <dd>{n.type}</dd>
+    <div className="min-w-0 rounded border border-slate-200 bg-white/80 p-2 text-xs dark:border-slate-700 dark:bg-slate-950/60">
+      <p className="break-all font-mono text-[10px] text-slate-500">{n.id}</p>
+      <p className="mt-1 break-words font-medium text-slate-800 dark:text-slate-100">{n.label}</p>
+      <dl className="mt-1 space-y-0.5 text-[11px] text-slate-600 dark:text-slate-400">
+        <div className="flex gap-2">
+          <dt className="shrink-0 text-slate-400">type</dt>
+          <dd>{n.type}</dd>
+        </div>
         {n.account_id ? (
-          <>
-            <dt>account</dt>
+          <div className="flex gap-2">
+            <dt className="shrink-0 text-slate-400">account</dt>
             <dd className="font-mono">{n.account_id}</dd>
-          </>
+          </div>
         ) : null}
-        <dt>path</dt>
-        <dd>{n.is_critical_path ? "highlighted" : "context"}</dd>
+        <div className="flex gap-2">
+          <dt className="shrink-0 text-slate-400">path</dt>
+          <dd>{n.is_critical_path ? "highlighted" : "context"}</dd>
+        </div>
       </dl>
     </div>
   );

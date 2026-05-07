@@ -198,102 +198,116 @@ type demoAssetSets struct {
 	infrastructureCore []models.AssetNode
 }
 
+// bankDemoAccounts returns 5 accounts that model a realistic multi-account org:
+// Core-Prod (EC2/app), Data-Prod (S3/Lambda), Edge-Prod (CloudFront/DNS),
+// Shared-Sec (audit/break-glass), Dev-Sandbox (CI-CD/dev).
 func bankDemoAccounts() []demoAccount {
-	const start = 111111111111
-	out := make([]demoAccount, 0, 50)
-	ouFor := func(i int) string {
-		switch i % 6 {
-		case 0:
-			return "Root/Banking/Prod/Core"
-		case 1:
-			return "Root/Banking/Prod/Payments"
-		case 2:
-			return "Root/Banking/Prod/Lending"
-		case 3:
-			return "Root/Banking/Shared/Security"
-		case 4:
-			return "Root/Banking/Shared/Data"
-		default:
-			return "Root/Banking/Dev/Sandbox"
-		}
+	return []demoAccount{
+		{ID: "111111111111", Name: "Core-Prod",   OUPath: "Root/Org/Prod/Core",    Team: "Platform",         Environment: "prod"},
+		{ID: "222222222222", Name: "Data-Prod",   OUPath: "Root/Org/Prod/Data",    Team: "Data-Engineering", Environment: "prod"},
+		{ID: "333333333333", Name: "Edge-Prod",   OUPath: "Root/Org/Prod/Edge",    Team: "Platform",         Environment: "prod"},
+		{ID: "444444444444", Name: "Shared-Sec",  OUPath: "Root/Org/Shared/Sec",   Team: "Security",         Environment: "prod"},
+		{ID: "555555555555", Name: "Dev-Sandbox", OUPath: "Root/Org/Dev",          Team: "Engineering",      Environment: "dev"},
 	}
-	teamFor := func(i int) string {
-		switch i % 7 {
-		case 0:
-			return "Core-Banking"
-		case 1:
-			return "Payments"
-		case 2:
-			return "Risk-Platform"
-		case 3:
-			return "Data-Engineering"
-		case 4:
-			return "Security"
-		case 5:
-			return "Operations"
-		default:
-			return "Digital-Channels"
-		}
-	}
-	for i := 0; i < 50; i++ {
-		id := fmt.Sprintf("%012d", start+i)
-		env := "prod"
-		if i >= 36 && i < 45 {
-			env = "staging"
-		}
-		if i >= 45 {
-			env = "dev"
-		}
-		out = append(out, demoAccount{
-			ID:          id,
-			Name:        fmt.Sprintf("Bank-Account-%02d", i+1),
-			OUPath:      ouFor(i),
-			Team:        teamFor(i),
-			Environment: env,
-		})
-	}
-	return out
 }
 
+// demoAssets models a 5-account multi-account architecture:
+//
+//   Edge-Prod (333) owns CloudFront distributions, ACM cert, and all DNS records.
+//   Data-Prod (222) owns S3 buckets and represents the Lambda execution boundary.
+//   Core-Prod (111) owns EC2-tier IAM roles and cross-account data access roles.
+//   Shared-Sec (444) owns centralised audit, break-glass, and SAML billing roles.
+//   Dev-Sandbox (555) owns CI/CD deploy and dev sandbox roles.
+//
+// Cross-account coupling wired in relationships:
+//   E333EXAMPLE(333) FRONTS user-uploads-prod(222)          — CDN in edge, data in data account
+//   E444EXAMPLE(333) FRONTS analytics-reports-prod(222)     — second CDN, deleted origin
+//   DNS(333) POINTS_TO old-campaign-assets(222) [deleted]   — cross-account subdomain takeover
+//   DNS(333) POINTS_TO static-assets-edge(333) [deleted]    — same-account subdomain takeover
+//   LambdaExecutionRole(222) TRUSTS ext:777                 — Lambda in data trusts shared vendor
+//   BreakGlassRole(444) TRUSTS ext:888                      — blast reaches 444+555 accounts
+//   SecurityAuditRole(444) TRUSTS ext:777                   — blast reaches all 5 accounts via BFS
 func demoAssets(scanID string, accounts []demoAccount) demoAssetSets {
+	// Infrastructure: CloudFront + cert live in Edge-Prod; S3 buckets live in Data-Prod.
 	infra := []models.AssetNode{
-		{ARN: "arn:aws:cloudfront::111111111111:distribution/E123EXAMPLE", AssetType: models.AssetCloudFrontDist, Name: "legacy-api-dist", AccountID: "111111111111", Region: "us-east-1", ScanID: scanID},
-		{ARN: "arn:aws:acm:us-east-1:111111111111:certificate/cert-123", AssetType: models.AssetACMCert, Name: "legacy-api-cert", AccountID: "111111111111", Region: "us-east-1", ScanID: scanID},
-		{ARN: "arn:aws:s3:::old-campaign-assets", AssetType: models.AssetS3Bucket, Name: "old-campaign-assets", AccountID: "111111111111", Region: "us-east-1", ScanID: scanID},
-		{ARN: "arn:aws:s3:::telemetry-archive", AssetType: models.AssetS3Bucket, Name: "telemetry-archive", AccountID: "222222222222", Region: "us-west-2", ScanID: scanID},
+		// Main CDN (Edge-Prod 333) — fronts user-uploads-prod across account boundary
+		{ARN: "arn:aws:cloudfront::333333333333:distribution/E333EXAMPLE", AssetType: models.AssetCloudFrontDist, Name: "main-cdn-dist", AccountID: "333333333333", Region: "us-east-1", ScanID: scanID},
+		// Analytics CDN (Edge-Prod 333) — fronts analytics-reports-prod in Data-Prod (222)
+		{ARN: "arn:aws:cloudfront::333333333333:distribution/E444EXAMPLE", AssetType: models.AssetCloudFrontDist, Name: "analytics-cdn-dist", AccountID: "333333333333", Region: "us-east-1", ScanID: scanID},
+		{ARN: "arn:aws:acm:us-east-1:333333333333:certificate/cert-edge-123", AssetType: models.AssetACMCert, Name: "edge-wildcard-cert", AccountID: "333333333333", Region: "us-east-1", ScanID: scanID},
+		// user-uploads-prod: live bucket, fronted cross-account by E333EXAMPLE in Edge-Prod
+		{ARN: "arn:aws:s3:::user-uploads-prod", AssetType: models.AssetS3Bucket, Name: "user-uploads-prod", AccountID: "222222222222", Region: "us-east-1", ScanID: scanID},
+		// old-campaign-assets: deleted bucket — static.example.com DNS in Edge-Prod still points here (cross-account reclaimable)
+		{ARN: "arn:aws:s3:::old-campaign-assets", AssetType: models.AssetS3Bucket, Name: "old-campaign-assets", AccountID: "222222222222", Region: "us-east-1", ScanID: scanID},
+		// analytics-reports-prod: deleted bucket — analytics CDN E444EXAMPLE origin points here (cross-account dangling/obscured)
+		{ARN: "arn:aws:s3:::analytics-reports-prod", AssetType: models.AssetS3Bucket, Name: "analytics-reports-prod", AccountID: "222222222222", Region: "us-east-1", ScanID: scanID},
+		// static-assets-edge: deleted bucket in same account — files.internal.corp DNS still points here (same-account reclaimable)
+		{ARN: "arn:aws:s3:::static-assets-edge", AssetType: models.AssetS3Bucket, Name: "static-assets-edge", AccountID: "333333333333", Region: "us-east-1", ScanID: scanID},
 	}
 
+	// DNS records: all in Edge-Prod (333), targets may be in other accounts.
 	edge := []models.AssetNode{
-		{ARN: "arn:aws:route53:::hostedzone/Z1D633PJN8HTWQ/static.example.com", AssetType: models.AssetDNSRecord, Name: "static.example.com", AccountID: "111111111111", Region: "global", ScanID: scanID},
-		{ARN: "arn:aws:route53:::hostedzone/Z2EXAMPLE/old-marketing.example.com", AssetType: models.AssetDNSRecord, Name: "old-marketing.example.com", AccountID: "111111111111", Region: "global", ScanID: scanID},
-		{ARN: "arn:aws:route53:::hostedzone/Z3EXAMPLE/api.legacy.corp", AssetType: models.AssetDNSRecord, Name: "api.legacy.corp", AccountID: "111111111111", Region: "global", ScanID: scanID},
-		{ARN: "arn:aws:route53:::hostedzone/Z4EXAMPLE/cdn.partner.io", AssetType: models.AssetDNSRecord, Name: "cdn.partner.io", AccountID: "222222222222", Region: "global", ScanID: scanID},
+		// CROSS-ACCOUNT reclaimable: DNS in 333 points to deleted S3 bucket in 222
+		{ARN: "arn:aws:route53:::hostedzone/Z1D633PJN8HTWQ/static.example.com", AssetType: models.AssetDNSRecord, Name: "static.example.com", AccountID: "333333333333", Region: "global", ScanID: scanID},
+		// SAME-ACCOUNT reclaimable: DNS in 333 points to deleted S3 bucket also in 333
+		{ARN: "arn:aws:route53:::hostedzone/Z5EXAMPLE/files.internal.corp", AssetType: models.AssetDNSRecord, Name: "files.internal.corp", AccountID: "333333333333", Region: "global", ScanID: scanID},
+		// SAME-ACCOUNT dangling: DNS and CloudFront both in 333
+		{ARN: "arn:aws:route53:::hostedzone/Z3EXAMPLE/api.legacy.corp", AssetType: models.AssetDNSRecord, Name: "api.legacy.corp", AccountID: "333333333333", Region: "global", ScanID: scanID},
+		// CROSS-ACCOUNT dangling: DNS in 333 → E444EXAMPLE in 333, but E444EXAMPLE's origin (S3 in 222) is deleted
+		{ARN: "arn:aws:route53:::hostedzone/Z6EXAMPLE/app2.legacy.corp", AssetType: models.AssetDNSRecord, Name: "app2.legacy.corp", AccountID: "333333333333", Region: "global", ScanID: scanID},
+		// SAME-ACCOUNT edge_obscured: CDN hostname not in AlternateDomains, CloudFront in 333
+		{ARN: "arn:aws:route53:::hostedzone/Z4EXAMPLE/cdn.partner.io", AssetType: models.AssetDNSRecord, Name: "cdn.partner.io", AccountID: "333333333333", Region: "global", ScanID: scanID},
+		// CROSS-ACCOUNT edge_obscured: DNS in 333 → E444EXAMPLE in 333 (hostname mismatch), origin in 222
+		{ARN: "arn:aws:route53:::hostedzone/Z7EXAMPLE/cdn2.partner.io", AssetType: models.AssetDNSRecord, Name: "cdn2.partner.io", AccountID: "333333333333", Region: "global", ScanID: scanID},
+		// SAME-ACCOUNT broken: broken DNS in 333
+		{ARN: "arn:aws:route53:::hostedzone/Z2EXAMPLE/old-marketing.example.com", AssetType: models.AssetDNSRecord, Name: "old-marketing.example.com", AccountID: "333333333333", Region: "global", ScanID: scanID},
+		// CROSS-ACCOUNT broken: DNS in 333 returns NXDOMAIN, target was resource in 222
+		{ARN: "arn:aws:route53:::hostedzone/Z8EXAMPLE/legacy-api2.corp", AssetType: models.AssetDNSRecord, Name: "legacy-api2.corp", AccountID: "333333333333", Region: "global", ScanID: scanID},
 	}
 
-	iamRoles := make([]models.AssetNode, 0, len(accounts)*2+7)
-	for _, a := range accounts {
-		iamRoles = append(iamRoles,
-			demoRole(scanID, a.ID, "AppOperatorRole"),
-			demoRole(scanID, a.ID, "ReadOnlyAuditRole"),
-		)
+	// IAM roles per account — named to reflect service ownership.
+	iamRoles := []models.AssetNode{
+		// Core-Prod (111): EC2/application tier
+		demoRole(scanID, "111111111111", "AppServerRole"),          // EC2 instance role
+		demoRole(scanID, "111111111111", "CrossAccountDataRole"),   // assumed by Lambda in Data-Prod (222)
+		demoRole(scanID, "111111111111", "OidcDevRole"),            // OIDC trust — Okta dev environment
+		demoRole(scanID, "111111111111", "PlatformEngineerRole"),   // OIDC Okta shared + BI vendor trust
+		demoRole(scanID, "111111111111", "ReadOnlyAuditRole"),      // SAML CorpSAML, aging, limited
+		// Data-Prod (222): Lambda + S3 tier
+		demoRole(scanID, "222222222222", "LambdaExecutionRole"),    // runs Lambda; trusts shared vendor ext:777
+		demoRole(scanID, "222222222222", "DataPipelineRole"),       // GitHub Actions OIDC — never used
+		demoRole(scanID, "222222222222", "DataAnalyticsRole"),      // GitHub Actions OIDC — aging, analytics pipeline
+		demoRole(scanID, "222222222222", "S3ReplicationRole"),      // trusts ext:777; large blast radius
+		// Edge-Prod (333): CloudFront + DNS management
+		demoRole(scanID, "333333333333", "VendorReadRole"),         // third-party monitoring vendor
+		demoRole(scanID, "333333333333", "EdgeCdnRole"),            // CDN management role; trusts ext:777
+		demoRole(scanID, "333333333333", "ApiGatewayRole"),         // unique OIDC vendor trust; small blast
+		// Shared-Sec (444): centralised security, audit, break-glass
+		demoRole(scanID, "444444444444", "BreakGlassRole"),         // emergency admin — ext:888; blast 444+555
+		demoRole(scanID, "444444444444", "SecurityAuditRole"),      // cross-account audit — ext:777; blast all 5
+		demoRole(scanID, "444444444444", "SamlBillingRole"),        // SAML federation for billing
+		demoRole(scanID, "444444444444", "PenTestRole"),            // pentest admin — ext:888; blast 444+555
+		// Dev-Sandbox (555): CI/CD and development
+		demoRole(scanID, "555555555555", "DevSandboxRole"),         // admin in dev — ext:888; blast 444+555
+		demoRole(scanID, "555555555555", "CicdDeployRole"),         // SAML CI/CD pipeline role
+		demoRole(scanID, "555555555555", "DevOidcRole"),            // shared Okta; blast 111+555
 	}
-	iamRoles = append(iamRoles,
-		demoRole(scanID, "111111111111", "VendorAccessRole"),
-		demoRole(scanID, "222222222222", "BreakGlassRole"),
-		demoRole(scanID, "111111111111", "IntegrationRole"),
-		demoRole(scanID, "333333333333", "ReadOnlyAudit"),
-		demoRole(scanID, "111111111111", "OidcDevRole"),
-		demoRole(scanID, "333333333333", "SamlBillingRole"),
-		demoRole(scanID, "222222222222", "OpsSupportRole"),
-	)
+
 	externalPrincipals := []models.AssetNode{
-		demoExternalPrincipal(scanID, "111111111111", "aws_account", "arn:aws:iam::999999999999:root"),
-		demoExternalPrincipal(scanID, "222222222222", "aws_account", "arn:aws:iam::888888888888:root"),
+		// External AWS accounts
+		demoExternalPrincipal(scanID, "333333333333", "aws_account", "arn:aws:iam::999999999999:root"), // unknown vendor (VendorReadRole)
+		demoExternalPrincipal(scanID, "444444444444", "aws_account", "arn:aws:iam::888888888888:root"), // ghost admin (BreakGlassRole+PenTestRole+DevSandboxRole)
+		demoExternalPrincipal(scanID, "222222222222", "aws_account", "arn:aws:iam::777777777777:root"), // shared vendor (LambdaExec+SecurityAudit+EdgeCdn+S3Rep) — large blast
+		demoExternalPrincipal(scanID, "222222222222", "aws_account", "arn:aws:iam::666666666666:root"), // BI vendor (PlatformEngineerRole only) — small blast
+		// Federated identity providers
+		demoExternalPrincipal(scanID, "111111111111", "oidc", "https://dev.okta.com/oauth2/default"),          // Okta dev (OidcDevRole) — same-account
+		demoExternalPrincipal(scanID, "111111111111", "oidc", "https://sso.corp.okta.com/oauth2/default"),     // shared corp Okta (PlatformEngineerRole+DevOidcRole) — blast 111+555
+		demoExternalPrincipal(scanID, "222222222222", "oidc", "https://token.actions.githubusercontent.com"),  // GitHub Actions (DataPipelineRole+DataAnalyticsRole) — same-account
+		demoExternalPrincipal(scanID, "333333333333", "oidc", "https://api.vendor123.com/oauth2/token"),       // unique vendor OIDC (ApiGatewayRole only) — small blast
+		demoExternalPrincipal(scanID, "444444444444", "saml", "arn:aws:iam::000000000000:saml-provider/CorpSAML"),
+		demoExternalPrincipal(scanID, "555555555555", "saml", "arn:aws:iam::000000000000:saml-provider/CorpSAML"),
+		// Internal cross-account: Core-Prod trusted as principal by Data-Prod
 		demoExternalPrincipal(scanID, "111111111111", "aws_account", "arn:aws:iam::222222222222:root"),
-		demoExternalPrincipal(scanID, "333333333333", "aws_account", "arn:aws:iam::444444444444:root"),
-		demoExternalPrincipal(scanID, "111111111111", "oidc", "https://dev.okta.com/oauth2/default"),
-		demoExternalPrincipal(scanID, "333333333333", "saml", "arn:aws:iam::000000000000:saml-provider/CorpSAML"),
-		demoExternalPrincipal(scanID, "222222222222", "unknown", "arn:aws:iam::555555555555:root"),
 	}
 
 	iamAndExternal := append(iamRoles, externalPrincipals...)
@@ -334,91 +348,164 @@ func demoExternalPrincipal(scanID, accountID, principalType, value string) model
 }
 
 func demoRelationships(scanID string, accounts []demoAccount, denseGraph bool) []models.Relationship {
-	rels := []models.Relationship{
-		{SourceARN: "arn:aws:route53:::hostedzone/Z1D633PJN8HTWQ/static.example.com", TargetARN: "arn:aws:s3:::old-campaign-assets", RelType: models.RelPointsTo, ScanID: scanID},
-		{SourceARN: "arn:aws:route53:::hostedzone/Z3EXAMPLE/api.legacy.corp", TargetARN: "arn:aws:cloudfront::111111111111:distribution/E123EXAMPLE", RelType: models.RelPointsTo, ScanID: scanID},
-		{SourceARN: "arn:aws:route53:::hostedzone/Z4EXAMPLE/cdn.partner.io", TargetARN: "arn:aws:cloudfront::111111111111:distribution/E123EXAMPLE", RelType: models.RelPointsTo, ScanID: scanID},
-		{SourceARN: "arn:aws:cloudfront::111111111111:distribution/E123EXAMPLE", TargetARN: "arn:aws:acm:us-east-1:111111111111:certificate/cert-123", RelType: models.RelUsesCert, ScanID: scanID},
-		{SourceARN: "arn:aws:cloudfront::111111111111:distribution/E123EXAMPLE", TargetARN: "arn:aws:s3:::old-campaign-assets", RelType: models.RelFronts, ScanID: scanID},
+	rel := func(src, dst string, t models.RelType) models.Relationship {
+		return models.Relationship{SourceARN: src, TargetARN: dst, RelType: t, ScanID: scanID}
+	}
+	trust := func(role, ext string) models.Relationship {
+		return rel(role, externalPrincipalARNForDemo(ext, ""), models.RelTrusts)
+	}
+	trustTo := func(role, principalType, principalValue string) models.Relationship {
+		return rel(role, externalPrincipalARNForDemo(principalType, principalValue), models.RelTrusts)
 	}
 
-	trustPairs := [][2]string{
-		{"arn:aws:iam::111111111111:role/VendorAccessRole", externalPrincipalARNForDemo("aws_account", "arn:aws:iam::999999999999:root")},
-		{"arn:aws:iam::222222222222:role/BreakGlassRole", externalPrincipalARNForDemo("aws_account", "arn:aws:iam::888888888888:root")},
-		{"arn:aws:iam::111111111111:role/IntegrationRole", externalPrincipalARNForDemo("aws_account", "arn:aws:iam::222222222222:root")},
-		{"arn:aws:iam::333333333333:role/ReadOnlyAudit", externalPrincipalARNForDemo("aws_account", "arn:aws:iam::444444444444:root")},
-		{"arn:aws:iam::111111111111:role/OidcDevRole", externalPrincipalARNForDemo("oidc", "https://dev.okta.com/oauth2/default")},
-		{"arn:aws:iam::333333333333:role/SamlBillingRole", externalPrincipalARNForDemo("saml", "arn:aws:iam::000000000000:saml-provider/CorpSAML")},
-		{"arn:aws:iam::222222222222:role/OpsSupportRole", externalPrincipalARNForDemo("unknown", "arn:aws:iam::555555555555:root")},
+	rels := []models.Relationship{
+		// ── DNS / CDN ─────────────────────────────────────────────────────────────
+
+		// CROSS-ACCOUNT reclaimable: DNS(333) → deleted S3(222)
+		rel("arn:aws:route53:::hostedzone/Z1D633PJN8HTWQ/static.example.com",
+			"arn:aws:s3:::old-campaign-assets", models.RelPointsTo),
+		// SAME-ACCOUNT reclaimable: DNS(333) → deleted S3(333)
+		rel("arn:aws:route53:::hostedzone/Z5EXAMPLE/files.internal.corp",
+			"arn:aws:s3:::static-assets-edge", models.RelPointsTo),
+
+		// SAME-ACCOUNT dangling: DNS(333) → E333EXAMPLE(333) returning 502
+		rel("arn:aws:route53:::hostedzone/Z3EXAMPLE/api.legacy.corp",
+			"arn:aws:cloudfront::333333333333:distribution/E333EXAMPLE", models.RelPointsTo),
+		// CROSS-ACCOUNT dangling: DNS(333) → E444EXAMPLE(333) → deleted origin S3(222)
+		rel("arn:aws:route53:::hostedzone/Z6EXAMPLE/app2.legacy.corp",
+			"arn:aws:cloudfront::333333333333:distribution/E444EXAMPLE", models.RelPointsTo),
+
+		// SAME-ACCOUNT edge_obscured: DNS(333) → E333EXAMPLE(333), hostname not in AlternateDomains
+		rel("arn:aws:route53:::hostedzone/Z4EXAMPLE/cdn.partner.io",
+			"arn:aws:cloudfront::333333333333:distribution/E333EXAMPLE", models.RelPointsTo),
+		// CROSS-ACCOUNT edge_obscured: DNS(333) → E444EXAMPLE(333), hostname mismatch, origin S3(222)
+		rel("arn:aws:route53:::hostedzone/Z7EXAMPLE/cdn2.partner.io",
+			"arn:aws:cloudfront::333333333333:distribution/E444EXAMPLE", models.RelPointsTo),
+
+		// SAME-ACCOUNT broken: DNS(333) NXDOMAIN
+		// (no POINTS_TO edge — target never existed or was fully removed)
+
+		// CROSS-ACCOUNT broken: DNS(333) was pointing to resource in 222, now NXDOMAIN
+		// (no POINTS_TO edge — target has been destroyed)
+
+		// CloudFront cert bindings
+		rel("arn:aws:cloudfront::333333333333:distribution/E333EXAMPLE",
+			"arn:aws:acm:us-east-1:333333333333:certificate/cert-edge-123", models.RelUsesCert),
+		rel("arn:aws:cloudfront::333333333333:distribution/E444EXAMPLE",
+			"arn:aws:acm:us-east-1:333333333333:certificate/cert-edge-123", models.RelUsesCert),
+
+		// CloudFront origin bindings
+		rel("arn:aws:cloudfront::333333333333:distribution/E333EXAMPLE",
+			"arn:aws:s3:::user-uploads-prod", models.RelFronts),
+		// E444EXAMPLE origin is analytics-reports-prod (222) — deleted; causes dangling/obscured findings
+		rel("arn:aws:cloudfront::333333333333:distribution/E444EXAMPLE",
+			"arn:aws:s3:::analytics-reports-prod", models.RelFronts),
+
+		// ── IAM trust — same-account blast radius (role trusts unique external) ───
+
+		// Core-Prod (111): Okta dev OIDC — same account, blast: 111 only
+		trustTo("arn:aws:iam::111111111111:role/OidcDevRole", "oidc", "https://dev.okta.com/oauth2/default"),
+		// Core-Prod (111): active low-risk partner — same account, blast: 111+222+333+444 (ext:777 shared)
+		trustTo("arn:aws:iam::111111111111:role/AppServerRole", "aws_account", "arn:aws:iam::777777777777:root"),
+		// Core-Prod (111): BI vendor ext:666 — small blast: 111 only (unique external)
+		trustTo("arn:aws:iam::111111111111:role/PlatformEngineerRole", "aws_account", "arn:aws:iam::666666666666:root"),
+		// Core-Prod (111): SAML CorpSAML, aging — blast: 111+444+555 (CorpSAML shared)
+		trustTo("arn:aws:iam::111111111111:role/ReadOnlyAuditRole", "saml", "arn:aws:iam::000000000000:saml-provider/CorpSAML"),
+		// Edge-Prod (333): unknown vendor — same account, blast: 333 (999 is unique)
+		trustTo("arn:aws:iam::333333333333:role/VendorReadRole", "aws_account", "arn:aws:iam::999999999999:root"),
+		// Edge-Prod (333): CDN management, active — blast: 111+222+333+444 (ext:777 shared)
+		trustTo("arn:aws:iam::333333333333:role/EdgeCdnRole", "aws_account", "arn:aws:iam::777777777777:root"),
+		// Edge-Prod (333): unique OIDC vendor — small blast: 333 only
+		trustTo("arn:aws:iam::333333333333:role/ApiGatewayRole", "oidc", "https://api.vendor123.com/oauth2/token"),
+		// Dev-Sandbox (555): admin + ext:888 — blast: 444+555 (ext:888 shared with BreakGlassRole+PenTestRole)
+		trustTo("arn:aws:iam::555555555555:role/DevSandboxRole", "aws_account", "arn:aws:iam::888888888888:root"),
+		// Dev-Sandbox (555): SAML CI/CD, aging — blast: 111+444+555 (CorpSAML shared)
+		trustTo("arn:aws:iam::555555555555:role/CicdDeployRole", "saml", "arn:aws:iam::000000000000:saml-provider/CorpSAML"),
+
+		// ── IAM trust — cross-account blast radius ────────────────────────────────
+
+		// Core-Prod (111): PlatformEngineerRole shared Okta — blast: 111+555 (shared with DevOidcRole)
+		trustTo("arn:aws:iam::111111111111:role/PlatformEngineerRole", "oidc", "https://sso.corp.okta.com/oauth2/default"),
+		// Core-Prod (111): CrossAccountDataRole assumed by Lambda(222) — blast: 111+222
+		trustTo("arn:aws:iam::111111111111:role/CrossAccountDataRole", "aws_account", "arn:aws:iam::222222222222:root"),
+		// Data-Prod (222): LambdaExecutionRole ext:777 — blast: 111+222+333+444 (ext:777 shared)
+		trustTo("arn:aws:iam::222222222222:role/LambdaExecutionRole", "aws_account", "arn:aws:iam::777777777777:root"),
+		// Data-Prod (222): DataPipelineRole GitHub Actions OIDC, never used — blast: 222 (GitHub shared within 222)
+		trustTo("arn:aws:iam::222222222222:role/DataPipelineRole", "oidc", "https://token.actions.githubusercontent.com"),
+		// Data-Prod (222): DataAnalyticsRole GitHub Actions OIDC, aging — same GitHub OIDC as DataPipelineRole
+		trustTo("arn:aws:iam::222222222222:role/DataAnalyticsRole", "oidc", "https://token.actions.githubusercontent.com"),
+		// Data-Prod (222): S3ReplicationRole ext:777 — blast: 111+222+333+444 (ext:777 large blast)
+		trustTo("arn:aws:iam::222222222222:role/S3ReplicationRole", "aws_account", "arn:aws:iam::777777777777:root"),
+		// Shared-Sec (444): BreakGlassRole ext:888 — blast: 444+555 (ext:888 shared)
+		trustTo("arn:aws:iam::444444444444:role/BreakGlassRole", "aws_account", "arn:aws:iam::888888888888:root"),
+		// Shared-Sec (444): SecurityAuditRole ext:777, never used — blast: all 5 via BFS through shared ext:777 + 444 account bridge
+		trustTo("arn:aws:iam::444444444444:role/SecurityAuditRole", "aws_account", "arn:aws:iam::777777777777:root"),
+		// Shared-Sec (444): SamlBillingRole SAML, aging — blast: 111+444+555 (CorpSAML shared)
+		trustTo("arn:aws:iam::444444444444:role/SamlBillingRole", "saml", "arn:aws:iam::000000000000:saml-provider/CorpSAML"),
+		// Shared-Sec (444): PenTestRole ext:888 — blast: 444+555 (ext:888 shared with BreakGlassRole+DevSandboxRole)
+		trustTo("arn:aws:iam::444444444444:role/PenTestRole", "aws_account", "arn:aws:iam::888888888888:root"),
+		// Dev-Sandbox (555): DevOidcRole shared Okta — blast: 111+555 (shared with PlatformEngineerRole)
+		trustTo("arn:aws:iam::555555555555:role/DevOidcRole", "oidc", "https://sso.corp.okta.com/oauth2/default"),
 	}
-	for _, p := range trustPairs {
-		rels = append(rels, models.Relationship{
-			SourceARN: p[0],
-			TargetARN: p[1],
-			RelType:   models.RelTrusts,
-			ScanID:    scanID,
-		})
-	}
-	// Add light-weight ownership relationships at scale to stress graph shape and filtering.
+	_ = trust // silence unused warning — kept as helper
+
+	// Ownership edges: every role owned by its account node.
 	for _, a := range accounts {
-		role := fmt.Sprintf("arn:aws:iam::%s:role/AppOperatorRole", a.ID)
-		rels = append(rels, models.Relationship{
-			SourceARN: role,
-			TargetARN: "account:" + a.ID,
-			RelType:   models.RelOwnedBy,
-			ScanID:    scanID,
-		})
+		for _, roleName := range accountRoles(a.ID) {
+			rels = append(rels, rel(
+				fmt.Sprintf("arn:aws:iam::%s:role/%s", a.ID, roleName),
+				"account:"+a.ID,
+				models.RelOwnedBy,
+			))
+		}
 	}
+
 	if denseGraph {
 		rels = append(rels, denseCrossAccountTrustChains(scanID, accounts)...)
 	}
 	return rels
 }
 
+// accountRoles returns the role names defined for a given account in the demo.
+func accountRoles(accountID string) []string {
+	switch accountID {
+	case "111111111111":
+		return []string{"AppServerRole", "CrossAccountDataRole", "OidcDevRole", "PlatformEngineerRole", "ReadOnlyAuditRole"}
+	case "222222222222":
+		return []string{"LambdaExecutionRole", "DataPipelineRole", "DataAnalyticsRole", "S3ReplicationRole"}
+	case "333333333333":
+		return []string{"VendorReadRole", "EdgeCdnRole", "ApiGatewayRole"}
+	case "444444444444":
+		return []string{"BreakGlassRole", "SecurityAuditRole", "SamlBillingRole", "PenTestRole"}
+	case "555555555555":
+		return []string{"DevSandboxRole", "CicdDeployRole", "DevOidcRole"}
+	}
+	return nil
+}
+
+// denseCrossAccountTrustChains adds extra IAM trust edges for --dense mode.
+// With 5 accounts the chains model realistic service-to-service escalation paths:
+//
+//	AppServerRole(Core) → LambdaExecutionRole(Data) → CrossAccountDataRole(Core)  [lateral loop]
+//	DevSandboxRole(Dev) → CicdDeployRole(Dev) → EdgeCdnRole(Edge)               [deploy chain]
+//	BreakGlassRole(SharedSec) → SecurityAuditRole(SharedSec)                    [sec pivot]
 func denseCrossAccountTrustChains(scanID string, accounts []demoAccount) []models.Relationship {
 	if len(accounts) < 4 {
 		return nil
 	}
-	out := make([]models.Relationship, 0, len(accounts)*2)
-	for i := 0; i+3 < len(accounts); i += 3 {
-		a := accounts[i]
-		b := accounts[i+1]
-		c := accounts[i+2]
-		d := accounts[i+3]
-
-		// Chain 1: AppOperatorRole -> BreakGlassRole -> AppOperatorRole
-		out = append(out,
-			models.Relationship{
-				SourceARN: fmt.Sprintf("arn:aws:iam::%s:role/AppOperatorRole", a.ID),
-				TargetARN: fmt.Sprintf("arn:aws:iam::%s:role/BreakGlassRole", b.ID),
-				RelType:   models.RelTrusts,
-				ScanID:    scanID,
-			},
-			models.Relationship{
-				SourceARN: fmt.Sprintf("arn:aws:iam::%s:role/BreakGlassRole", b.ID),
-				TargetARN: fmt.Sprintf("arn:aws:iam::%s:role/AppOperatorRole", c.ID),
-				RelType:   models.RelTrusts,
-				ScanID:    scanID,
-			},
-		)
-
-		// Chain 2: IntegrationRole -> VendorAccessRole -> OpsSupportRole
-		out = append(out,
-			models.Relationship{
-				SourceARN: fmt.Sprintf("arn:aws:iam::%s:role/IntegrationRole", c.ID),
-				TargetARN: fmt.Sprintf("arn:aws:iam::%s:role/VendorAccessRole", d.ID),
-				RelType:   models.RelTrusts,
-				ScanID:    scanID,
-			},
-			models.Relationship{
-				SourceARN: fmt.Sprintf("arn:aws:iam::%s:role/VendorAccessRole", d.ID),
-				TargetARN: fmt.Sprintf("arn:aws:iam::%s:role/OpsSupportRole", a.ID),
-				RelType:   models.RelTrusts,
-				ScanID:    scanID,
-			},
-		)
+	r := func(src, dst string) models.Relationship {
+		return models.Relationship{SourceARN: src, TargetARN: dst, RelType: models.RelTrusts, ScanID: scanID}
 	}
-	return out
+	return []models.Relationship{
+		// Core-Prod → Data-Prod → Core-Prod lateral loop
+		r("arn:aws:iam::111111111111:role/AppServerRole", "arn:aws:iam::222222222222:role/LambdaExecutionRole"),
+		r("arn:aws:iam::222222222222:role/LambdaExecutionRole", "arn:aws:iam::111111111111:role/CrossAccountDataRole"),
+		// Dev deploy chain into Edge-Prod CDN
+		r("arn:aws:iam::555555555555:role/DevSandboxRole", "arn:aws:iam::555555555555:role/CicdDeployRole"),
+		r("arn:aws:iam::555555555555:role/CicdDeployRole", "arn:aws:iam::333333333333:role/EdgeCdnRole"),
+		// Shared-Sec break-glass → audit escalation
+		r("arn:aws:iam::444444444444:role/BreakGlassRole", "arn:aws:iam::444444444444:role/SecurityAuditRole"),
+	}
 }
 
 func externalPrincipalARNForDemo(principalType, value string) string {
@@ -426,212 +513,385 @@ func externalPrincipalARNForDemo(principalType, value string) string {
 	return "arn:cloudrift:external-principal:::" + principalType + "/" + encoded
 }
 
+// demoFindings produces two clearly labelled groups:
+//
+// SAME-ACCOUNT — all affected resources live in one account.
+// CROSS-ACCOUNT — resources span multiple accounts in the 5-account org.
 func demoFindings(scanID string, accounts []demoAccount) []models.Finding {
-	out := []models.Finding{
-		{
-			ID:                "demo-orphan-reclaimable",
-			Title:             "static.example.com -> reclaimable",
-			Severity:          models.SeverityCritical,
-			Module:            models.ModuleOrphanedEdge,
-			Claimability:      models.ClaimReclaimable,
-			AffectedARN:       "arn:aws:route53:::hostedzone/Z1D633PJN8HTWQ/static.example.com",
-			AccountID:         "111111111111",
-			AccountName:       "Workload-Prod",
-			OUPath:            "Root/Workloads/Prod",
-			Team:              "Platform",
-			Hostname:          "static.example.com",
-			MonthlyDirectCost: 0.5,
-			MonthlyRiskCost:   82.0,
-			Impact:            "DNS points at deleted S3 website; bucket not present in scanned accounts.",
-			Recommendation:    "Remove hosted zone record or reclaim hostname after validation.",
-			RemediationCmd:    "aws route53 change-resource-record-sets --hosted-zone-id Z1D633PJN8HTWQ --change-batch file://batch.json",
-			Evidence: map[string]any{
-				"dns_status":   "resolved",
-				"http_status":  404,
-				"fingerprint":  "s3_bucket_deleted",
-				"bucket_name":  "old-campaign-assets",
-				"expected_edge": "s3_static_site",
-			},
-			ScanID: scanID,
-		},
-		{
-			ID:                "demo-orphan-dangling",
-			Title:             "api.legacy.corp -> dangling",
-			Severity:          models.SeverityHigh,
-			Module:            models.ModuleOrphanedEdge,
-			Claimability:      models.ClaimDangling,
-			AffectedARN:       "arn:aws:route53:::hostedzone/Z3EXAMPLE/api.legacy.corp",
-			AccountID:         "111111111111",
-			AccountName:       "Workload-Prod",
-			OUPath:            "Root/Workloads/Prod",
-			Team:              "Platform",
-			Hostname:          "api.legacy.corp",
-			MonthlyDirectCost: 35,
-			MonthlyRiskCost:   140,
-			Impact:            "Alias resolves to CloudFront; origin errors suggest misconfiguration.",
-			Recommendation:    "Validate origin and remove if unused.",
-			Evidence: map[string]any{
-				"dns_status":  "resolved",
-				"http_status": 502,
-				"fingerprint": "origin_error",
-			},
-			ScanID: scanID,
-		},
-		{
-			ID:                "demo-orphan-broken",
-			Title:             "old-marketing.example.com -> broken",
-			Severity:          models.SeverityLow,
-			Module:            models.ModuleOrphanedEdge,
-			Claimability:      models.ClaimBroken,
-			AffectedARN:       "arn:aws:route53:::hostedzone/Z2EXAMPLE/old-marketing.example.com",
-			AccountID:         "111111111111",
-			AccountName:       "Workload-Prod",
-			OUPath:            "Root/Workloads/Prod",
-			Team:              "Marketing",
-			Hostname:          "old-marketing.example.com",
-			MonthlyDirectCost: 0.4,
-			MonthlyRiskCost:   0.4,
-			Impact:            "NXDOMAIN indicates stale record inventory.",
-			Recommendation:    "Delete stale DNS entry after owner confirmation.",
-			Evidence: map[string]any{
-				"dns_status": "nxdomain",
-			},
-			ScanID: scanID,
-		},
-		{
-			ID:                "demo-orphan-edge-obscured",
-			Title:             "cdn.partner.io -> edge_obscured",
-			Severity:          models.SeverityMedium,
-			Module:            models.ModuleOrphanedEdge,
-			Claimability:      models.ClaimEdgeObscured,
-			AffectedARN:       "arn:aws:route53:::hostedzone/Z4EXAMPLE/cdn.partner.io",
-			AccountID:         "222222222222",
-			AccountName:       "Workload-Prod",
-			OUPath:            "Root/Workloads/Prod",
-			Team:              "Platform",
-			Hostname:          "cdn.partner.io",
-			MonthlyDirectCost: 35.0,
-			MonthlyRiskCost:   35.0,
-			Impact:            "Hostname resolves to a CloudFront IP but is absent from the distribution's AlternateDomainNames list. CloudFront will reject or misroute requests for this hostname; an attacker who gains control of the origin could serve arbitrary content.",
-			Recommendation:    "Add cdn.partner.io to the distribution's alternate domain list, or remove the DNS record if the hostname is no longer in use.",
-			Evidence: map[string]any{
-				"dns_status":           "resolved",
-				"http_status":          403,
-				"fingerprint":          "cloudfront_host_header_mismatch",
-				"cdn_detected":         true,
-				"cdn_vendor":           "cloudfront",
-				"distribution_id":      "E123EXAMPLE",
-				"in_alternate_domains": false,
-			},
-			ScanID: scanID,
-		},
-	}
-
 	lookup := make(map[string]demoAccount, len(accounts))
 	for _, a := range accounts {
 		lookup[a.ID] = a
 	}
-	// Add 50-account bank org trust findings with diverse signal + noisy data.
-	for i, a := range accounts {
-		roleName := "AppOperatorRole"
-		verdict := "active"
-		days := 15 + (i % 45)
-		sev := models.SeverityLow
-		principalType := "aws_account"
-		externalPrincipal := fmt.Sprintf("arn:aws:iam::%012d:root", 910000000000+i)
-		externalAccountID := fmt.Sprintf("%012d", 910000000000+i)
-		visibility := permissionVisibility(models.PermissionTierLimited, false, false, false, false, false)
-		reason := "normal partner integration path"
+	acc := func(id string) demoAccount { return lookup[id] }
 
-		switch {
-		case i%13 == 0:
-			sev = models.SeverityCritical
-			verdict = "ghost_admin_access"
-			days = 500
-			roleName = "BreakGlassRole"
-			visibility = permissionVisibility(models.PermissionTierAdmin, true, true, true, true, true)
-			reason = "admin-like external trust on emergency role"
-		case i%7 == 0:
-			sev = models.SeverityHigh
-			verdict = "unknown_vendor"
-			days = 380
-			visibility = permissionVisibility(models.PermissionTierScoped, false, true, false, false, false)
-			reason = "external account not in approved vendor list"
-		case i%5 == 0:
-			sev = models.SeverityMedium
-			verdict = "aging"
-			days = 120
-			visibility = permissionVisibility(models.PermissionTierPrivileged, false, true, true, false, false)
-			reason = "stale access approaching review threshold"
-		case i%4 == 0:
-			// noisy OIDC trust to test filtering behavior
-			sev = models.SeverityInfo
-			verdict = "active"
-			days = 9
-			principalType = "oidc"
-			externalPrincipal = fmt.Sprintf("https://idp.bank-demo-%02d.example.com/oidc", i)
-			externalAccountID = ""
-			visibility = permissionVisibility(models.PermissionTierUnknown, false, false, false, false, false)
-			reason = "low-signal ephemeral integration trust"
-		}
-
-		out = append(out, externalAccessFinding(
-			scanID,
-			fmt.Sprintf("bank-trust-%03d", i+1),
-			roleName,
-			a.ID,
-			a.Name,
-			a.OUPath,
-			a.Team,
-			sev,
-			verdict,
-			days,
-			externalPrincipal,
-			principalType,
-			externalAccountID,
-			visibility,
-			reason,
-		))
-
-		// add some orphaned-edge noise per account
-		if i%3 == 0 {
-			out = append(out, models.Finding{
-				ID:                fmt.Sprintf("bank-noise-orphan-%03d", i+1),
-				Title:             fmt.Sprintf("staging-%02d.bank.example.com -> edge_obscured", i+1),
-				Severity:          models.SeverityInfo,
-				Module:            models.ModuleOrphanedEdge,
-				Claimability:      models.ClaimEdgeObscured,
-				AffectedARN:       fmt.Sprintf("arn:aws:route53:::hostedzone/ZBANK/staging-%02d.bank.example.com", i+1),
-				AccountID:         a.ID,
-				AccountName:       a.Name,
-				OUPath:            a.OUPath,
-				Team:              a.Team,
-				Hostname:          fmt.Sprintf("staging-%02d.bank.example.com", i+1),
-				MonthlyDirectCost: 0.1,
-				MonthlyRiskCost:   0.2,
-				Impact:            "Low-signal noisy endpoint included to validate dashboard filtering and prioritization.",
-				Recommendation:    "No immediate action. Track only if ownership is unknown for >30 days.",
-				Evidence: map[string]any{
-					"dns_status":  "resolved",
-					"http_status": 403,
-					"fingerprint": "edge_obscured",
-					"note":        "intentional demo noise",
-				},
-				ScanID: scanID,
-			})
-		}
+	// ── Orphaned-edge findings (all 4 claimability types × same-account + cross-account) ──
+	out := []models.Finding{
+		// ── reclaimable ──────────────────────────────────────────────────────────
+		// CROSS-ACCOUNT: DNS(333) → deleted S3(222); attacker recreates bucket in any account
+		{
+			ID:                "demo-edge-reclaimable",
+			Title:             "static.example.com → reclaimable [cross-account]",
+			Severity:          models.SeverityCritical,
+			Module:            models.ModuleOrphanedEdge,
+			Claimability:      models.ClaimReclaimable,
+			AffectedARN:       "arn:aws:route53:::hostedzone/Z1D633PJN8HTWQ/static.example.com",
+			AccountID:         acc("333333333333").ID,
+			AccountName:       acc("333333333333").Name,
+			OUPath:            acc("333333333333").OUPath,
+			Team:              acc("333333333333").Team,
+			Hostname:          "static.example.com",
+			MonthlyDirectCost: 0.5,
+			MonthlyRiskCost:   175.0,
+			Impact:            "DNS CNAME in Edge-Prod (333) points at old-campaign-assets, a deleted S3 website bucket in Data-Prod (222). An attacker can recreate the bucket in any AWS account and immediately serve arbitrary content under this hostname.",
+			Recommendation:    "Remove the Route53 record in Edge-Prod, or reclaim the bucket in Data-Prod with a deny-all bucket policy.",
+			RemediationCmd:    "aws route53 change-resource-record-sets --hosted-zone-id Z1D633PJN8HTWQ --change-batch file://delete-batch.json",
+			Evidence: map[string]any{
+				"dns_status": "resolved", "http_status": 404, "fingerprint": "s3_bucket_deleted",
+				"bucket_name": "old-campaign-assets", "bucket_account_id": "222222222222",
+				"dns_account_id": "333333333333", "cross_account": true,
+			},
+			ScanID: scanID,
+		},
+		// SAME-ACCOUNT: DNS(333) → deleted S3(333); attacker recreates bucket in same account
+		{
+			ID:                "demo-edge-reclaimable-same",
+			Title:             "files.internal.corp → reclaimable [same-account]",
+			Severity:          models.SeverityCritical,
+			Module:            models.ModuleOrphanedEdge,
+			Claimability:      models.ClaimReclaimable,
+			AffectedARN:       "arn:aws:route53:::hostedzone/Z5EXAMPLE/files.internal.corp",
+			AccountID:         acc("333333333333").ID,
+			AccountName:       acc("333333333333").Name,
+			OUPath:            acc("333333333333").OUPath,
+			Team:              acc("333333333333").Team,
+			Hostname:          "files.internal.corp",
+			MonthlyDirectCost: 0.5,
+			MonthlyRiskCost:   175.0,
+			Impact:            "DNS CNAME in Edge-Prod (333) points at static-assets-edge, a deleted S3 bucket in the same account. An attacker with access to any AWS account can recreate the bucket and serve content under this internal hostname.",
+			Recommendation:    "Remove the Route53 record, or reclaim the bucket with a deny-all policy.",
+			RemediationCmd:    "aws route53 change-resource-record-sets --hosted-zone-id Z5EXAMPLE --change-batch file://delete-batch.json",
+			Evidence: map[string]any{
+				"dns_status": "resolved", "http_status": 404, "fingerprint": "s3_bucket_deleted",
+				"bucket_name": "static-assets-edge", "bucket_account_id": "333333333333",
+				"dns_account_id": "333333333333", "cross_account": false,
+			},
+			ScanID: scanID,
+		},
+		// ── dangling ─────────────────────────────────────────────────────────────
+		// SAME-ACCOUNT: DNS(333) → E333EXAMPLE CF(333), distribution returns 502
+		{
+			ID:                "demo-edge-dangling",
+			Title:             "api.legacy.corp → dangling [same-account]",
+			Severity:          models.SeverityHigh,
+			Module:            models.ModuleOrphanedEdge,
+			Claimability:      models.ClaimDangling,
+			AffectedARN:       "arn:aws:route53:::hostedzone/Z3EXAMPLE/api.legacy.corp",
+			AccountID:         acc("333333333333").ID,
+			AccountName:       acc("333333333333").Name,
+			OUPath:            acc("333333333333").OUPath,
+			Team:              acc("333333333333").Team,
+			Hostname:          "api.legacy.corp",
+			MonthlyDirectCost: 35,
+			MonthlyRiskCost:   105,
+			Impact:            "DNS alias in Edge-Prod (333) resolves to main-cdn-dist CloudFront in the same account, but the distribution returns 502 origin errors. The origin configuration has been misconfigured or removed.",
+			Recommendation:    "Validate the CloudFront origin configuration and update or remove the DNS alias.",
+			Evidence: map[string]any{
+				"dns_status": "resolved", "http_status": 502, "fingerprint": "origin_error",
+				"distribution_id": "E333EXAMPLE", "cross_account": false,
+			},
+			ScanID: scanID,
+		},
+		// CROSS-ACCOUNT: DNS(333) → E444EXAMPLE CF(333), origin is deleted S3(222)
+		{
+			ID:                "demo-edge-dangling-xacct",
+			Title:             "app2.legacy.corp → dangling [cross-account]",
+			Severity:          models.SeverityHigh,
+			Module:            models.ModuleOrphanedEdge,
+			Claimability:      models.ClaimDangling,
+			AffectedARN:       "arn:aws:route53:::hostedzone/Z6EXAMPLE/app2.legacy.corp",
+			AccountID:         acc("333333333333").ID,
+			AccountName:       acc("333333333333").Name,
+			OUPath:            acc("333333333333").OUPath,
+			Team:              acc("333333333333").Team,
+			Hostname:          "app2.legacy.corp",
+			MonthlyDirectCost: 35,
+			MonthlyRiskCost:   105,
+			Impact:            "DNS alias in Edge-Prod (333) resolves to analytics-cdn-dist CloudFront (E444EXAMPLE) in the same account. The distribution's S3 origin analytics-reports-prod has been deleted from Data-Prod (222). The CDN returns 502 and the resource chain spans two accounts.",
+			Recommendation:    "Restore the analytics-reports-prod bucket in Data-Prod with a deny-all policy, or reconfigure the CloudFront origin.",
+			Evidence: map[string]any{
+				"dns_status": "resolved", "http_status": 502, "fingerprint": "origin_error",
+				"distribution_id": "E444EXAMPLE", "origin_bucket": "analytics-reports-prod",
+				"origin_account_id": "222222222222", "cross_account": true,
+			},
+			ScanID: scanID,
+		},
+		// ── edge_obscured ─────────────────────────────────────────────────────────
+		// SAME-ACCOUNT: DNS(333) → E333EXAMPLE(333), hostname absent from AlternateDomains
+		{
+			ID:                "demo-edge-obscured",
+			Title:             "cdn.partner.io → edge_obscured [same-account]",
+			Severity:          models.SeverityMedium,
+			Module:            models.ModuleOrphanedEdge,
+			Claimability:      models.ClaimEdgeObscured,
+			AffectedARN:       "arn:aws:route53:::hostedzone/Z4EXAMPLE/cdn.partner.io",
+			AccountID:         acc("333333333333").ID,
+			AccountName:       acc("333333333333").Name,
+			OUPath:            acc("333333333333").OUPath,
+			Team:              acc("333333333333").Team,
+			Hostname:          "cdn.partner.io",
+			MonthlyDirectCost: 35.0,
+			MonthlyRiskCost:   35.0,
+			Impact:            "cdn.partner.io resolves to main-cdn-dist CloudFront in Edge-Prod (333), but is absent from its AlternateDomainNames list. CloudFront rejects requests. An attacker gaining origin control can serve arbitrary content.",
+			Recommendation:    "Add cdn.partner.io to the distribution's alternate domain list, or remove the DNS record.",
+			Evidence: map[string]any{
+				"dns_status": "resolved", "http_status": 403, "fingerprint": "cloudfront_host_header_mismatch",
+				"cdn_detected": true, "cdn_vendor": "cloudfront",
+				"distribution_id": "E333EXAMPLE", "in_alternate_domains": false, "cross_account": false,
+			},
+			ScanID: scanID,
+		},
+		// CROSS-ACCOUNT: DNS(333) → E444EXAMPLE(333), hostname mismatch, origin S3(222)
+		{
+			ID:                "demo-edge-obscured-xacct",
+			Title:             "cdn2.partner.io → edge_obscured [cross-account]",
+			Severity:          models.SeverityMedium,
+			Module:            models.ModuleOrphanedEdge,
+			Claimability:      models.ClaimEdgeObscured,
+			AffectedARN:       "arn:aws:route53:::hostedzone/Z7EXAMPLE/cdn2.partner.io",
+			AccountID:         acc("333333333333").ID,
+			AccountName:       acc("333333333333").Name,
+			OUPath:            acc("333333333333").OUPath,
+			Team:              acc("333333333333").Team,
+			Hostname:          "cdn2.partner.io",
+			MonthlyDirectCost: 35.0,
+			MonthlyRiskCost:   35.0,
+			Impact:            "cdn2.partner.io resolves to analytics-cdn-dist CloudFront (E444EXAMPLE) in Edge-Prod (333), but is absent from AlternateDomainNames. The distribution's origin analytics-reports-prod spans to Data-Prod (222), widening the blast surface across two accounts.",
+			Recommendation:    "Add cdn2.partner.io to the distribution's alternate domain list, or remove the DNS record.",
+			Evidence: map[string]any{
+				"dns_status": "resolved", "http_status": 403, "fingerprint": "cloudfront_host_header_mismatch",
+				"cdn_detected": true, "cdn_vendor": "cloudfront",
+				"distribution_id": "E444EXAMPLE", "in_alternate_domains": false,
+				"origin_bucket": "analytics-reports-prod", "origin_account_id": "222222222222", "cross_account": true,
+			},
+			ScanID: scanID,
+		},
+		// ── broken ────────────────────────────────────────────────────────────────
+		// SAME-ACCOUNT: DNS(333) returns NXDOMAIN
+		{
+			ID:                "demo-edge-broken",
+			Title:             "old-marketing.example.com → broken [same-account]",
+			Severity:          models.SeverityLow,
+			Module:            models.ModuleOrphanedEdge,
+			Claimability:      models.ClaimBroken,
+			AffectedARN:       "arn:aws:route53:::hostedzone/Z2EXAMPLE/old-marketing.example.com",
+			AccountID:         acc("333333333333").ID,
+			AccountName:       acc("333333333333").Name,
+			OUPath:            acc("333333333333").OUPath,
+			Team:              "Marketing",
+			Hostname:          "old-marketing.example.com",
+			MonthlyDirectCost: 0.4,
+			MonthlyRiskCost:   0.4,
+			Impact:            "DNS record in Edge-Prod (333) returns NXDOMAIN. No active takeover risk, but the stale entry pollutes the hosted-zone inventory.",
+			Recommendation:    "Confirm with the Marketing team that this hostname is no longer needed, then delete the record.",
+			Evidence: map[string]any{"dns_status": "nxdomain", "cross_account": false},
+			ScanID:            scanID,
+		},
+		// CROSS-ACCOUNT: DNS(333) NXDOMAIN, target was resource in Data-Prod (222)
+		{
+			ID:                "demo-edge-broken-xacct",
+			Title:             "legacy-api2.corp → broken [cross-account]",
+			Severity:          models.SeverityLow,
+			Module:            models.ModuleOrphanedEdge,
+			Claimability:      models.ClaimBroken,
+			AffectedARN:       "arn:aws:route53:::hostedzone/Z8EXAMPLE/legacy-api2.corp",
+			AccountID:         acc("333333333333").ID,
+			AccountName:       acc("333333333333").Name,
+			OUPath:            acc("333333333333").OUPath,
+			Team:              acc("333333333333").Team,
+			Hostname:          "legacy-api2.corp",
+			MonthlyDirectCost: 0.4,
+			MonthlyRiskCost:   0.4,
+			Impact:            "DNS record in Edge-Prod (333) returns NXDOMAIN. The original target was a resource in Data-Prod (222) that has been decommissioned. No immediate takeover risk but stale cross-account DNS entry should be cleaned up.",
+			Recommendation:    "Confirm with the Data Engineering team that this hostname is obsolete, then delete the Route53 record.",
+			Evidence: map[string]any{"dns_status": "nxdomain", "original_target_account_id": "222222222222", "cross_account": true},
+			ScanID:            scanID,
+		},
 	}
 
-	// keep explicit high-signal seeds
+	// ── Same-account external IAM trust (blast radius = 1 account unless noted) ─
 	out = append(out,
-		externalAccessFinding(scanID, "demo-trust-1", "VendorAccessRole", "111111111111", lookup["111111111111"].Name, lookup["111111111111"].OUPath, "Security", models.SeverityHigh, "unknown_vendor", 400, "arn:aws:iam::999999999999:root", "aws_account", "999999999999", permissionVisibility(models.PermissionTierScoped, false, true, false, false, false), "external account not found in approved list"),
-		externalAccessFinding(scanID, "demo-trust-2", "BreakGlassRole", "222222222222", lookup["222222222222"].Name, lookup["222222222222"].OUPath, "Security", models.SeverityCritical, "ghost_admin_access", 5, "arn:aws:iam::888888888888:root", "aws_account", "888888888888", permissionVisibility(models.PermissionTierAdmin, true, true, true, true, true), "is_admin=true with external trust"),
-		externalAccessFinding(scanID, "demo-trust-3", "IntegrationRole", "111111111111", lookup["111111111111"].Name, lookup["111111111111"].OUPath, "Integrations", models.SeverityMedium, "aging", 120, "arn:aws:iam::222222222222:root", "aws_account", "222222222222", permissionVisibility(models.PermissionTierPrivileged, true, true, false, false, true), "days_since_used between stale and ghost thresholds"),
-		externalAccessFinding(scanID, "demo-trust-4", "ReadOnlyAudit", "333333333333", lookup["333333333333"].Name, lookup["333333333333"].OUPath, "Security", models.SeverityLow, "active", 12, "arn:aws:iam::444444444444:root", "aws_account", "444444444444", permissionVisibility(models.PermissionTierLimited, false, false, false, false, false), "days_since_used below stale threshold"),
-		externalAccessFinding(scanID, "demo-trust-5", "OidcDevRole", "111111111111", lookup["111111111111"].Name, lookup["111111111111"].OUPath, "Platform", models.SeverityHigh, "stale_review_now", -1, "https://dev.okta.com/oauth2/default", "oidc", "", permissionVisibility(models.PermissionTierUnknown, false, false, false, false, false), "never used or days_since_used > ghost threshold"),
-		externalAccessFinding(scanID, "demo-trust-6", "SamlBillingRole", "333333333333", lookup["333333333333"].Name, lookup["333333333333"].OUPath, "Finance-Platform", models.SeverityMedium, "aging", 95, "arn:aws:iam::000000000000:saml-provider/CorpSAML", "saml", "", permissionVisibility(models.PermissionTierScoped, false, false, true, false, false), "days_since_used between stale and ghost thresholds"),
-		externalAccessFinding(scanID, "demo-trust-7", "OpsSupportRole", "222222222222", lookup["222222222222"].Name, lookup["222222222222"].OUPath, "Operations", models.SeverityHigh, "stale_review_now", 500, "arn:aws:iam::555555555555:root", "unknown", "", permissionVisibility(models.PermissionTierUnknown, false, false, false, false, false), "external principal type not classified"),
+		// CRITICAL: Dev-Sandbox (555) — admin, ext:888; blast 444+555 (ext:888 shared with BreakGlass+PenTest)
+		externalAccessFinding(scanID, "demo-trust-sa-admin",
+			"DevSandboxRole", "555555555555", acc("555555555555").Name, acc("555555555555").OUPath, acc("555555555555").Team,
+			models.SeverityCritical, "ghost_admin_access", 500,
+			"arn:aws:iam::888888888888:root", "aws_account", "888888888888",
+			permissionVisibility(models.PermissionTierAdmin, true, true, true, true, true),
+			"admin-level ghost trust on dev sandbox; ext:888 also trusted by BreakGlassRole and PenTestRole in Shared-Sec (444) — blast radius 444+555"),
+
+		// HIGH: Edge-Prod (333) — unknown vendor 999, unique external; blast: 333 only
+		externalAccessFinding(scanID, "demo-trust-sa-vendor",
+			"VendorReadRole", "333333333333", acc("333333333333").Name, acc("333333333333").OUPath, acc("333333333333").Team,
+			models.SeverityHigh, "unknown_vendor", 400,
+			"arn:aws:iam::999999999999:root", "aws_account", "999999999999",
+			permissionVisibility(models.PermissionTierScoped, false, true, false, false, false),
+			"external account not in approved vendor list; unique external — blast radius limited to Edge-Prod (333)"),
+
+		// HIGH: Core-Prod (111) — OIDC Okta dev (unique), never used; blast: 111 only
+		externalAccessFinding(scanID, "demo-trust-sa-oidc",
+			"OidcDevRole", "111111111111", acc("111111111111").Name, acc("111111111111").OUPath, acc("111111111111").Team,
+			models.SeverityHigh, "stale_review_now", -1,
+			"https://dev.okta.com/oauth2/default", "oidc", "",
+			permissionVisibility(models.PermissionTierUnknown, false, false, false, false, false),
+			"OIDC trust never activated; unique Okta endpoint — blast radius limited to Core-Prod (111)"),
+
+		// HIGH: Core-Prod (111) — BI vendor ext:666, privileged; blast: 111 only (ext:666 unique)
+		externalAccessFinding(scanID, "demo-trust-sa-privileged",
+			"PlatformEngineerRole", "111111111111", acc("111111111111").Name, acc("111111111111").OUPath, acc("111111111111").Team,
+			models.SeverityHigh, "unknown_vendor", 320,
+			"arn:aws:iam::666666666666:root", "aws_account", "666666666666",
+			permissionVisibility(models.PermissionTierPrivileged, false, true, true, false, false),
+			"BI vendor not in approved list; privileged IAM role with write access; unique external — blast radius limited to Core-Prod (111)"),
+
+		// MEDIUM: Dev-Sandbox (555) — SAML CI/CD role, aging; blast: 111+444+555 (CorpSAML shared)
+		externalAccessFinding(scanID, "demo-trust-sa-saml",
+			"CicdDeployRole", "555555555555", acc("555555555555").Name, acc("555555555555").OUPath, acc("555555555555").Team,
+			models.SeverityMedium, "aging", 95,
+			"arn:aws:iam::000000000000:saml-provider/CorpSAML", "saml", "",
+			permissionVisibility(models.PermissionTierScoped, false, false, true, false, false),
+			"SAML trust aging; CorpSAML shared with SamlBillingRole(444) and ReadOnlyAuditRole(111) — blast spans 111+444+555"),
+
+		// MEDIUM: Edge-Prod (333) — unique OIDC vendor, never used; blast: 333 only
+		externalAccessFinding(scanID, "demo-trust-sa-github",
+			"ApiGatewayRole", "333333333333", acc("333333333333").Name, acc("333333333333").OUPath, acc("333333333333").Team,
+			models.SeverityMedium, "stale_review_now", -1,
+			"https://api.vendor123.com/oauth2/token", "oidc", "",
+			permissionVisibility(models.PermissionTierScoped, false, false, false, false, true),
+			"OIDC vendor123 trust never used; unique OIDC endpoint — blast radius limited to Edge-Prod (333); role controls CloudFront"),
+
+		// LOW: Core-Prod (111) — active, scoped, low risk; blast: 111+222+333+444 (ext:777 large)
+		externalAccessFinding(scanID, "demo-trust-sa-active",
+			"AppServerRole", "111111111111", acc("111111111111").Name, acc("111111111111").OUPath, acc("111111111111").Team,
+			models.SeverityLow, "active", 12,
+			"arn:aws:iam::777777777777:root", "aws_account", "777777777777",
+			permissionVisibility(models.PermissionTierLimited, false, false, false, false, false),
+			"active integration, last used 12 days ago; ext:777 shared vendor — periodic review sufficient"),
+
+		// LOW: Core-Prod (111) — SAML CorpSAML, aging 200 days, limited; blast: 111+444+555
+		externalAccessFinding(scanID, "demo-trust-sa-aging-saml",
+			"ReadOnlyAuditRole", "111111111111", acc("111111111111").Name, acc("111111111111").OUPath, acc("111111111111").Team,
+			models.SeverityLow, "aging", 200,
+			"arn:aws:iam::000000000000:saml-provider/CorpSAML", "saml", "",
+			permissionVisibility(models.PermissionTierLimited, false, false, false, false, false),
+			"SAML trust aging 200 days; read-only role; CorpSAML shared across 111+444+555"),
 	)
+
+	// ── Cross-account external IAM trust (blast radius crosses account boundaries) ─
+	out = append(out,
+		// CRITICAL: Shared-Sec (444) BreakGlassRole — admin, ext:888; blast 444+555
+		// Via BFS: BreakGlassRole(444) →TRUSTS→ ext:888 ←TRUSTS← DevSandboxRole(555)+PenTestRole(444)
+		externalAccessFinding(scanID, "demo-trust-xa-breakglass",
+			"BreakGlassRole", "444444444444", acc("444444444444").Name, acc("444444444444").OUPath, acc("444444444444").Team,
+			models.SeverityCritical, "ghost_admin_access", 5,
+			"arn:aws:iam::888888888888:root", "aws_account", "888888888888",
+			permissionVisibility(models.PermissionTierAdmin, true, true, true, true, true),
+			"ghost admin trust; ext:888 connects BreakGlassRole(444)+PenTestRole(444)+DevSandboxRole(555) — blast radius 444+555; SecurityAuditRole in same account bridges to ext:777 network reaching all 5"),
+
+		// CRITICAL: Shared-Sec (444) PenTestRole — admin, ext:888 (same as BreakGlass); blast 444+555
+		// Escalation path: PenTestRole → ext:888 → DevSandboxRole(555) → CicdDeployRole(555) → EdgeCdnRole(333)
+		externalAccessFinding(scanID, "demo-trust-xa-pentest",
+			"PenTestRole", "444444444444", acc("444444444444").Name, acc("444444444444").OUPath, acc("444444444444").Team,
+			models.SeverityCritical, "ghost_admin_access", 730,
+			"arn:aws:iam::888888888888:root", "aws_account", "888888888888",
+			permissionVisibility(models.PermissionTierAdmin, true, true, true, true, false),
+			"admin trust on pentest role, used ~2 years ago; ext:888 shared — blast 444+555; role not formally decommissioned after engagement ended"),
+
+		// HIGH: Data-Prod (222) LambdaExecutionRole — ext:777, large blast; pivot path to Core-Prod
+		// Via BFS: LambdaExec(222) →TRUSTS→ ext:777 ←TRUSTS← AppServerRole(111)+EdgeCdnRole(333)+SecurityAuditRole(444)+S3ReplicationRole(222)
+		externalAccessFinding(scanID, "demo-trust-xa-lambda",
+			"LambdaExecutionRole", "222222222222", acc("222222222222").Name, acc("222222222222").OUPath, acc("222222222222").Team,
+			models.SeverityHigh, "unknown_vendor", 380,
+			"arn:aws:iam::777777777777:root", "aws_account", "777777777777",
+			permissionVisibility(models.PermissionTierPrivileged, false, true, true, false, false),
+			"ext:777 shared vendor connects LambdaExec(222)+AppServerRole(111)+EdgeCdnRole(333)+SecurityAuditRole(444) — blast: 111+222+333+444; pivot to Core-Prod via CrossAccountDataRole"),
+
+		// HIGH: Data-Prod (222) DataPipelineRole — GitHub Actions OIDC, never used; pipeline writes S3 via CloudFront
+		// GitHub OIDC shared with DataAnalyticsRole(222) — both in 222, but escalation path crosses to 333 via CloudFront
+		externalAccessFinding(scanID, "demo-trust-xa-pipeline",
+			"DataPipelineRole", "222222222222", acc("222222222222").Name, acc("222222222222").OUPath, acc("222222222222").Team,
+			models.SeverityHigh, "stale_review_now", -1,
+			"https://token.actions.githubusercontent.com", "oidc", "",
+			permissionVisibility(models.PermissionTierPrivileged, false, true, true, true, false),
+			"GitHub OIDC trust never used; role has S3 write to user-uploads-prod fronted by CloudFront(E333EXAMPLE) in Edge-Prod (333) — escalation crosses to 333"),
+
+		// HIGH: Shared-Sec (444) SecurityAuditRole — ext:777 never used; blast all 5 via BFS
+		// Via BFS: SecurityAuditRole(444) →TRUSTS→ ext:777 ←TRUSTS← roles in 111,222,333 →OWNED_BY→ account:444 →OWNED_BY← BreakGlassRole(444) →TRUSTS→ ext:888 ←TRUSTS← DevSandboxRole(555)
+		externalAccessFinding(scanID, "demo-trust-xa-audit",
+			"SecurityAuditRole", "444444444444", acc("444444444444").Name, acc("444444444444").OUPath, acc("444444444444").Team,
+			models.SeverityHigh, "stale_review_now", -1,
+			"arn:aws:iam::777777777777:root", "aws_account", "777777777777",
+			permissionVisibility(models.PermissionTierScoped, false, true, false, false, false),
+			"ext:777 bridges SecurityAuditRole(444) to AppServerRole(111)+LambdaExec(222)+EdgeCdnRole(333); account:444 bridges to ext:888 network reaching Dev-Sandbox(555) — blast all 5 accounts"),
+
+		// HIGH: Core-Prod (111) PlatformEngineerRole — shared corp Okta; blast 111+555
+		// Via BFS: PlatformEngineerRole(111) →TRUSTS→ sso.corp.okta.com ←TRUSTS← DevOidcRole(555)
+		externalAccessFinding(scanID, "demo-trust-xa-okta-shared",
+			"PlatformEngineerRole", "111111111111", acc("111111111111").Name, acc("111111111111").OUPath, acc("111111111111").Team,
+			models.SeverityHigh, "unknown_vendor", 45,
+			"https://sso.corp.okta.com/oauth2/default", "oidc", "",
+			permissionVisibility(models.PermissionTierPrivileged, false, true, true, false, false),
+			"corp Okta OIDC shared with DevOidcRole in Dev-Sandbox (555); blast radius spans 111+555; role has IAM write in Core-Prod"),
+
+		// MEDIUM: Core-Prod (111) CrossAccountDataRole — aging; assumed by Lambda in Data-Prod (222)
+		externalAccessFinding(scanID, "demo-trust-xa-data",
+			"CrossAccountDataRole", "111111111111", acc("111111111111").Name, acc("111111111111").OUPath, acc("111111111111").Team,
+			models.SeverityMedium, "aging", 120,
+			"arn:aws:iam::222222222222:root", "aws_account", "222222222222",
+			permissionVisibility(models.PermissionTierPrivileged, true, true, false, false, true),
+			"internal cross-account trust from Data-Prod (222) Lambda; aging — review before CloudFront pipeline rotation; blast 111+222"),
+
+		// MEDIUM: Shared-Sec (444) SamlBillingRole — SAML aging; blast 111+444+555 (CorpSAML shared)
+		externalAccessFinding(scanID, "demo-trust-xa-billing",
+			"SamlBillingRole", "444444444444", acc("444444444444").Name, acc("444444444444").OUPath, "Finance-Platform",
+			models.SeverityMedium, "aging", 95,
+			"arn:aws:iam::000000000000:saml-provider/CorpSAML", "saml", "",
+			permissionVisibility(models.PermissionTierScoped, false, false, true, false, false),
+			"SAML billing role; CorpSAML shared with CicdDeployRole(555)+ReadOnlyAuditRole(111) — blast 111+444+555; billing data spans all accounts"),
+
+		// MEDIUM: Data-Prod (222) S3ReplicationRole — ext:777, aging; blast 111+222+333+444
+		externalAccessFinding(scanID, "demo-trust-xa-s3rep",
+			"S3ReplicationRole", "222222222222", acc("222222222222").Name, acc("222222222222").OUPath, acc("222222222222").Team,
+			models.SeverityMedium, "aging", 150,
+			"arn:aws:iam::777777777777:root", "aws_account", "777777777777",
+			permissionVisibility(models.PermissionTierScoped, false, false, false, true, false),
+			"ext:777 large-blast shared vendor; S3 replication crosses from Data-Prod (222) to Edge-Prod (333); blast 111+222+333+444"),
+
+		// MEDIUM: Dev-Sandbox (555) DevOidcRole — shared corp Okta aging; blast 111+555
+		// Escalation: DevOidcRole(555) →TRUSTS→ sso.corp.okta ←TRUSTS← PlatformEngineerRole(111) with IAM write
+		externalAccessFinding(scanID, "demo-trust-xa-devoidc",
+			"DevOidcRole", "555555555555", acc("555555555555").Name, acc("555555555555").OUPath, acc("555555555555").Team,
+			models.SeverityMedium, "aging", 75,
+			"https://sso.corp.okta.com/oauth2/default", "oidc", "",
+			permissionVisibility(models.PermissionTierScoped, false, false, false, false, false),
+			"corp Okta shared with PlatformEngineerRole(111) which has IAM write — blast 111+555; pivot from dev sandbox to core-prod via Okta provider"),
+
+		// LOW: Data-Prod (222) DataAnalyticsRole — GitHub Actions OIDC aging; blast 222+333 (S3 replication to Edge)
+		// Escalation: GitHub Actions → DataAnalyticsRole(222) → S3 write to analytics-reports-prod → fronted by E444EXAMPLE in Edge-Prod (333)
+		externalAccessFinding(scanID, "demo-trust-xa-github-data",
+			"DataAnalyticsRole", "222222222222", acc("222222222222").Name, acc("222222222222").OUPath, acc("222222222222").Team,
+			models.SeverityLow, "aging", 85,
+			"https://token.actions.githubusercontent.com", "oidc", "",
+			permissionVisibility(models.PermissionTierScoped, false, false, false, true, false),
+			"GitHub Actions OIDC aging; role has S3 write to analytics-reports-prod which is fronted by analytics-cdn-dist (E444EXAMPLE) in Edge-Prod (333) — escalation path crosses 222→333"),
+
+		// LOW: Edge-Prod (333) EdgeCdnRole — ext:777 active, cross-account origin; blast 111+222+333+444
+		externalAccessFinding(scanID, "demo-trust-xa-cdn",
+			"EdgeCdnRole", "333333333333", acc("333333333333").Name, acc("333333333333").OUPath, acc("333333333333").Team,
+			models.SeverityLow, "active", 8,
+			"arn:aws:iam::777777777777:root", "aws_account", "777777777777",
+			permissionVisibility(models.PermissionTierScoped, false, false, false, false, true),
+			"CDN role controls CloudFront fronting S3 in Data-Prod; ext:777 connects to 4 accounts — active but periodic review needed"),
+	)
+
 	return out
 }
 

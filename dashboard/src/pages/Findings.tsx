@@ -507,11 +507,78 @@ export function FindingsPage({ triage = false }: FindingsPageProps) {
           <pre className="whitespace-pre-wrap font-sans text-xs">{formatQueryError(error)}</pre>
         </StatePanel>
       ) : isSuccess && totalItems === 0 ? (
-        <StatePanel intent="empty" title={hasActiveFilters ? "No matching findings" : "No findings in this scan"}>
-          {hasActiveFilters
-            ? "The API returned zero rows for the current filters. Adjust filters or clear search — this is a successful empty result, not a request error."
-            : "The API returned successfully with zero findings for this scan."}
-        </StatePanel>
+        <div className="space-y-3">
+          <StatePanel intent="empty" title={hasActiveFilters ? "No matching findings" : "No findings in this scan"}>
+            {hasActiveFilters ? (
+              <div className="space-y-3">
+                <p>Zero results for the active filter combination. The filters below are all applied as AND conditions — try removing one to broaden the search.</p>
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  {state.severity && (
+                    <span className="rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 dark:border-slate-700 dark:bg-slate-900">
+                      <span className="text-slate-500">severity=</span>
+                      <span className="font-mono text-[11px] text-cyan-800 dark:text-cyan-200/90">{state.severity}</span>
+                    </span>
+                  )}
+                  {state.claimability && (
+                    <span className="rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 dark:border-slate-700 dark:bg-slate-900">
+                      <span className="text-slate-500">claimability=</span>
+                      <span className="font-mono text-[11px] text-cyan-800 dark:text-cyan-200/90">{state.claimability}</span>
+                    </span>
+                  )}
+                  {state.module && (
+                    <span className="rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 dark:border-slate-700 dark:bg-slate-900">
+                      <span className="text-slate-500">module=</span>
+                      <span className="font-mono text-[11px] text-cyan-800 dark:text-cyan-200/90">{state.module}</span>
+                    </span>
+                  )}
+                  {state.accountId && (
+                    <span className="rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 dark:border-slate-700 dark:bg-slate-900">
+                      <span className="text-slate-500">account=</span>
+                      <span className="font-mono text-[11px] text-cyan-800 dark:text-cyan-200/90">{state.accountId}</span>
+                    </span>
+                  )}
+                  {state.trustClassification.trim() && (
+                    <span className="rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 dark:border-slate-700 dark:bg-slate-900">
+                      <span className="text-slate-500">trust_classification=</span>
+                      <span className="font-mono text-[11px] text-cyan-800 dark:text-cyan-200/90">{state.trustClassification}</span>
+                    </span>
+                  )}
+                  {state.principalType.trim() && (
+                    <span className="rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 dark:border-slate-700 dark:bg-slate-900">
+                      <span className="text-slate-500">principal_type=</span>
+                      <span className="font-mono text-[11px] text-cyan-800 dark:text-cyan-200/90">{state.principalType}</span>
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                  onClick={() =>
+                    patch({
+                      severity: "",
+                      module: "",
+                      accountId: "",
+                      claimability: "",
+                      search: "",
+                      trustStale: false,
+                      adminLike: false,
+                      trustClassification: "",
+                      principalType: "",
+                      externalPrincipal: "",
+                      externalAccountId: "",
+                      findingId: "",
+                      page: 1
+                    })
+                  }
+                >
+                  Clear all filters
+                </button>
+              </div>
+            ) : (
+              "The API returned successfully with zero findings for this scan."
+            )}
+          </StatePanel>
+        </div>
       ) : pageItems.length > 0 || (!isLoading && isSuccess) ? (
         <>
           <div className="hs-filter-bar">

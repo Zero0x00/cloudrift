@@ -16,7 +16,7 @@ func TestFindingsForScan_demoBundleSize(t *testing.T) {
 
 func TestFindingsForScan_timestampedUsesProgrammatic(t *testing.T) {
 	got := findingsForScan("demo-20260101T000000Z")
-	if len(got) != 78 {
-		t.Fatalf("programmatic demo: want 78 findings, got %d", len(got))
+	if len(got) != 28 {
+		t.Fatalf("programmatic demo: want 28 findings, got %d", len(got))
 	}
 }
