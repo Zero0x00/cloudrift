@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { formatQueryError } from "../../api/httpError";
 import type { FindingDetailItem } from "../../api/types";
 import { BlastRadiusSection } from "../blast/BlastRadiusSection";
-import { formatAdminEvalStateLabel, formatDaysSinceUsedLabel } from "../../lib/trustLabels";
+import { daysSinceUsedColorClass, formatAdminEvalStateLabel, formatDaysSinceUsedLabel } from "../../lib/trustLabels";
 import { StatePanel } from "../StatePanel";
 import { PermissionVisibilityPanel } from "../trust/PermissionVisibilityPanel";
 
@@ -16,13 +16,13 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function TrustBlock({ trust }: { trust: NonNullable<FindingDetailItem["trust"]> }) {
-  const rows: [string, string | number | boolean | undefined][] = [
+  const rows: [string, string | number | boolean | undefined, string?][] = [
     ["Role ARN", trust.role_arn],
     ["Role name", trust.role_name],
     ["External principal", trust.external_principal],
     ["Principal type", trust.principal_type],
     ["External account", trust.external_account_id],
-    ["Last used", formatDaysSinceUsedLabel(trust.days_since_used)],
+    ["Last used", formatDaysSinceUsedLabel(trust.days_since_used), daysSinceUsedColorClass(trust.days_since_used)],
     ["Activity status", trust.activity_status],
     ["Verdict", trust.verdict],
     ["Reason", trust.reason],
@@ -40,10 +40,10 @@ function TrustBlock({ trust }: { trust: NonNullable<FindingDetailItem["trust"]> 
     <div className="space-y-4">
       {visible.length > 0 ? (
         <dl className="grid gap-2 sm:grid-cols-2">
-          {visible.map(([k, v]) => (
+          {visible.map(([k, v, colorClass]) => (
             <div key={k}>
               <dt className="text-xs text-slate-500">{k}</dt>
-              <dd className="mt-0.5 font-mono text-xs text-slate-800 dark:text-slate-200 break-all">{String(v)}</dd>
+              <dd className={`mt-0.5 font-mono text-xs break-all font-medium ${colorClass ?? "text-slate-800 dark:text-slate-200"}`}>{String(v)}</dd>
             </div>
           ))}
         </dl>

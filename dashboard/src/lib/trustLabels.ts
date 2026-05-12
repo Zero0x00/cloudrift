@@ -21,6 +21,20 @@ export function formatDaysSinceUsedLabel(days: number | undefined | null): strin
   return `Idle over 1 year (${days}d since use)`;
 }
 
+/** Returns a Tailwind color class for the Last Used value based on staleness. */
+export function daysSinceUsedColorClass(days: number | undefined | null): string {
+  if (days === undefined || days === null || days < 0) {
+    return "text-slate-500 dark:text-slate-400";
+  }
+  if (days < 90) {
+    return "text-emerald-700 dark:text-emerald-400";
+  }
+  if (days <= 365) {
+    return "text-amber-700 dark:text-amber-400";
+  }
+  return "text-red-700 dark:text-red-400";
+}
+
 export function formatAdminEvalStateLabel(raw: string | undefined | null): string {
   const s = raw?.trim();
   if (!s) {
