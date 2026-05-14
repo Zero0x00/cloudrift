@@ -8,7 +8,7 @@ Cloudrift is a Go CLI plus an embedded React dashboard for discovering and repor
 
 ## Installation
 
-### Option 1 — Download a pre-built binary (recommended)
+### Option 1 - Download a pre-built binary (recommended)
 
 Grab the latest release for your platform from the [Releases page](https://github.com/Zero0x00/cloudrift/releases):
 
@@ -25,7 +25,7 @@ Verify the checksum before use:
 sha256sum -c checksums.txt --ignore-missing
 ```
 
-### Option 2 — `go install`
+### Option 2 - `go install`
 
 Requires Go 1.24+. The dashboard UI is embedded in the binary at release time; `go install` builds without it (API-only mode).
 
@@ -34,7 +34,7 @@ go install github.com/Zero0x00/cloudrift/cmd/cloudrift@latest
 cloudrift version
 ```
 
-### Option 3 — Build from source
+### Option 3 - Build from source
 
 Requires Go 1.24+ and Node.js 20+.
 

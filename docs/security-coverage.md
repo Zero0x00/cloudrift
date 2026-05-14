@@ -1,4 +1,4 @@
-# Cloudrift — Security Coverage & Scoring Reference
+# Cloudrift - Security Coverage & Scoring Reference
 
 ## What Attacks Are We Protecting Against?
 
@@ -57,7 +57,7 @@ Cloudrift assumes a read-only audit role (`CloudriftAuditRole`) into each accoun
 
 ## What Is Mapped and How Resources Relate
 
-Cloudrift builds a directed graph of relationships between resources. This graph powers blast-radius analysis — given a compromised resource, what else is reachable?
+Cloudrift builds a directed graph of relationships between resources. This graph powers blast-radius analysis - given a compromised resource, what else is reachable?
 
 | Relationship | From | To | Meaning |
 |---|---|---|---|
@@ -78,7 +78,7 @@ When exported to Neo4j, findings are attached to assets via `:AFFECTS` edges, an
 
 ### Orphaned Edge / Subdomain Takeover
 
-Severity is assigned based on **claimability** — whether an attacker can actively take over the resource:
+Severity is assigned based on **claimability** - whether an attacker can actively take over the resource:
 
 | Severity | Condition | Reasoning |
 |---|---|---|
@@ -97,7 +97,7 @@ Severity is assigned based on **claimability** — whether an attacker can activ
 
 ### External IAM Trust
 
-Severity is a combination of **activity staleness**, **admin privilege**, and **vendor approval status** — whichever produces the highest severity wins:
+Severity is a combination of **activity staleness**, **admin privilege**, and **vendor approval status** - whichever produces the highest severity wins:
 
 | Severity | Condition |
 |---|---|

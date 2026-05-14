@@ -33,4 +33,4 @@ For dashboard runtime checks, the Scan Control page also supports profile valida
 ## Related docs
 
 - `docs/getting-started.md` for end-to-end local run instructions
-- `docs/TECHNICAL.md` for API and scan-control runtime behavior
+- `docs/technical.md` for API and scan-control runtime behavior

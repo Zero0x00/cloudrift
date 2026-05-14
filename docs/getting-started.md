@@ -1,64 +1,90 @@
 # Getting Started
 
-1. Install Go 1.24+ (see `go.mod`).
-2. Configure AWS credentials/profile for your management account.
-3. Deploy the audit role StackSet (`docs/iam-setup.md`).
+## Prerequisites
 
-**Phase 3 graph embeddings:** Defaults in code use **`embeddings.provider = "openai"`** (the only
-operational provider today). Set **`OPENAI_API_KEY`** when you enable embedding features.
-`local` is planned only, not supported yet — see `internal/config/config.go` and `docs/TECHNICAL.md`.
-4. Run:
+1. Go 1.24+ (see `go.mod`)
+2. AWS credentials configured for your management account
+3. The `CloudriftAuditRole` deployed in member accounts - see [iam-setup.md](iam-setup.md)
 
-```bash
-go mod tidy
-go build -o cloudrift ./cmd/cloudrift
-./cloudrift scan
-./cloudrift report --scan-id latest --format table
-```
-
-**Important current behavior:** default `cloudrift scan` writes scan metadata and an empty `findings.json` in the scan directory. For a populated local dataset suitable for dashboard/API/demo workflows, use:
+## Build and run
 
 ```bash
-./cloudrift demo generate
-./cloudrift report --scan-id latest --format table
+make build
+cloudrift version
 ```
 
-The repository includes **`cloudrift-output/demo/`** (18 findings: orphaned edges + external trust) tuned for dashboard visualization. Open the dashboard with `?scan_id=demo` or pick **demo** from the scan list after `./cloudrift dashboard`. To refresh that directory from the embedded bundle after editing `cmd/cloudrift/testdata/bundled_demo_findings.json`:
+The binary embeds the dashboard UI. If you just want the API without the frontend:
 
 ```bash
-./cloudrift demo generate --output-dir ./cloudrift-output --scan-id demo --timestamp 2026-04-18T18:00:00Z
+make dev
 ```
 
-**Optional Phase 3:** After Neo4j is configured, `./cloudrift scan --neo4j` exports the new scan to the graph (JSON remains canonical). Use `./cloudrift query "…"` for retrieval-only CLI output (see `docs/TECHNICAL.md`).
-
-**Dashboard:**
-
-- `./cloudrift dashboard` serves the SPA and API.
-- `/overview` includes 3 modes (`Executive Summary`, `High-Signal`, `Operations`) via URL state (`?view=...`).
-- High-Signal includes prioritized risk queue + remediation grouping; Operations emphasizes ownership risk and next actions.
-- `/scan-control` includes explicit runtime states (loading, error, empty/unconfigured, ready) and safe runtime checks.
-- UI theme preference is saved under `localStorage` key `cloudrift-dashboard-theme`.
-- Both themes are maintained as first-class surfaces (dark-mode contrast and focus states are tuned across cards/tables/charts).
-
-Rebuild embedded assets after UI changes:
+## Run a scan
 
 ```bash
-cd dashboard
-npm ci
-npm run build
-cd ..
-go build -o cloudrift ./cmd/cloudrift
+cloudrift scan
+cloudrift report --scan-id latest --format table
 ```
 
-## Command reality check
+The default `cloudrift scan` creates a scan directory with metadata and an empty `findings.json`. For a fully populated local dataset without AWS, use the demo generator:
 
-Current CLI command set:
+```bash
+cloudrift demo generate
+cloudrift report --scan-id latest --format table
+```
 
-- `scan`
-- `report`
-- `dashboard`
-- `query` (Phase 3 retrieval-only)
-- `demo generate`
-- `version`
+The repo ships `cloudrift-output/demo/` with 18 findings (orphaned edges + external trust) for dashboard visualization. Pick it from the scan list after `cloudrift dashboard`, or open `?scan_id=demo` directly. To regenerate it from the bundled fixture:
 
-`diff` and `remediate` are not active CLI commands in the current command tree.
+```bash
+cloudrift demo generate --output-dir ./cloudrift-output --scan-id demo --timestamp 2026-04-18T18:00:00Z
+```
+
+## Start the dashboard
+
+```bash
+cloudrift dashboard --open
+```
+
+`/overview` has three modes - Executive Summary, High-Signal, and Operations - via URL state (`?view=...`). UI theme preference is saved under `localStorage` key `cloudrift-dashboard-theme`.
+
+## AWS profile selection
+
+Use `--profile` on any command to specify which named AWS profile to use:
+
+```bash
+cloudrift scan --profile prod
+cloudrift dashboard --profile staging --open
+```
+
+See the [Choosing an AWS profile](../README.md#choosing-an-aws-profile) section in the README for the full resolution order.
+
+## Neo4j (optional graph)
+
+After configuring `[neo4j]` in `cloudrift.toml`:
+
+```bash
+cloudrift scan --neo4j
+# or use demo data
+cloudrift demo generate --neo4j --dense
+```
+
+Use `cloudrift query "..."` for retrieval-only output against the projected graph. See [technical.md](technical.md) for full details on embeddings and query behavior.
+
+## Rebuilding the dashboard UI
+
+If you modify the frontend, rebuild and recompile the binary:
+
+```bash
+make build
+```
+
+## Command reference
+
+| Command | Purpose |
+| --- | --- |
+| `scan` | Run a scan |
+| `report` | Generate a report from a scan |
+| `dashboard` | Serve the dashboard and API |
+| `query` | Graph-backed retrieval (Phase 3) |
+| `demo generate` | Generate deterministic demo data |
+| `version` | Print version |

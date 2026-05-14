@@ -30,4 +30,4 @@ Storage is intentionally flat-file JSON under `cloudrift-output/<scan-id>/`. Sca
 
 List-like API fields are intentionally normalized to stable arrays (`[]`) where practical rather than `null` (for example: scan/list `items`, diff lists, runtime profile lists, scan history items, and summary external-entity arrays). This reduces frontend null-ambiguity and runtime branching complexity.
 
-For API routes, dashboard behavior (including light/dark theme), Mermaid diagrams, debugging, and security notes, see [TECHNICAL.md](TECHNICAL.md).
+For API routes, dashboard behavior (including light/dark theme), Mermaid diagrams, debugging, and security notes, see [technical.md](technical.md).
