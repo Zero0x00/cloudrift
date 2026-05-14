@@ -3,7 +3,7 @@ package handlers
 import (
 	"testing"
 
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 func extFinding(id, ep, pt, extAcct, roleKey string, sev models.Severity, stale, priv, admin bool) models.Finding {

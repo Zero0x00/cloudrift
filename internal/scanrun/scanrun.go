@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 // Run executes the current scan pipeline entrypoint.

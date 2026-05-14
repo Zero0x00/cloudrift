@@ -10,8 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/costexplorer"
 	cetypes "github.com/aws/aws-sdk-go-v2/service/costexplorer/types"
 
-	"cloudrift/internal/config"
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/config"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 func TestScoreCostMultipliers(t *testing.T) {

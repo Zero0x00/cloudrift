@@ -4,7 +4,7 @@ import (
 	"sort"
 	"time"
 
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 // ResolveLatestScanID returns the scan directory name under outputDir that is "newest"

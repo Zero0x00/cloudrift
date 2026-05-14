@@ -6,6 +6,48 @@ Cloudrift is a **Go CLI** plus an embedded **React dashboard** for discovering a
 
 ---
 
+## Installation
+
+### Option 1 — Download a pre-built binary (recommended)
+
+Grab the latest release for your platform from the [Releases page](https://github.com/Zero0x00/cloudrift/releases):
+
+```bash
+# Linux / macOS (example for linux_amd64)
+curl -sSL https://github.com/Zero0x00/cloudrift/releases/latest/download/cloudrift_Linux_x86_64.tar.gz | tar -xz
+sudo mv cloudrift /usr/local/bin/
+cloudrift version
+```
+
+Each release ships `checksums.txt` — verify before use:
+
+```bash
+sha256sum -c checksums.txt --ignore-missing
+```
+
+### Option 2 — `go install`
+
+Requires Go 1.24+. The dashboard UI is embedded in the binary at release time; `go install` builds without it (API-only mode).
+
+```bash
+go install github.com/Zero0x00/cloudrift/cmd/cloudrift@latest
+cloudrift version
+```
+
+### Option 3 — Build from source
+
+Requires Go 1.24+ and Node.js 20+ (for the embedded dashboard).
+
+```bash
+git clone https://github.com/Zero0x00/cloudrift.git
+cd cloudrift
+make build
+sudo mv cloudrift /usr/local/bin/
+cloudrift version
+```
+
+---
+
 ## What it solves
 
 - **Orphaned edge:** Hostnames that still resolve but point at deleted buckets, broken origins, or ambiguous CloudFront mappings—with a structured verdict (e.g. reclaimable vs dangling).
@@ -16,31 +58,24 @@ Cloudrift is a **Go CLI** plus an embedded **React dashboard** for discovering a
 
 ## Requirements
 
-- **Go** 1.24+ (see `go.mod`)
-- **Node.js 18+** (only if you build the dashboard assets yourself)
-- **AWS credentials** with permissions appropriate for collectors (when the full scan pipeline is wired—see note below)
+- **AWS credentials** with read permissions for the accounts you want to scan (see [docs/iam-setup.md](docs/iam-setup.md))
+- **Neo4j 5+** *(required)* — for graph features (blast radius explorer, query). See [Neo4j setup](#neo4j-optional-graph) below.
+
+Build-time only (not needed to run a downloaded binary):
+- **Go** 1.24+
+- **Node.js 20+** (for the embedded dashboard UI)
 
 ---
 
-## Build
+## Build from source
 
 ```bash
-go mod tidy
-go test ./...
-go build -o cloudrift ./cmd/cloudrift
+make build          # builds dashboard + binary (requires npm + go)
+make dev            # binary only, no npm step (no UI, API still works)
+make test           # go test ./...
 ```
 
-### Dashboard assets (embedded in binary)
-
-The `dashboard` command serves a production build from `embed.FS`. To rebuild UI:
-
-```bash
-cd dashboard
-npm ci
-npm run build
-cd ..
-go build -o cloudrift ./cmd/cloudrift
-```
+The version string is injected from the latest git tag (`git describe`). Tagged releases use the semver tag (e.g. `v0.2.0`); untagged dev builds show `dev` or `dev-<sha>`.
 
 ---
 

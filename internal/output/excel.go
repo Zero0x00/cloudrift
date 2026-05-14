@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/models"
 
 	"github.com/xuri/excelize/v2"
 )

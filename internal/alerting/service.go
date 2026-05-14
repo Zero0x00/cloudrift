@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"cloudrift/internal/blastradius"
+	"github.com/Zero0x00/cloudrift/internal/blastradius"
 )
 
 type Service struct {

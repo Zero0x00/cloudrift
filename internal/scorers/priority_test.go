@@ -3,7 +3,7 @@ package scorers
 import (
 	"testing"
 
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 func TestPriorityScoreSeverityContribution(t *testing.T) {

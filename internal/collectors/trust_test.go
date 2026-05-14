@@ -10,8 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 
-	"cloudrift/internal/config"
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/config"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 func TestCollectTrust_ExternalAWSAccountPrincipal(t *testing.T) {

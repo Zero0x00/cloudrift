@@ -9,8 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	cftypes "github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
 
-	"cloudrift/internal/config"
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/config"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 func CollectEdge(ctx context.Context, accounts []Account) ([]models.AssetNode, []models.Relationship, error) {

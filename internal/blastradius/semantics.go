@@ -3,7 +3,7 @@ package blastradius
 import (
 	"strings"
 
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 // PrivilegeSignals captures permission-visibility evidence reused by blast semantics.

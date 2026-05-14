@@ -6,11 +6,11 @@ import (
 	"sort"
 	"strings"
 
-	"cloudrift/internal/blastradius"
-	"cloudrift/internal/config"
-	"cloudrift/internal/graph"
-	"cloudrift/internal/models"
-	"cloudrift/internal/scans"
+	"github.com/Zero0x00/cloudrift/internal/blastradius"
+	"github.com/Zero0x00/cloudrift/internal/config"
+	"github.com/Zero0x00/cloudrift/internal/graph"
+	"github.com/Zero0x00/cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/scans"
 )
 
 type Service struct {

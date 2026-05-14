@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 func BuildRemediation(f models.Finding) (string, string, []byte) {

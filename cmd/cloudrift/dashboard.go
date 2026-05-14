@@ -13,9 +13,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cloudrift/dashboard"
-	"cloudrift/internal/api"
-	"cloudrift/internal/config"
+	"github.com/Zero0x00/cloudrift/dashboard"
+	"github.com/Zero0x00/cloudrift/internal/api"
+	"github.com/Zero0x00/cloudrift/internal/config"
 )
 
 // dashboardStart is swapped in tests to avoid binding a real listener.

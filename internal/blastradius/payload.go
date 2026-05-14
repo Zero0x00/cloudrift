@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"cloudrift/internal/api/schema"
+	"github.com/Zero0x00/cloudrift/internal/api/schema"
 )
 
 // BuildSummaryPayload turns a working graph + root metadata into the API DTO.

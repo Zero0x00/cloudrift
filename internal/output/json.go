@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 func WriteJSON(path string, findings []models.Finding) error {

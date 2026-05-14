@@ -12,14 +12,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cloudrift/internal/config"
-	"cloudrift/internal/graph"
-	"cloudrift/internal/models"
-	"cloudrift/internal/scanrun"
-	"cloudrift/internal/scans"
+	"github.com/Zero0x00/cloudrift/internal/config"
+	"github.com/Zero0x00/cloudrift/internal/graph"
+	"github.com/Zero0x00/cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/scanrun"
+	"github.com/Zero0x00/cloudrift/internal/scans"
 )
 
-const version = "0.1.0"
+var version = "dev"
 
 func main() {
 	root := newRootCommand()

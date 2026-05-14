@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"cloudrift/internal/alerting"
+	"github.com/Zero0x00/cloudrift/internal/alerting"
 )
 
 func TestToSchemaSuppressionPreview(t *testing.T) {

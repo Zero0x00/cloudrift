@@ -18,13 +18,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 
-	"cloudrift/internal/alerting"
-	"cloudrift/internal/api/schema"
-	"cloudrift/internal/config"
-	"cloudrift/internal/graph"
-	"cloudrift/internal/models"
-	"cloudrift/internal/scanrun"
-	"cloudrift/internal/scans"
+	"github.com/Zero0x00/cloudrift/internal/alerting"
+	"github.com/Zero0x00/cloudrift/internal/api/schema"
+	"github.com/Zero0x00/cloudrift/internal/config"
+	"github.com/Zero0x00/cloudrift/internal/graph"
+	"github.com/Zero0x00/cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/scanrun"
+	"github.com/Zero0x00/cloudrift/internal/scans"
 )
 
 const scanStartVersion = "0.1.0"

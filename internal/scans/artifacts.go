@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 var safeScanIDPattern = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)

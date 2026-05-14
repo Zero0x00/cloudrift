@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"cloudrift/internal/models"
-	"cloudrift/internal/scorers"
+	"github.com/Zero0x00/cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/scorers"
 )
 
 func totalMonthlyRiskUSD(findings []models.Finding) float64 {

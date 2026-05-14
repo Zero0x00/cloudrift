@@ -64,7 +64,7 @@ func Default() *Config {
 	c.Scan.HTTPProbeConcurrency = 50
 	c.Scan.RoleAssumptionConcurrency = 10
 	c.Scan.HTTPTimeoutSeconds = 10
-	c.Scan.UserAgent = "cloudrift/0.1"
+	c.Scan.UserAgent = "github.com/Zero0x00/cloudrift/0.1"
 	c.Cost.Currency = "USD"
 	c.Cost.RiskMultiplierReclaimable = 5.0
 	c.Cost.RiskMultiplierDangling = 3.0

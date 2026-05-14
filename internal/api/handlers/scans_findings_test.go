@@ -13,8 +13,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"cloudrift/internal/api/schema"
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/api/schema"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 func TestListScansNewestFirst(t *testing.T) {

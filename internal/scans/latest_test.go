@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 func writeScanDir(t *testing.T, root, dirName string, meta models.ScanSnapshot, findings []models.Finding) {

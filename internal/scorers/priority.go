@@ -5,7 +5,7 @@ import (
 	"math"
 	"strings"
 
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 // PriorityScore ranks findings for top-fix workflows. Higher is more urgent.

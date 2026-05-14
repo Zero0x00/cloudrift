@@ -13,11 +13,11 @@ import (
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/spf13/cobra"
 
-	"cloudrift/internal/config"
-	"cloudrift/internal/blastradius"
-	"cloudrift/internal/graph"
-	"cloudrift/internal/models"
-	"cloudrift/internal/queryv2"
+	"github.com/Zero0x00/cloudrift/internal/config"
+	"github.com/Zero0x00/cloudrift/internal/blastradius"
+	"github.com/Zero0x00/cloudrift/internal/graph"
+	"github.com/Zero0x00/cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/queryv2"
 )
 
 // newQueryCommand registers Phase 3 natural-language retrieval over Neo4j (no LLM synthesis).

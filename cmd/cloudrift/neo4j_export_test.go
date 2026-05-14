@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"cloudrift/internal/config"
-	"cloudrift/internal/graph"
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/config"
+	"github.com/Zero0x00/cloudrift/internal/graph"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 type fakeConnector struct {

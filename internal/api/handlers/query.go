@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"cloudrift/internal/api/schema"
-	"cloudrift/internal/queryv2"
+	"github.com/Zero0x00/cloudrift/internal/api/schema"
+	"github.com/Zero0x00/cloudrift/internal/queryv2"
 )
 
 type QueryHandler struct {

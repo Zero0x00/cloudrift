@@ -6,9 +6,9 @@ import (
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 
-	"cloudrift/internal/api/schema"
-	"cloudrift/internal/models"
-	"cloudrift/internal/scans"
+	"github.com/Zero0x00/cloudrift/internal/api/schema"
+	"github.com/Zero0x00/cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/scans"
 )
 
 type ExpansionRootContext struct {

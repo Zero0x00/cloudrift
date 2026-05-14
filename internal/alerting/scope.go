@@ -3,7 +3,7 @@ package alerting
 import (
 	"strings"
 
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 // normalizeScopeIDs returns trimmed non-empty scope entries, preserving order.

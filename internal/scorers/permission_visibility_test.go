@@ -3,7 +3,7 @@ package scorers
 import (
 	"testing"
 
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 func TestDeriveRolePermissionVisibility_AdminByManagedPolicyName(t *testing.T) {

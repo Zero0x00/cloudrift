@@ -10,8 +10,8 @@ import (
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
-	"cloudrift/internal/config"
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/config"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 func CollectStorage(ctx context.Context, accounts []Account) ([]models.AssetNode, error) {

@@ -1,4 +1,4 @@
-module cloudrift
+module github.com/Zero0x00/cloudrift
 
 go 1.24.0
 

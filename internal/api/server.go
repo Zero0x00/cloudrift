@@ -12,11 +12,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"cloudrift/internal/alerting"
-	"cloudrift/internal/api/handlers"
-	"cloudrift/internal/blastradius"
-	"cloudrift/internal/config"
-	"cloudrift/internal/queryv2"
+	"github.com/Zero0x00/cloudrift/internal/alerting"
+	"github.com/Zero0x00/cloudrift/internal/api/handlers"
+	"github.com/Zero0x00/cloudrift/internal/blastradius"
+	"github.com/Zero0x00/cloudrift/internal/config"
+	"github.com/Zero0x00/cloudrift/internal/queryv2"
 )
 
 func NewRouter(outputDir, configPath string, staticFS fs.FS) http.Handler {

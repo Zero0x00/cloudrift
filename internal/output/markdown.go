@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 func WriteMarkdown(path string, findings []models.Finding) error {

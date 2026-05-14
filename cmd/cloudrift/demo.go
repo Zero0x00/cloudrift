@@ -13,9 +13,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cloudrift/internal/config"
-	"cloudrift/internal/models"
-	"cloudrift/internal/scans"
+	"github.com/Zero0x00/cloudrift/internal/config"
+	"github.com/Zero0x00/cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/scans"
 )
 
 const demoDirTimestampFormat = "20060102T150405Z"

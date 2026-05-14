@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 func WriteCSV(path string, findings []models.Finding) error {

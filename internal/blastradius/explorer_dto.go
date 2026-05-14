@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	"cloudrift/internal/api/schema"
+	"github.com/Zero0x00/cloudrift/internal/api/schema"
 )
 
 // BuildExplorerPayload shapes a curated 3D-friendly graph with highlights.

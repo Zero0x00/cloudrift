@@ -11,9 +11,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"cloudrift/internal/alerting"
-	"cloudrift/internal/api/schema"
-	"cloudrift/internal/scans"
+	"github.com/Zero0x00/cloudrift/internal/alerting"
+	"github.com/Zero0x00/cloudrift/internal/api/schema"
+	"github.com/Zero0x00/cloudrift/internal/scans"
 )
 
 type AlertingHandler struct {

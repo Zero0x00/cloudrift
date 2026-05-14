@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"cloudrift/internal/blastradius"
-	"cloudrift/internal/models"
-	"cloudrift/internal/scans"
-	"cloudrift/internal/scorers"
+	"github.com/Zero0x00/cloudrift/internal/blastradius"
+	"github.com/Zero0x00/cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/scans"
+	"github.com/Zero0x00/cloudrift/internal/scorers"
 )
 
 type Evaluator struct {

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"cloudrift/internal/models"
-	"cloudrift/internal/validators"
+	"github.com/Zero0x00/cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/validators"
 )
 
 func ScoreRisk(node models.AssetNode, validation validators.ValidationResult, bucketNames map[string]bool) models.Finding {

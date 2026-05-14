@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 type permissionStatement struct {

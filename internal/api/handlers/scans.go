@@ -12,9 +12,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"cloudrift/internal/api/schema"
-	"cloudrift/internal/models"
-	"cloudrift/internal/scans"
+	"github.com/Zero0x00/cloudrift/internal/api/schema"
+	"github.com/Zero0x00/cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/scans"
 )
 
 func ListScans(outputDir string) http.HandlerFunc {

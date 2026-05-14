@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"cloudrift/internal/api/schema"
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/api/schema"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 func TestListTopFixesCriticalBeforeMedium(t *testing.T) {

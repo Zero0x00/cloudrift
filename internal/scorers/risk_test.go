@@ -3,8 +3,8 @@ package scorers
 import (
 	"testing"
 
-	"cloudrift/internal/models"
-	"cloudrift/internal/validators"
+	"github.com/Zero0x00/cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/validators"
 )
 
 func TestScoreRisk_DeletedS3IsReclaimable(t *testing.T) {

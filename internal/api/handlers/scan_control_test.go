@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"cloudrift/internal/api/schema"
+	"github.com/Zero0x00/cloudrift/internal/api/schema"
 )
 
 func TestRuntimeStatusDoesNotExposeSecretValues(t *testing.T) {

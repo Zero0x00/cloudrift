@@ -9,7 +9,7 @@ import (
 	awsv2 "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 
-	"cloudrift/internal/config"
+	"github.com/Zero0x00/cloudrift/internal/config"
 )
 
 type RoleActivity struct {

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"cloudrift/internal/alerting"
-	"cloudrift/internal/api/schema"
+	"github.com/Zero0x00/cloudrift/internal/alerting"
+	"github.com/Zero0x00/cloudrift/internal/api/schema"
 )
 
 func TestAlertingRoutingCatalogGetPut(t *testing.T) {

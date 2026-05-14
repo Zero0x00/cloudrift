@@ -9,8 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/organizations"
 	"github.com/aws/aws-sdk-go-v2/service/organizations/types"
 
-	"cloudrift/internal/aws"
-	"cloudrift/internal/config"
+	"github.com/Zero0x00/cloudrift/internal/aws"
+	"github.com/Zero0x00/cloudrift/internal/config"
 )
 
 type Account struct {

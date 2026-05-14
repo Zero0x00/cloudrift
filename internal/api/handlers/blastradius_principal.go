@@ -10,8 +10,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"cloudrift/internal/blastradius"
-	"cloudrift/internal/scans"
+	"github.com/Zero0x00/cloudrift/internal/blastradius"
+	"github.com/Zero0x00/cloudrift/internal/scans"
 )
 
 // BlastRadiusPrincipalSummary is GET /api/scans/{id}/principals/blast-radius/summary?principal_id=...

@@ -4,7 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 //go:embed testdata/bundled_demo_findings.json

@@ -7,7 +7,7 @@ import (
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 
-	"cloudrift/internal/config"
+	"github.com/Zero0x00/cloudrift/internal/config"
 )
 
 // TryConnect returns a verified Neo4j driver, or nil when the graph is not available

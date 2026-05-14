@@ -8,9 +8,9 @@ import (
 	"sort"
 	"strings"
 
-	"cloudrift/internal/collectors"
-	"cloudrift/internal/config"
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/collectors"
+	"github.com/Zero0x00/cloudrift/internal/config"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 var externalAccountIDPattern = regexp.MustCompile(`^arn:aws:iam::([0-9]{12}):`)

@@ -23,8 +23,8 @@ import (
 	"os"
 	"strings"
 
-	"cloudrift/internal/config"
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/config"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 // ExpectedVectorDimensions matches the Neo4j vector index (all-MiniLM-L6-v2) in schema.go.

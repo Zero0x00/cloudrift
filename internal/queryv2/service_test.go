@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 func TestBuildPlanRoutesIntent(t *testing.T) {

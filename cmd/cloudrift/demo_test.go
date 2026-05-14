@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"cloudrift/internal/graph"
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/graph"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 func TestGenerateDemoScan_WritesExpectedArtifacts(t *testing.T) {

@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"cloudrift/internal/models"
-	"cloudrift/internal/queryv2"
+	"github.com/Zero0x00/cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/queryv2"
 )
 
 func TestQueryHandler_Query(t *testing.T) {

@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"cloudrift/internal/config"
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/config"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 func vec384(seed float64) []float32 {

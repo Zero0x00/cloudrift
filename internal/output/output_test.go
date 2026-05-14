@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 func TestWriteJSONCSVMarkdown(t *testing.T) {
