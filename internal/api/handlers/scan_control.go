@@ -178,9 +178,6 @@ func (s *scanControlCenter) RunHistory() http.HandlerFunc {
 		s.mu.RLock()
 		items := append([]schema.ScanRunHistoryItem(nil), s.history...)
 		s.mu.RUnlock()
-		if items == nil {
-			items = []schema.ScanRunHistoryItem{}
-		}
 		writeJSON(w, http.StatusOK, schema.ScanRunHistoryResponse{Items: items})
 	}
 }

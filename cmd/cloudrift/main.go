@@ -49,10 +49,10 @@ func newRootCommand() *cobra.Command {
 			if outputDir == "" {
 				outputDir = cfg.Output.OutputDir
 			}
-			if err := ensureValidSession(context.Background(), cfg.AWS.ManagementProfile, cmd); err != nil {
+			if err := ensureValidSession(cmd.Context(), cfg.AWS.ManagementProfile, cmd); err != nil {
 				return err
 			}
-			scanID, err := runScan(context.Background(), outputDir)
+			scanID, err := runScan(cmd.Context(), outputDir)
 			if err != nil {
 				return err
 			}
@@ -125,8 +125,8 @@ func ensureValidSession(ctx context.Context, profile string, cmd *cobra.Command)
 	return nil
 }
 
-func runScan(_ context.Context, outputDir string) (string, error) {
-	return scanrun.Run(context.Background(), outputDir, version)
+func runScan(ctx context.Context, outputDir string) (string, error) {
+	return scanrun.Run(ctx, outputDir, version)
 }
 
 type neo4jConnectorFactory interface {

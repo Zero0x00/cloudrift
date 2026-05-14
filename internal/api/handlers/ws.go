@@ -1,19 +1,15 @@
 package handlers
 
 import (
-	"context"
 	"net/http"
 	"time"
 
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wsjson"
-
 )
 
 func ScanProgressWS(control *scanControlCenter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Restrict cross-origin WS handshakes to loopback dashboard hosts. The progress
-		// stream carries no secrets, but wildcard origins are unnecessary attack surface.
 		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 			OriginPatterns: []string{
 				"http://localhost:*",
@@ -27,11 +23,20 @@ func ScanProgressWS(control *scanControlCenter) http.HandlerFunc {
 		}
 		defer conn.Close(websocket.StatusNormalClosure, "ok")
 
-		event := control.CurrentProgressEvent()
-		if event.Message == "" {
-			event.Message = "scan progress stream is connected"
+		ctx := r.Context()
+		ticker := time.NewTicker(500 * time.Millisecond)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				event := control.CurrentProgressEvent()
+				if err := wsjson.Write(ctx, conn, event); err != nil {
+					return
+				}
+			}
 		}
-		event.Timestamp = time.Now().UTC()
-		_ = wsjson.Write(context.Background(), conn, event)
 	}
 }
