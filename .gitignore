@@ -3,3 +3,4 @@ dashboard/dist/assets/
 cloudrift-output/
 .env
 *.env
+/cloudrift

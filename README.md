@@ -61,6 +61,24 @@ cloudrift version
 - **AWS credentials** with read permissions for the accounts you want to scan (see [docs/iam-setup.md](docs/iam-setup.md))
 - **Neo4j 5+** - required for graph features (blast radius explorer, query). See [Neo4j setup](#neo4j-graph) below.
 
+### Choosing an AWS profile
+
+If you have multiple AWS accounts set up (e.g. `dev`, `staging`, `prod` in `~/.aws/config`), use `--profile` to tell Cloudrift which one to use:
+
+```bash
+cloudrift scan --profile prod
+cloudrift dashboard --profile staging --open
+cloudrift query --profile dev "show high severity findings"
+```
+
+If `--profile` is omitted, Cloudrift resolves credentials in this order:
+
+1. `management_profile` in `cloudrift.toml`
+2. `AWS_PROFILE` environment variable
+3. The AWS default profile (`[default]` in `~/.aws/config`)
+
+The dashboard also has a profile picker under **Scan Control** - `--profile` sets the pre-selected value at startup.
+
 Build-time only (not needed to run a downloaded binary):
 - Go 1.24+
 - Node.js 20+ (for the embedded dashboard UI)
@@ -101,11 +119,11 @@ Environment: `CLOUDRIFT_APP_BASE_URL` - optional base URL for alert action links
 
 | Command | Description |
 | --- | --- |
-| `cloudrift scan` | Runs a scan and writes output under `--output-dir`. Flags: `--neo4j` (export to Neo4j), `--output-dir`. |
+| `cloudrift scan` | Runs a scan and writes output under `--output-dir`. Flags: `--profile`, `--neo4j` (export to Neo4j), `--output-dir`. |
 | `cloudrift demo generate` | Generates a deterministic demo scan with mixed severities, relationships, and assets. Flags: `--neo4j`, `--dense` (multi-hop trust chains), `--output-dir`. |
 | `cloudrift report` | Reads `findings.json` for `--scan-id` (default `latest`) and emits `table`, `json`, `csv`, or `markdown`. |
-| `cloudrift query` | Hybrid vector retrieval against Neo4j for a scan (no LLM answer synthesis). Flags: `--scan-id`, `--query`, `--format table\|json`, `--output-dir`. |
-| `cloudrift dashboard` | Serves REST API + embedded SPA on `--port` (default `8080`). Flags: `--open`, `--scan-id`, `--output-dir`. |
+| `cloudrift query` | Hybrid vector retrieval against Neo4j for a scan (no LLM answer synthesis). Flags: `--scan-id`, `--query`, `--format table\|json`, `--profile`, `--output-dir`. |
+| `cloudrift dashboard` | Serves REST API + embedded SPA on `--port` (default `8080`). Flags: `--open`, `--scan-id`, `--profile`, `--output-dir`. |
 | `cloudrift version` | Prints the version string. |
 
 ---
