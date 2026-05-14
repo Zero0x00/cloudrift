@@ -43,7 +43,7 @@ function TrustBlock({ trust }: { trust: NonNullable<FindingDetailItem["trust"]> 
           {visible.map(([k, v, colorClass]) => (
             <div key={k}>
               <dt className="text-xs text-slate-500">{k}</dt>
-              <dd className={`mt-0.5 font-mono text-xs break-all font-medium ${colorClass ?? "text-slate-800 dark:text-slate-200"}`}>{String(v)}</dd>
+              <dd className={`mt-0.5 font-mono text-xs break-words font-medium ${colorClass ?? "text-slate-800 dark:text-slate-200"}`}>{String(v)}</dd>
             </div>
           ))}
         </dl>
