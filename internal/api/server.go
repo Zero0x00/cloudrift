@@ -64,6 +64,7 @@ func apiRouter(outputDir, configPath string) http.Handler {
 	r.Get("/scan/progress", handlers.ScanProgressWS(control))
 	r.Get("/runtime/status", control.RuntimeStatus())
 	r.Post("/runtime/validate-profile", control.ValidateProfile())
+	r.Post("/runtime/sso-login", control.SSOLogin())
 	r.Post("/scan/start", control.StartScan())
 	r.Get("/scan/status", control.CurrentRunStatus())
 	r.Get("/scan/history", control.RunHistory())

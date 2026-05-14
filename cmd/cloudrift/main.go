@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/Zero0x00/cloudrift/internal/aws"
 	"github.com/Zero0x00/cloudrift/internal/config"
 	"github.com/Zero0x00/cloudrift/internal/graph"
 	"github.com/Zero0x00/cloudrift/internal/models"
@@ -47,6 +48,9 @@ func newRootCommand() *cobra.Command {
 			}
 			if outputDir == "" {
 				outputDir = cfg.Output.OutputDir
+			}
+			if err := ensureValidSession(context.Background(), cfg.AWS.ManagementProfile, cmd); err != nil {
+				return err
 			}
 			scanID, err := runScan(context.Background(), outputDir)
 			if err != nil {
@@ -95,6 +99,30 @@ func newRootCommand() *cobra.Command {
 
 	root.AddCommand(scanCmd, reportCmd, queryCmd, versionCmd, dashboardCmd, demoCmd)
 	return root
+}
+
+// ensureValidSession checks AWS credentials before a scan. If an SSO session is
+// expired it auto-triggers `aws sso login` (blocking) and retries. Falls back
+// to showing the manual command when the aws CLI is not installed.
+func ensureValidSession(ctx context.Context, profile string, cmd *cobra.Command) error {
+	err := aws.CheckCredentials(ctx, profile)
+	if err == nil {
+		return nil
+	}
+	if !aws.IsSSOExpiredError(err) {
+		return fmt.Errorf("AWS credential check failed: %w", err)
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "AWS SSO session expired for profile %q\n", profile)
+	fmt.Fprintf(cmd.OutOrStdout(), "Opening browser for re-authentication...\n")
+	found, loginErr := aws.WaitSSOLogin(ctx, profile)
+	if !found {
+		return fmt.Errorf("SSO session expired. aws CLI not found — run manually:\n  %s", aws.SSOLoginCommand(profile))
+	}
+	if loginErr != nil {
+		return fmt.Errorf("SSO login failed: %w\nRun manually: %s", loginErr, aws.SSOLoginCommand(profile))
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "Session refreshed. Resuming scan...\n")
+	return nil
 }
 
 func runScan(_ context.Context, outputDir string) (string, error) {

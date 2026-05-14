@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { formatQueryError } from "../api/httpError";
 import { PageHeader } from "../components/PageHeader";
 import { StatePanel } from "../components/StatePanel";
-import { useRuntimeStatusQuery, useScanRunHistoryQuery, useScanRunStatusQuery, useStartScanMutation, useValidateProfileMutation } from "../hooks/useDashboardQueries";
+import { useRuntimeStatusQuery, useScanRunHistoryQuery, useScanRunStatusQuery, useStartScanMutation, useSSOLoginMutation, useValidateProfileMutation } from "../hooks/useDashboardQueries";
 import { useScanControlUrlState } from "../hooks/useScanControlUrlState";
 
 const MODULE_OPTIONS = ["all", "orphaned_edge", "external_access"] as const;
@@ -21,9 +21,11 @@ export function ScanControlCenterPage() {
   const history = useScanRunHistoryQuery();
   const validateProfile = useValidateProfileMutation();
   const startScan = useStartScanMutation();
+  const ssoLogin = useSSOLoginMutation();
 
   const [progressMessage, setProgressMessage] = useState("");
   const [socketFailed, setSocketFailed] = useState(false);
+  const [ssoPolling, setSsoPolling] = useState(false);
 
   const runtimeData = runtime.data;
   const profiles = runtimeData?.aws_profiles ?? [];
@@ -80,6 +82,20 @@ export function ScanControlCenterPage() {
 
     return () => ws?.close();
   }, [runtimeReady]);
+
+  // Start polling validate-profile after SSO browser login is triggered.
+  // Stop once credentials are confirmed valid.
+  useEffect(() => {
+    if (!ssoPolling) return;
+    if (validateProfile.data?.ok) {
+      setSsoPolling(false);
+      return;
+    }
+    const id = setInterval(() => {
+      validateProfile.mutate(state.profile);
+    }, 3000);
+    return () => clearInterval(id);
+  }, [ssoPolling, validateProfile.data?.ok, state.profile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isRunning = scanStatus.data?.status === "running";
   const effectiveStatus = useMemo(() => {
@@ -239,7 +255,51 @@ export function ScanControlCenterPage() {
               Limitation: this control center currently supports a single active run at a time (latest run state is shared across tabs/users).
             </p>
 
-            {validateProfile.data ? (
+            {validateProfile.data?.sso_login_required ? (
+              <div className="mt-3 rounded border border-amber-300 bg-amber-50/90 p-3 dark:border-amber-700/60 dark:bg-amber-950/25">
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                  AWS SSO session expired
+                </p>
+                {ssoPolling && !validateProfile.data?.ok ? (
+                  <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                    Waiting for browser authentication…
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                    Run in your terminal or click below to open the browser:
+                    <code className="ml-1 rounded bg-amber-100 px-1 dark:bg-amber-900/40">
+                      {validateProfile.data.sso_command}
+                    </code>
+                  </p>
+                )}
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    disabled={ssoLogin.isPending || ssoPolling}
+                    onClick={() => {
+                      ssoLogin.mutate(state.profile, {
+                        onSuccess: (res) => {
+                          if (res.started) setSsoPolling(true);
+                        }
+                      });
+                    }}
+                    className="hs-btn-primary text-xs"
+                  >
+                    {ssoPolling ? "Waiting…" : "Refresh SSO session"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigator.clipboard.writeText(validateProfile.data?.sso_command ?? "")}
+                    className="hs-btn-neutral text-xs"
+                  >
+                    Copy command
+                  </button>
+                </div>
+                {ssoLogin.data && !ssoLogin.data.started ? (
+                  <p className="mt-2 text-xs text-rose-400">{ssoLogin.data.message}</p>
+                ) : null}
+              </div>
+            ) : validateProfile.data ? (
               <p className={`mt-3 text-sm ${validateProfile.data.ok ? "text-emerald-300" : "text-amber-300"}`}>
                 {validateProfile.data.message}
               </p>

@@ -287,6 +287,18 @@ export interface ValidateProfileResponse {
   ok: boolean;
   profile: string;
   message: string;
+  sso_login_required?: boolean;
+  sso_command?: string;
+}
+
+export interface SSOLoginRequest {
+  profile: string;
+}
+
+export interface SSOLoginResponse {
+  started: boolean;
+  message: string;
+  command: string;
 }
 
 export interface ScanStartRequest {

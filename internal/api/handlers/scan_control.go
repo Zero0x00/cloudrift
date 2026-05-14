@@ -19,6 +19,7 @@ import (
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 
 	"github.com/Zero0x00/cloudrift/internal/alerting"
+	cloudriftaws "github.com/Zero0x00/cloudrift/internal/aws"
 	"github.com/Zero0x00/cloudrift/internal/api/schema"
 	"github.com/Zero0x00/cloudrift/internal/config"
 	"github.com/Zero0x00/cloudrift/internal/graph"
@@ -325,31 +326,74 @@ func validateCredentialSource(ctx context.Context, profile string) (schema.Valid
 	}
 	cfg, err := awsconfig.LoadDefaultConfig(ctx, loadOpts...)
 	if err != nil {
-		return schema.ValidateProfileResponse{
-			OK:      false,
-			Profile: profile,
-			Message: "could not resolve credentials/config from selected source",
-		}, http.StatusBadRequest
+		resp := schema.ValidateProfileResponse{OK: false, Profile: profile, Message: "could not resolve credentials/config from selected source"}
+		if cloudriftaws.IsSSOExpiredError(err) {
+			resp.Message = ssoExpiredMessage(profile)
+			resp.SSOLoginRequired = true
+			resp.SSOCommand = cloudriftaws.SSOLoginCommand(profile)
+			return resp, http.StatusOK
+		}
+		return resp, http.StatusBadRequest
 	}
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	_, err = sts.NewFromConfig(cfg).GetCallerIdentity(cctx, &sts.GetCallerIdentityInput{})
 	if err != nil {
-		return schema.ValidateProfileResponse{
-			OK:      false,
-			Profile: profile,
-			Message: "credential source resolved, but caller identity check failed",
-		}, http.StatusBadRequest
+		resp := schema.ValidateProfileResponse{OK: false, Profile: profile, Message: "credential source resolved, but caller identity check failed"}
+		if cloudriftaws.IsSSOExpiredError(err) {
+			resp.Message = ssoExpiredMessage(profile)
+			resp.SSOLoginRequired = true
+			resp.SSOCommand = cloudriftaws.SSOLoginCommand(profile)
+			return resp, http.StatusOK
+		}
+		return resp, http.StatusBadRequest
 	}
 	msg := "profile is valid and credentials are usable"
 	if profile == "" {
 		msg = "ambient credential source is valid (env/role/shared config)"
 	}
-	return schema.ValidateProfileResponse{
-		OK:      true,
-		Profile: profile,
-		Message: msg,
-	}, http.StatusOK
+	return schema.ValidateProfileResponse{OK: true, Profile: profile, Message: msg}, http.StatusOK
+}
+
+func ssoExpiredMessage(profile string) string {
+	if profile == "" {
+		return "AWS SSO session expired"
+	}
+	return fmt.Sprintf("AWS SSO session expired for profile %q", profile)
+}
+
+func (s *scanControlCenter) SSOLogin() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req schema.SSOLoginRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_json", "invalid request JSON", nil)
+			return
+		}
+		profile := strings.TrimSpace(req.Profile)
+		ssoCmd := cloudriftaws.SSOLoginCommand(profile)
+		started, err := cloudriftaws.TriggerSSOLogin(profile)
+		if !started {
+			writeJSON(w, http.StatusOK, schema.SSOLoginResponse{
+				Started: false,
+				Message: "aws CLI not found; run manually: " + ssoCmd,
+				Command: ssoCmd,
+			})
+			return
+		}
+		if err != nil {
+			writeJSON(w, http.StatusOK, schema.SSOLoginResponse{
+				Started: false,
+				Message: "failed to start aws sso login; run manually: " + ssoCmd,
+				Command: ssoCmd,
+			})
+			return
+		}
+		writeJSON(w, http.StatusOK, schema.SSOLoginResponse{
+			Started: true,
+			Message: "browser opened for SSO authentication; validate the profile once login completes",
+			Command: ssoCmd,
+		})
+	}
 }
 
 func defaultProfile(cfg *config.Config) string {

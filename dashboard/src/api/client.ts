@@ -16,6 +16,7 @@ import type {
   ScanStartResponse,
   ScanSummaryResponse,
   ValidateProfileResponse,
+  SSOLoginResponse,
   AlertCatalogResponse,
   AlertRoutingCatalog,
   AlertRoutingCatalogResponse,
@@ -206,6 +207,12 @@ export const apiClient = {
   },
   validateProfile(profile: string): Promise<ValidateProfileResponse> {
     return fetchJSON<ValidateProfileResponse>("/runtime/validate-profile", {
+      method: "POST",
+      body: JSON.stringify({ profile })
+    });
+  },
+  triggerSSOLogin(profile: string): Promise<SSOLoginResponse> {
+    return fetchJSON<SSOLoginResponse>("/runtime/sso-login", {
       method: "POST",
       body: JSON.stringify({ profile })
     });

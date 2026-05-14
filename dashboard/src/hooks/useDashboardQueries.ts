@@ -193,6 +193,12 @@ export function useValidateProfileMutation() {
   });
 }
 
+export function useSSOLoginMutation() {
+  return useMutation({
+    mutationFn: (profile: string) => apiClient.triggerSSOLogin(profile)
+  });
+}
+
 export function useStartScanMutation() {
   const qc = useQueryClient();
   return useMutation({

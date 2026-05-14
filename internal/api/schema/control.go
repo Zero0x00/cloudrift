@@ -16,9 +16,21 @@ type ValidateProfileRequest struct {
 }
 
 type ValidateProfileResponse struct {
-	OK      bool   `json:"ok"`
+	OK               bool   `json:"ok"`
+	Profile          string `json:"profile"`
+	Message          string `json:"message"`
+	SSOLoginRequired bool   `json:"sso_login_required,omitempty"`
+	SSOCommand       string `json:"sso_command,omitempty"`
+}
+
+type SSOLoginRequest struct {
 	Profile string `json:"profile"`
+}
+
+type SSOLoginResponse struct {
+	Started bool   `json:"started"`
 	Message string `json:"message"`
+	Command string `json:"command"`
 }
 
 type ScanStartRequest struct {
