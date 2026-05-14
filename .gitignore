@@ -4,3 +4,7 @@ cloudrift-output/
 .env
 *.env
 /cloudrift
+venv-graphify/
+.cursor/
+graphify-out/
+CLAUDE.md
