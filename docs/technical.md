@@ -13,7 +13,7 @@ Complete reference for engineers onboarding to the repository. Assumptions and g
 - **Orphaned edge assets** - DNS names, CloudFront, S3 website endpoints, certificates, etc., with validation via DNS/HTTP probes and structured claimability (reclaimable, dangling, broken, edge obscured).
 - **External IAM trust** - Roles that trust external principals (AWS accounts, SAML, OIDC), scored using IAM activity (`RoleLastUsed`) and configurable trust policy (approved accounts, stale/ghost day thresholds).
 - **Cost signals** - Static per-asset estimates and optional **Cost Explorer** enrichment for orphaned-edge findings (not applied to `external_access` findings by design).
-- **Reporting** - JSON artifacts, CLI table/JSON/CSV/markdown, Excel workbooks, and a **React dashboard** served by the same binary.
+- **Reporting** - JSON artifacts; CLI `report` supports **table, JSON, CSV, markdown**; Excel workbook writers live in `internal/output/` for library use but are **not** exposed on `cloudrift report`; **React dashboard** is served by the same binary.
 
 ### Problem it solves
 
@@ -26,10 +26,10 @@ Teams lose track of DNS that points at deleted buckets, misconfigured distributi
 | Collectors | Org accounts, DNS records, S3/CloudFront/edge assets, IAM trust policies, IAM role last-used activity |
 | Validators | DNS resolution, HTTP/TLS probing, fingerprinting error bodies |
 | Scorers | Risk/claimability (`orphaned_edge`), trust (`external_access`), static cost + optional CE merge |
-| Output | JSON findings, CSV/markdown/table, Excel (findings + cost summary + trust sheet) |
+| Output | JSON findings; CLI report: table/JSON/CSV/markdown; Excel workbooks via `internal/output` package (not `cloudrift report`); dashboard |
 | API | Read-only REST over scan directories; scan-control HTTP + WebSocket progress for dashboard |
 | Dashboard | Vite/React SPA embedded in Go; TanStack Query; light/dark theme (`darkMode: class`); Overview, **Scan Control**, Findings (incl. triage), Accounts, Diff, Trust report, **External Entities** |
-| Phase 3 graph | Optional Neo4j projection (`cloudrift scan --neo4j`), `cloudrift query` retrieval over projected vectors; JSON scan files remain source of truth |
+| Phase 3 graph | **Graph tier (Neo4j):** projection (`cloudrift scan --neo4j`), `cloudrift query` retrieval over vectors; JSON scan files remain source of truth; main JSON-only workflows work without Bolt |
 
 ---
 
@@ -62,11 +62,21 @@ cloudrift/
 - **HTTP**: `internal/api/server.go` - `NewRouter`, `StartServer`.
 - **Embedded UI**: `dashboard/embed.go` exposes `embed.FS` of built assets; `cmd/cloudrift/dashboard.go` serves `fs.Sub(Dist, "dist")`.
 
+### CLI credentials and profiles (accuracy)
+
+- **No `--profile` flag** exists on any `cloudrift` subcommand today. The CLI loads `[aws].management_profile` from `cloudrift.toml` (default `"default"`). An **empty** `management_profile` means the AWS SDK default credential chain (including `AWS_PROFILE` when unset in config).
+- **Dashboard Scan Control** accepts a **named profile in the JSON body** for `POST /api/scan/start` and `POST /api/runtime/validate-profile` — that is UI/API only, not mirrored as global CLI flags.
+
+### `cloudrift scan` flags (stubbed vs effective)
+
+- **Implemented:** `--output-dir`, `--neo4j` (optional export after the scan directory is written).
+- **Stubbed / not wired:** `--no-http` and `--concurrency` are registered on the `scan` command but **not passed** into `scanrun.Run` (which only writes metadata + empty `findings.json`). Treat them as placeholders until orchestration connects to the HTTP validator pipeline.
+
 ### Important relationship: library vs CLI `scan`
 
 The **`internal/`** packages implement a full pipeline (collectors → validators → scorers → output). **`runScan` / `scanrun.Run`** (used by CLI `scan` and by the dashboard **Scan Control** start path) currently creates a scan directory with **empty `findings.json`** and metadata only. End-to-end population of findings from AWS in the default scan path is a **documented gap**; tests, demos, and UI workflows often rely on **pre-populated** `findings.json` under `output_dir/<scan-id>/`.
 
-**Demo bundle:** `cloudrift demo generate` writes a **deterministic** scan directory (`demo-<UTC-timestamp>`) with non-empty `findings.json`, `scan-metadata.json` (counts consistent with findings), `relationships.json`, and `assets/*.json`, suitable for dashboard and optional Neo4j export (`--neo4j`). This is fixture data, not live AWS collection.
+**Demo bundle:** `cloudrift demo generate` writes a **deterministic** scan directory (`demo-<UTC-timestamp>`) with non-empty `findings.json`, `scan-metadata.json` (counts consistent with findings), `relationships.json`, and `assets/*.json`, suitable for dashboard and **graph-tier** Neo4j export (`--neo4j`). This is fixture data, not live AWS collection.
 
 ---
 
@@ -182,7 +192,7 @@ GET /api/scans/latest/summary HTTP/1.1
 
 ---
 
-### Blast Radius APIs (optional graph, curated payloads)
+### Blast Radius APIs (graph tier; curated payloads)
 
 These routes power focused blast-radius and attack-path explainability. They are not raw graph dump APIs.
 
@@ -357,7 +367,7 @@ Used by the dashboard route `/scan-control`. **No secrets** in responses (profil
 |--------|------|---------|
 | `GET` | `/api/runtime/status` | AWS profile names, default profile, booleans for OpenAI key env set, Neo4j config present, optional alert envs |
 | `POST` | `/api/runtime/validate-profile` | Body: `{ "profile": "..." }` - STS `GetCallerIdentity` check; safe operator message |
-| `POST` | `/api/scan/start` | Body: `ScanStartRequest` - `profile`, `module` (`all\|orphaned_edge\|external_access`), `no_http`, `neo4j`, optional `provider` (`openai\|local`). Starts **`scanrun.Run`** asynchronously; optional Neo4j export after scan dir exists. **Single active run:** second start returns 409 while status is `running`. |
+| `POST` | `/api/scan/start` | Body: `ScanStartRequest` - `profile`, `module` (`all\|orphaned_edge\|external_access`), `no_http`, `neo4j`, optional `provider` (`openai\|local`). Starts **`scanrun.Run`** asynchronously; **graph-tier** Neo4j export after scan dir exists when `neo4j` is true. **Single active run:** second start returns 409 while status is `running`. **`provider: local`:** **Stubbed** — same as config: local embeddings are not operational; graph embedding steps require OpenAI until `internal/graph` local path ships. |
 | `GET` | `/api/scan/status` | Current run: `run_id`, `status`, `stage`, `message`, `scan_id` when known, timestamps |
 | `GET` | `/api/scan/history` | Recent completed/failed runs (bounded list) |
 
@@ -480,14 +490,14 @@ flowchart TB
 
 ## 6. Database / state
 
-There is **no database** in core Phase 1–2 flow. **Phase 3** adds an **optional** Neo4j graph as a **read-side projection** of scan JSON (same `ResolveScanDirectoryName` rules apply when choosing what to export).
+There is **no database** in core Phase 1–2 flow. **Phase 3** adds a **Neo4j graph tier** as a **read-side projection** of scan JSON (same `ResolveScanDirectoryName` rules apply when choosing what to export). **Main** flows use files only; graph tier adds relationships, blast-radius, vectors, and `query`.
 
 | Artifact | Path | Lifecycle |
 |----------|------|-----------|
 | Scan metadata | `output_dir/<scan_id>/scan-metadata.json` | Written per scan; drives list timestamps |
 | Findings | `output_dir/<scan_id>/findings.json` | Source of truth for API and reports |
 | Reports | `report.json`, `report.csv`, `report.md`, `.xlsx` | Optional exports |
-| Neo4j graph | External DB (see `internal/graph/schema.go`) | Optional: `cloudrift scan --neo4j` after a scan dir exists; vectors + `ScanSnapshot` embedding identity for `cloudrift query` |
+| Neo4j graph | External DB (see `internal/graph/schema.go`) | **Graph tier:** `cloudrift scan --neo4j` after a scan dir exists; vectors + `ScanSnapshot` embedding identity for `cloudrift query` |
 
 **Models:** `internal/models/finding.go` - severity, module (`orphaned_edge` | `external_access`), claimability, costs, evidence map, etc. `ScanSnapshot` holds scan-level metadata.
 
@@ -495,7 +505,7 @@ There is **no database** in core Phase 1–2 flow. **Phase 3** adds an **optiona
 
 ### Demo dataset (`cloudrift demo generate`)
 
-**Purpose:** Supply a **consistent, non-random** scan directory for UI development, API tests, and optional graph export without AWS.
+**Purpose:** Supply a **consistent, non-random** scan directory for UI development, API tests, and **graph-tier** export without live AWS collection.
 
 **Layout:** `output_dir/demo-<UTC-timestamp>/` containing at minimum `scan-metadata.json` and `findings.json`; also `relationships.json` and `assets/*.json` when graph-style data is needed.
 
@@ -621,7 +631,7 @@ Operator UX notes:
 ### CLI `cloudrift query` (Phase 3)
 
 - **Entry:** `cmd/cloudrift/query.go` - `newQueryCommand`, `runQueryCLI`, `runQueryRetrieval` (injectable `RowReader` test seam).
-- **Flags:** Positional `QUERY_TEXT...` or `--query` (mutually exclusive). `--scan-id` (default `latest`), `--output-dir` (default `./cloudrift-output`), `--format table|json`, `--top-k`, `--profile`, `--require-stored-embedding-identity`.
+- **Flags:** Positional `QUERY_TEXT...` or `--query` (mutually exclusive). `--scan-id` (default `latest`), `--output-dir` (default `./cloudrift-output`), `--format table|json`, `--top-k`, `--require-stored-embedding-identity`, `--legacy-retrieval` (boolean; uses legacy retrieval path when set). There is **no** `--profile` flag on `cloudrift query`; credentials follow the same config + default chain as other commands.
 - **Disk:** Reads only `scan-metadata.json` for `scan_id` and embedding identity.
 - **Output:** Human mode prints query, scan id, top-k, embedding verification line, vector probe stats, operator notes, per-hit grounding fields, and `Answer synthesis: not implemented`. JSON mode emits a single object with `answer_synthesis: “”`.
 - **Errors:** `queryRetrievalError` wraps known sentinels with operator-safe messages; raw Neo4j text is not surfaced as primary guidance.
@@ -636,11 +646,13 @@ Operator UX notes:
 
 ## 11. Related docs
 
+- [starter-doc.html](../starter-doc.html) - Interactive reviewer hub (single HTML, hash navigation)
 - [architecture.md](architecture.md) - Phase 1–2 file-backed pipeline summary
 - [getting-started.md](getting-started.md) - Local setup and first run
 - [iam-setup.md](iam-setup.md) - Org-wide audit role deployment
 - [security-coverage.md](security-coverage.md) - Attack scenarios, scoring, and data collection reference
+- [tech-spec-v2.md](../tech-spec-v2.md) - Spec anchor / deviation pointer
 
 ---
 
-*Last updated: 2026-04-23 - documents Blast Radius endpoints (finding/entity/principal), external-entity `principal_id` derivation, and principal blast entrypoints from entity/trust surfaces.*
+*Last updated: 2026-05-14 — CLI profile flags corrected; `cloudrift scan` stub flags documented; related links point to `starter-doc.html`.*

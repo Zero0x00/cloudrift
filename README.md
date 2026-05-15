@@ -1,8 +1,34 @@
 # Cloudrift
 
-Cloudrift is a Go CLI plus an embedded React dashboard for discovering and reporting on orphaned AWS edge assets (DNS, S3 websites, CloudFront, etc.) and cross-account IAM trust relationships. It produces evidence-backed findings with severity, claimability, and estimated monthly cost/risk signals, stored as JSON under a scan directory (no database required).
+**In one sentence:** Cloudrift is built to **call AWS APIs** and inventory org-wide edge + IAM-trust risk, writing evidence to **local JSON** per scan. The **dashboard** and **`cloudrift report`** read those files. **`demo generate`** exists only to **populate the UI** with deterministic sample data when you are not hitting AWS. **Neo4j is a coupled graph tier** for relationships, blast-radius, embeddings, **`cloudrift query`**, and future RAG-style investigation — the **main** tables/diff/trust flows still run on JSON alone (vector retrieval remains **retrieval-only**, no LLM answer synthesis).
 
-**Full system documentation:** [docs/technical.md](docs/technical.md) (API reference, diagrams, debugging, security).
+**Who it is for:** security engineers, cloud engineers, and leaders who want evidence-backed answers without standing up a database first.
+
+| Path | Role |
+| --- | --- |
+| [starter-doc.html](starter-doc.html) | **Main beginner guide** — 20 topics, diagrams, copy buttons, honest status |
+| [docs/cli-commands.md](docs/cli-commands.md) | What each `cloudrift` subcommand does |
+| [docs/architecture.md](docs/architecture.md) | System shape and where code lives |
+| [docs/technical.md](docs/technical.md) | API contracts, embeddings, debugging |
+| [docs/iam-setup.md](docs/iam-setup.md) | Org role and StackSet |
+| [docs/security-coverage.md](docs/security-coverage.md) | What is detected, what is not, severity caveats |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
+| [tech-spec-v2.md](tech-spec-v2.md) | Historical spec anchor; live code may differ on purpose |
+
+---
+
+## Current status (read this first)
+
+| Area | Status |
+| --- | --- |
+| Default `cloudrift scan` | Writes **metadata + empty `findings.json`** (orchestration gap). |
+| `cloudrift demo generate` | **Fully populated** deterministic scan for UI/report learning. |
+| Dashboard + `/api/*` | Works from **`--output-dir`** JSON; **Neo4j not required**. |
+| Neo4j + `query` | **Graph tier** (coupled): needs Bolt + config + embeddings for advanced graph/vector flows; **not** required for core JSON workflows. |
+| Local embeddings | **Stubbed** (`provider=local` errors until implemented). |
+| CLI `--profile` | **Does not exist** — use TOML `management_profile` or default chain. |
+
+**Fastest try (UI + reports, no AWS inventory):** `cloudrift demo generate && cloudrift dashboard --open` — see [getting-started](docs/getting-started.md). **Real org value** still assumes **AWS APIs** + correct IAM role rollout once `scan` writes populated findings.
 
 ---
 
@@ -58,26 +84,17 @@ cloudrift version
 
 ## Requirements
 
-- **AWS credentials** with read permissions for the accounts you want to scan (see [docs/iam-setup.md](docs/iam-setup.md))
-- **Neo4j 5+** - required for graph features (blast radius explorer, query). See [Neo4j setup](#neo4j-graph) below.
+- **AWS credentials** for the management account path you use to reach member accounts (see [docs/iam-setup.md](docs/iam-setup.md)).
+- **Neo4j 5+** — **Graph tier (coupled).** Brings relationship graph, blast-radius APIs, vector retrieval, and `cloudrift query` (and room for future RAG-style investigation). **Main workflows** (listings, findings, diff, trust views) use JSON on disk only — the app degrades cleanly when Neo4j is off. See [Neo4j setup](#neo4j-graph) below.
 
-### Choosing an AWS profile
+### AWS profile (CLI vs dashboard)
 
-If you have multiple AWS accounts set up (e.g. `dev`, `staging`, `prod` in `~/.aws/config`), use `--profile` to tell Cloudrift which one to use:
+The **CLI does not implement `--profile`**. Credentials for `cloudrift scan` (and other commands) come from:
 
-```bash
-cloudrift scan --profile prod
-cloudrift dashboard --profile staging --open
-cloudrift query --profile dev "show high severity findings"
-```
+1. `[aws].management_profile` in `cloudrift.toml` when set (default in code is `"default"`).
+2. If `management_profile` is **empty**, the AWS SDK default chain applies (this includes honoring **`AWS_PROFILE`** the same way other AWS tools do).
 
-If `--profile` is omitted, Cloudrift resolves credentials in this order:
-
-1. `management_profile` in `cloudrift.toml`
-2. `AWS_PROFILE` environment variable
-3. The AWS default profile (`[default]` in `~/.aws/config`)
-
-The dashboard also has a profile picker under **Scan Control** - `--profile` sets the pre-selected value at startup.
+The **dashboard** exposes a profile picker on **Scan Control**; selected profiles are sent in API JSON bodies (`POST /api/scan/start`, `POST /api/runtime/validate-profile`), not via a global CLI flag.
 
 Build-time only (not needed to run a downloaded binary):
 - Go 1.24+
@@ -117,13 +134,15 @@ Environment: `CLOUDRIFT_APP_BASE_URL` - optional base URL for alert action links
 
 ## Commands
 
+Global flag: `--config` path to TOML (optional; see [Configuration](#configuration)).
+
 | Command | Description |
 | --- | --- |
-| `cloudrift scan` | Runs a scan and writes output under `--output-dir`. Flags: `--profile`, `--neo4j` (export to Neo4j), `--output-dir`. |
-| `cloudrift demo generate` | Generates a deterministic demo scan with mixed severities, relationships, and assets. Flags: `--neo4j`, `--dense` (multi-hop trust chains), `--output-dir`. |
-| `cloudrift report` | Reads `findings.json` for `--scan-id` (default `latest`) and emits `table`, `json`, `csv`, or `markdown`. |
-| `cloudrift query` | Hybrid vector retrieval against Neo4j for a scan (no LLM answer synthesis). Flags: `--scan-id`, `--query`, `--format table\|json`, `--profile`, `--output-dir`. |
-| `cloudrift dashboard` | Serves REST API + embedded SPA on `--port` (default `8080`). Flags: `--open`, `--scan-id`, `--profile`, `--output-dir`. |
+| `cloudrift scan` | **Implemented:** writes `output_dir/<scan-id>/` with `scan-metadata.json` + **empty** `findings.json`, then optionally exports to Neo4j (`--neo4j`). **Flags:** `--output-dir`, `--neo4j`. **`--no-http` / `--concurrency`:** registered but **not wired** to `scanrun.Run` (stub). |
+| `cloudrift demo generate` | **Implemented:** deterministic populated scan (`findings.json`, `relationships.json`, `assets/*.json`). Flags: `--output-dir`, `--neo4j`, `--dense`, `--scan-id`, hidden `--timestamp` (tests). |
+| `cloudrift report` | Reads `findings.json` for `--scan-id` (default `latest`). `--format` `table\|json\|csv\|markdown`; optional `--output`. |
+| `cloudrift query` | **Graph tier:** hybrid vector retrieval over Neo4j — **retrieval only**, no LLM answer synthesis. Flags include `--scan-id`, `--query` or positional text, `--format`, `--output-dir`, `--top-k`, `--require-stored-embedding-identity`, `--legacy-retrieval`. |
+| `cloudrift dashboard` | Serves REST + embedded SPA. Flags: `--port`, `--open`, `--scan-id` (default URL hint), `--output-dir`. |
 | `cloudrift version` | Prints the version string. |
 
 ---
@@ -148,6 +167,7 @@ Open `http://127.0.0.1:8080` (optional `?scan_id=<id>`).
 | `/external-entities` | Entity-centric table with entity and principal blast actions |
 | `/blast-explorer` | 3D blast radius explorer (finding, entity, and principal root views) |
 | `/alerting` | Alert rules (Slack webhooks), evaluation preview, test send, and event history |
+| `/query` | Phase 3 graph query UI (when Neo4j + embeddings are configured) |
 
 The SPA supports light and dark themes. Toggle with the header control; preference is stored in `localStorage` under `cloudrift-dashboard-theme` (default dark).
 
@@ -185,9 +205,9 @@ MATCH (s:ScanSnapshot) RETURN s.scan_id, s.finding_count LIMIT 25;
 MATCH (f:Finding) WHERE f.scan_id = $scan RETURN f.id, f.title, f.severity LIMIT 50;
 ```
 
-### Graph-optional behavior
+### Graph-tier behavior (Neo4j off)
 
-Neo4j is a power feature - the dashboard and API core surfaces work without it. When Neo4j is not configured or unreachable, blast-radius endpoints return `graph_available: false` with a `graph_unavailable_reason` field; all other pages continue normally.
+The dashboard and API **core** surfaces work from JSON alone. When Neo4j is not configured or unreachable, blast-radius and graph-native endpoints return `graph_available: false` with `graph_unavailable_reason`; JSON-backed pages keep working.
 
 ---
 
@@ -206,6 +226,10 @@ GET  /api/scans/{id}/top-fixes
 GET  /api/scans/{id}/remediation-groups
 GET  /api/scans/{id}/blast-radius/summary
 GET  /api/scans/{id}/blast-radius/explorer
+GET  /api/scans/{id}/external-entities/blast-radius/summary
+GET  /api/scans/{id}/external-entities/blast-radius/explorer
+GET  /api/scans/{id}/principals/blast-radius/summary
+GET  /api/scans/{id}/principals/blast-radius/explorer
 GET  /api/diff?old=<scan>&new=<scan>
 GET  /api/runtime/status
 POST /api/runtime/validate-profile
@@ -243,6 +267,10 @@ See [docs/iam-setup.md](docs/iam-setup.md) and `iam/stackset-template.yaml` for 
 
 ## Contributing
 
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for dev setup, tests, where to add collectors/scorers/dashboard pages, and `graphify update`.
+
+- **Reviewer hub:** [starter-doc.html](starter-doc.html) (hash-routed single HTML file at repo root).
+- **Spec anchor:** [tech-spec-v2.md](tech-spec-v2.md) (historical pointer + where deviations are documented).
 - **Packages:** AWS I/O in `collectors`, pure logic in `scorers`/`validators`, HTTP in `internal/api`.
 - **Tests:** `go test ./...` covers API handlers, scorer golden behavior, and collector fakes.
 - **Frontend:** React 18, Vite 5, Tailwind (`darkMode: class`), TanStack Query. `npm run dev` proxies `/api` to `http://127.0.0.1:8080` by default. Override with `VITE_API_PROXY_TARGET` in `dashboard/.env.local`.

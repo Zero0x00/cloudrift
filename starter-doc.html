@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Cloudrift — beginner documentation</title>
+<meta name="description" content="Self-contained beginner guide to Cloudrift: AWS-backed inventory, demo data for UI, JSON + dashboard workflows, Neo4j graph tier, and honest implementation status."/>
+<style>
+:root{--bg:#080c12;--panel:#0f1623;--line:#243044;--text:#e8edf4;--dim:#94a3b8;--acc:#38bdf8;--acc2:#34d399;--max:54rem;--nav:16rem}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;font-size:15px}
+a{color:var(--acc)}
+code,kbd{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.85em;background:#111827;padding:.12em .38em;border-radius:4px;border:1px solid var(--line)}
+.layout{display:grid;grid-template-columns:1fr;min-height:100vh}
+@media(min-width:920px){.layout{grid-template-columns:var(--nav) 1fr}}
+nav{background:var(--panel);border-bottom:1px solid var(--line);padding:.75rem .85rem}
+@media(min-width:920px){nav{border-bottom:0;border-right:1px solid var(--line);position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto}}
+nav h1{font-size:1.05rem;margin:0 0 .35rem;font-weight:700;letter-spacing:-.02em}
+.start-btn{width:100%;padding:.55rem;margin:.25rem 0 .5rem;border-radius:8px;border:1px solid var(--acc2);background:#052e1f;color:#a7f3d0;font-weight:600;cursor:pointer;font:inherit}
+.start-btn:hover{filter:brightness(1.08)}
+.tools{display:flex;flex-wrap:wrap;gap:.35rem;margin:.35rem 0 .45rem}
+.tools input{flex:1;min-width:7rem;padding:.45rem .55rem;border-radius:8px;border:1px solid var(--line);background:#0b1220;color:var(--text)}
+#nav-toggle{display:none;width:100%;margin-bottom:.35rem;padding:.5rem;border:1px solid var(--line);background:#111827;color:var(--text);border-radius:8px;cursor:pointer;font:inherit}
+@media(max-width:919px){#nav-toggle{display:block}}
+.nav-item{display:block;padding:.38rem .5rem;border-radius:8px;color:var(--dim);text-decoration:none;font-size:.88rem}
+.nav-item:hover,.nav-item:focus-visible{background:#111827;color:var(--text);outline:none}
+.nav-item.active{background:#0c1e2e;color:var(--acc);font-weight:600}
+main{padding:1rem 1.15rem 3rem;max-width:calc(var(--max) + 2.5rem)}
+@media(min-width:920px){main{padding:1.35rem 2rem}}
+.topbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.65rem;margin-bottom:1.1rem;padding-bottom:.75rem;border-bottom:1px solid var(--line)}
+.topbar h2{margin:0;font-size:1.38rem;letter-spacing:-.02em}
+.progress{font-size:.85rem;color:var(--dim);white-space:nowrap}
+.pager{display:flex;gap:.45rem;align-items:center;flex-wrap:wrap}
+.pager button{padding:.48rem .85rem;border-radius:8px;border:1px solid var(--line);background:#111827;color:var(--text);cursor:pointer;font:inherit}
+.pager button:disabled{opacity:.4;cursor:not-allowed}
+.page{display:none;max-width:var(--max)}
+.page.active{display:block}
+.tbl{width:100%;border-collapse:collapse;font-size:.88rem;margin:.75rem 0}
+.tbl th,.tbl td{border:1px solid var(--line);padding:.45rem .5rem;text-align:left;vertical-align:top}
+.tbl th{background:#111827;color:var(--text)}
+.tbl td{color:var(--dim)}
+.fig{margin:1rem 0;max-width:100%}
+.fig svg{max-width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:10px;background:#05080e}
+.legend .b{display:inline-block;padding:.14rem .5rem;border-radius:999px;margin:0 .25rem .25rem 0;font-size:.72rem;font-weight:700;letter-spacing:.02em}
+.b.impl{background:#064e3b;color:#a7f3d0}.b.opt{background:#1e3a5f;color:#93c5fd}.b.coup{background:#312e81;color:#c7d2fe}.b.stb{background:#713f12;color:#fde68a}.b.pln{background:#3b0764;color:#e9d5ff}
+.wdim{margin:.65rem 0;border:1px solid var(--line);border-radius:8px;padding:0;background:#0b1220}
+.wdim summary{cursor:pointer;padding:.55rem .75rem;font-weight:600;color:var(--acc)}
+.wdim p{margin:0;padding:0 .85rem .75rem;color:var(--dim);font-size:.92rem}
+.copy-wrap{position:relative;margin:.6rem 0;background:#0b1220;border:1px solid var(--line);border-radius:8px;padding:.35rem .5rem .5rem}
+.copy-btn{position:absolute;top:.35rem;right:.35rem;font-size:.72rem;padding:.2rem .45rem;border-radius:6px;border:1px solid var(--line);background:#1e293b;color:var(--text);cursor:pointer}
+pre.cmd{margin:.25rem 0 0;padding:0;overflow-x:auto;background:transparent;border:0}
+pre.cmd code{display:block;padding:2.2rem .5rem .5rem .65rem;white-space:pre-wrap;word-break:break-word}
+ul,ol{color:var(--dim)}
+footer{margin-top:2.5rem;font-size:.8rem;color:var(--dim)}
+.gloss dt{margin-top:.75rem;font-weight:600;color:var(--acc2)}
+.gloss dd{margin:0 0 .35rem;color:var(--dim)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav>
+<button type="button" id="nav-toggle" aria-expanded="true">Menu</button>
+<h1>Cloudrift docs</h1>
+<button type="button" class="start-btn" id="btn-start">Start here → Welcome</button>
+<div class="tools"><input type="search" id="nav-filter" placeholder="Filter pages…" autocomplete="off" aria-label="Filter pages"/></div>
+<div id="nav-items">
+<a class="nav-item" href="#welcome" data-title="welcome">Welcome</a>
+<a class="nav-item" href="#problem" data-title="the problem">The problem</a>
+<a class="nav-item" href="#issue-types" data-title="kinds of issues">Kinds of issues</a>
+<a class="nav-item" href="#four-questions" data-title="what cloudrift answers">What Cloudrift answers</a>
+<a class="nav-item" href="#implementation-status" data-title="current implementation status">Current implementation status</a>
+<a class="nav-item" href="#quick-start" data-title="quick start (copy-paste)">Quick start (copy-paste)</a>
+<a class="nav-item" href="#aws-credentials" data-title="aws credentials explained">AWS credentials explained</a>
+<a class="nav-item" href="#real-scan" data-title="real scan path">Real scan path</a>
+<a class="nav-item" href="#outputs" data-title="output artifacts">Output artifacts</a>
+<a class="nav-item" href="#cli" data-title="cli commands">CLI commands</a>
+<a class="nav-item" href="#reports" data-title="reports (cli)">Reports (CLI)</a>
+<a class="nav-item" href="#dashboard" data-title="dashboard guide">Dashboard guide</a>
+<a class="nav-item" href="#neo4j" data-title="neo4j graph tier">Neo4j &amp; graph tier</a>
+<a class="nav-item" href="#embeddings-query" data-title="embeddings &amp; query">Embeddings &amp; query</a>
+<a class="nav-item" href="#iam" data-title="iam &amp; permissions">IAM &amp; permissions</a>
+<a class="nav-item" href="#sec-eng" data-title="security engineer workflow">Security engineer workflow</a>
+<a class="nav-item" href="#ciso" data-title="ciso / leadership view">CISO / leadership view</a>
+<a class="nav-item" href="#contributors" data-title="contributor guide">Contributor guide</a>
+<a class="nav-item" href="#troubleshooting" data-title="troubleshooting">Troubleshooting</a>
+<a class="nav-item" href="#glossary" data-title="glossary">Glossary</a>
+<a class="nav-item" href="#arsenal" data-title="black hat reviewer notes">Black Hat reviewer notes</a>
+<a class="nav-item" href="#roadmap" data-title="roadmap">Roadmap</a>
+</div>
+<p style="font-size:.72rem;color:var(--dim);margin-top:1rem;line-height:1.35">Single HTML file · no CDN · no remote fonts · open locally. Also read <code>README.md</code> and <code>docs/getting-started.md</code>.</p>
+</nav>
+<main>
+<div class="topbar">
+<h2 id="page-title">Welcome</h2>
+<div class="progress" id="page-progress" aria-live="polite">Page 1 of 22</div>
+<div class="pager">
+<button type="button" id="btn-prev">← Previous</button>
+<button type="button" id="btn-next">Next →</button>
+</div>
+</div>
+<div class="fig" style="margin-top:0"><svg viewBox="0 0 760 160" xmlns="http://www.w3.org/2000/svg" aria-label="Beginner architecture" role="img"><rect width="760" height="160" fill="#070b10"/><text x="380" y="22" text-anchor="middle" fill="#9aa8bc" font-size="11" font-family="system-ui,sans-serif">How pieces connect (simplified)</text><rect x="20" y="48" width="72" height="44" rx="6" fill="#1a2332" stroke="#3dd6c3"/><text x="56" y="76" text-anchor="middle" fill="#e8edf4" font-size="11" font-family="system-ui">You</text><path d="M92 70h36" stroke="#5c6b82" stroke-width="2"/><rect x="128" y="42" width="110" height="56" rx="6" fill="#122018" stroke="#3dd6c3"/><text x="183" y="68" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">cloudrift</text><text x="183" y="84" text-anchor="middle" fill="#9aa8bc" font-size="9" font-family="system-ui">CLI + API + UI</text><path d="M238 70h32" stroke="#5c6b82" stroke-width="2"/><rect x="270" y="48" width="100" height="44" rx="6" fill="#1a2332" stroke="#f4a261"/><text x="320" y="76" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">AWS APIs</text><text x="320" y="92" text-anchor="middle" fill="#fca5a5" font-size="8" font-family="system-ui">live inventory</text><path d="M370 70h32" stroke="#5c6b82" stroke-width="2"/><rect x="402" y="42" width="100" height="56" rx="6" fill="#1a2332" stroke="#5c6b82"/><text x="452" y="68" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">JSON files</text><text x="452" y="84" text-anchor="middle" fill="#9aa8bc" font-size="9" font-family="system-ui">per scan</text><path d="M502 70h28" stroke="#5c6b82" stroke-width="2"/><rect x="530" y="48" width="100" height="44" rx="6" fill="#1a2332" stroke="#3dd6c3"/><text x="580" y="76" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Dashboard</text><path d="M630 70h28" stroke="#5c6b82" stroke-width="2"/><rect x="658" y="48" width="82" height="44" rx="6" fill="#122018" stroke="#93c5fd"/><text x="699" y="76" text-anchor="middle" fill="#e8edf4" font-size="9" font-family="system-ui">Neo4j</text><text x="699" y="92" text-anchor="middle" fill="#c7d2fe" font-size="8" font-family="system-ui">graph tier</text></svg></div>
+<div id="pages">
+<article class="page" id="page-welcome" data-page="welcome"><p class="sr-only">What Cloudrift is and how to use this guide.</p><h2 id="t-welcome">Welcome</h2>
+<p><strong>Cloudrift</strong> is built around <strong>calling AWS APIs</strong> to inventory org accounts, DNS, edge services (S3 website, CloudFront, …), and IAM trust — then writing results to <strong>JSON folders</strong> on disk. A <strong>web dashboard</strong> in the same binary reads those files. We added <strong><code>demo generate</code></strong> so you can learn the UI and report formats <strong>without</strong> dialing AWS — that is training data, not a substitute for a real scan.</p>
+<details class="wdim"><summary>What this means</summary><p>Production value comes from live AWS reads. Demo mode exists purely so designers, reviewers, and new contributors see populated tables and charts while the default <code>scan</code> path is still being wired to full collectors.</p></details>
+<p><strong>Who should use it:</strong> security engineers, cloud engineers, FinOps-adjacent folks, and leaders who want evidence-backed answers about forgotten DNS and external IAM trust.</p>
+<p class="legend"><span class="b impl">Implemented</span> works in code today · <span class="b opt">Skippable add-on</span> (e.g. OpenAI key for embeddings) · <span class="b coup">Graph tier</span> Neo4j-coupled advanced path · <span class="b stb">Stubbed</span> registered but not wired · <span class="b pln">Planned</span> on the roadmap</p>
+<p>Tip: use the <strong>Start here</strong> button, then <strong>Next</strong> through all pages once. Use the <a href="#glossary">Glossary</a> when a word is new.</p>
+</article>
+<article class="page" id="page-problem" data-page="problem"><p class="sr-only">Orphaned edge and external trust in plain language.</p><h2 id="t-problem">The problem</h2>
+<p><strong>Orphaned edge assets</strong> — A DNS name (like <code>docs.example.com</code>) still points at AWS (S3 website hosting, CloudFront, etc.) but the resource behind it is gone or mis-linked. Attackers sometimes <strong>reclaim</strong> the same bucket name or abuse a dangling distribution.</p>
+<details class="wdim"><summary>What this means</summary><p>Your customers still hit the hostname in a browser. If an attacker controls the backing resource, they control what users see.</p></details>
+<p><strong>Stale external IAM trust</strong> — An IAM role in your account can be assumed by an <strong>external</strong> AWS account, SAML IdP, or OIDC app. If nobody reviewed it lately, it is easy to forget — but the trust stays valid until you remove it.</p>
+<p><strong>Why cost shows up</strong> — Even security issues have a waste angle: paying for DNS, certificates, or unused edge while also carrying takeover risk.</p>
+</article>
+<article class="page" id="page-issue-types" data-page="issue-types"><p class="sr-only">What Cloudrift looks for and why it matters.</p><h2 id="t-issue-types">Kinds of issues (and why they matter)</h2>
+<p>Findings fall into two big families: <strong>orphaned edge</strong> (public hostnames and AWS edge services) and <strong>external access</strong> (IAM trust to the outside world). Severity and evidence differ by subtype.</p>
+<h3>Orphaned edge — subdomain takeover and friends</h3>
+<p><strong>S3 website takeover risk</strong> — DNS still points at an S3 website endpoint, but the bucket is gone or not in your org. An attacker who creates a bucket with the matching global name can host content under <em>your</em> hostname. <em>Why it matters:</em> phishing, malware distribution, and brand damage under a trusted domain.</p>
+<p><strong>Dangling CloudFront / CDN edge</strong> — The name resolves to AWS infrastructure, but the distribution, origin, or alternate-domain mapping is wrong. Responses may be 403/404 with recognizable AWS bodies. <em>Why it matters:</em> users still trust the URL; attackers probe these patterns at scale.</p>
+<p><strong>CDN hostname mismatch</strong> — Traffic hits CloudFront IPs but the requested <code>Host</code> is not on the distribution’s allowlist. <em>Why it matters:</em> subtle outages, possible routing confusion, and sometimes a path to serving unexpected content.</p>
+<p><strong>Broken DNS (NXDOMAIN / timeout)</strong> — The record is stale or misconfigured. Lower direct takeover pressure than a reclaimable S3 name, but still noise for security and IT — and it hides drift (“did we mean to delete this?”).</p>
+<h3>External IAM trust — cross-account and federated access</h3>
+<p><strong>Ghost or admin-equivalent external trust</strong> — A role trusts an external account, SAML IdP, or OIDC app and carries broad permissions (or has never been used). <em>Why it matters:</em> durable lateral entry: whoever controls that external principal can assume into your estate.</p>
+<p><strong>Unapproved vendor account</strong> — Trust exists to an AWS account ID that is not on your allowlist. <em>Why it matters:</em> forgotten SaaS integrations and M&amp;A leftovers are common sources of long-lived access.</p>
+<p><strong>Stale vs active trust</strong> — <code>RoleLastUsed</code> and policy heuristics separate “probably forgotten” from “still exercised.” <em>Why it matters:</em> prioritization — rotate or remove dead trust before it becomes an attacker’s path of least resistance.</p>
+<p>For scoring tables and service coverage detail, see <code>docs/security-coverage.md</code>.</p>
+</article>
+<article class="page" id="page-four-questions" data-page="four-questions"><p class="sr-only">Four questions the product is built around.</p><h2 id="t-four-questions">What Cloudrift answers</h2>
+<ol>
+<li><strong>What exists?</strong> Hostnames, buckets, distributions, roles — tied to accounts when collectors have run.</li>
+<li><strong>Who owns it?</strong> Account IDs, tags, and OU paths help teams route work.</li>
+<li><strong>Is it claimable?</strong> For edge findings, <a href="#glossary">claimability</a> answers whether a stranger could plausibly take control.</li>
+<li><strong>What is it costing?</strong> Static estimates and optional Cost Explorer merge (edge module) give FinOps-friendly signals.</li>
+</ol>
+</article>
+<article class="page" id="page-implementation-status" data-page="implementation-status"><p class="sr-only">Honest status table for new readers.</p><h2 id="t-implementation-status">Current implementation status</h2>
+<table class="tbl"><thead><tr><th>Area</th><th>Status</th><th>Notes</th></tr></thead><tbody>
+<tr><td>Default <code>cloudrift scan</code></td><td><span class="b impl">Implemented</span> but limited</td><td>Writes metadata + <strong>empty</strong> <code>findings.json</code> today.</td></tr>
+<tr><td><code>cloudrift demo generate</code></td><td><span class="b impl">Implemented</span></td><td>Deterministic populated scan for learning and UI.</td></tr>
+<tr><td>Dashboard + REST API (JSON workflows)</td><td><span class="b impl">Implemented</span></td><td>Reads <code>findings.json</code> and friends from <code>output_dir</code> — no Neo4j required for tables, diff, trust views, etc.</td></tr>
+<tr><td>Neo4j + graph export + blast APIs</td><td><span class="b coup">Graph tier</span></td><td><strong>Coupled product capability:</strong> relationship graph, blast-radius explorer, vector index, and <code>cloudrift query</code> / future RAG-style investigation. The app still runs without it; you lose those advanced surfaces.</td></tr>
+<tr><td><code>cloudrift query</code></td><td><span class="b coup">Graph tier</span></td><td>Needs Neo4j projection + embeddings provider; retrieval-only today (no LLM answer synthesis).</td></tr>
+<tr><td>Local embeddings provider</td><td><span class="b stb">Stubbed</span></td><td><code>provider=local</code> fails by design until ONNX path exists.</td></tr>
+<tr><td><code>scan --no-http</code>, <code>--concurrency</code></td><td><span class="b stb">Stubbed</span></td><td>Flags exist but are not passed into <code>scanrun.Run</code>.</td></tr>
+<tr><td>Full live collectors → scan</td><td><span class="b pln">Planned</span></td><td>Libraries + tests exist; orchestration wiring outstanding.</td></tr>
+</tbody></table>
+</article>
+<article class="page" id="page-quick-start" data-page="quick-start"><p class="sr-only">Build, demo, dashboard, report.</p><h2 id="t-quick-start">Quick start (copy-paste)</h2>
+<p><strong>Prerequisites:</strong> Go 1.24+, Node.js 20+ and npm (only if you build the embedded UI from source).</p>
+<div class="copy-wrap"><button type="button" class="copy-btn" aria-label="Copy command">Copy</button><pre class="cmd"><code>git clone https://github.com/Zero0x00/cloudrift.git &amp;&amp; cd cloudrift</code></pre></div>
+<div class="copy-wrap"><button type="button" class="copy-btn" aria-label="Copy command">Copy</button><pre class="cmd"><code>go mod download &amp;&amp; go test ./...</code></pre></div>
+<div class="copy-wrap"><button type="button" class="copy-btn" aria-label="Copy command">Copy</button><pre class="cmd"><code>cd dashboard &amp;&amp; npm ci &amp;&amp; npm run build &amp;&amp; cd ..</code></pre></div>
+<div class="copy-wrap"><button type="button" class="copy-btn" aria-label="Copy command">Copy</button><pre class="cmd"><code>go build -o cloudrift ./cmd/cloudrift</code></pre></div>
+<p>Or use <code>make build</code> from the repo Makefile (runs dashboard build + Go build).</p>
+<h3>Try without touching AWS</h3>
+<p>Use this block to <strong>visualize the product</strong> (dashboard, reports, optional graph export). It does <strong>not</strong> replace live AWS inventory — production findings come from real API calls once the scan pipeline is fully wired.</p>
+<div class="copy-wrap"><button type="button" class="copy-btn" aria-label="Copy command">Copy</button><pre class="cmd"><code>cloudrift demo generate --output-dir ./cloudrift-output</code></pre></div>
+<div class="copy-wrap"><button type="button" class="copy-btn" aria-label="Copy command">Copy</button><pre class="cmd"><code>cloudrift report --scan-id latest --format table</code></pre></div>
+<div class="copy-wrap"><button type="button" class="copy-btn" aria-label="Copy command">Copy</button><pre class="cmd"><code>cloudrift dashboard --output-dir ./cloudrift-output --open</code></pre></div>
+<p>Open <code>http://127.0.0.1:8080</code> and pick the newest scan or use <code>?scan_id=demo</code> if you generated into <code>demo</code>.</p>
+</article>
+<article class="page" id="page-aws-credentials" data-page="aws-credentials"><p class="sr-only">Keys, profiles, roles, and config.</p><h2 id="t-aws-credentials">AWS credentials explained</h2>
+<p><strong>Access keys</strong> are long-lived ID/secret pairs. <strong>Profiles</strong> are named sections in <code>~/.aws/credentials</code> and <code>~/.aws/config</code>. The AWS SDK picks credentials using a <strong>default chain</strong> (env vars, profile files, SSO, etc.).</p>
+<details class="wdim"><summary>What this means</summary><p>You do not type secrets into Cloudrift. You configure the machine the same way you configure the AWS CLI, then Cloudrift uses the SDK.</p></details>
+<p><strong>CLI today:</strong> set <code>[aws].management_profile = "prod"</code> in <code>cloudrift.toml</code>, or leave it empty to use the default chain (including <code>AWS_PROFILE</code>). There is <strong>no</strong> <code>--profile</code> flag on CLI commands.</p>
+<div class="copy-wrap"><button type="button" class="copy-btn" aria-label="Copy command">Copy</button><pre class="cmd"><code>[aws]
+management_profile = &quot;my-readonly-profile&quot;</code></pre></div>
+<p><strong>Multi-account:</strong> your management identity must be allowed to <code>sts:AssumeRole</code> into <code>CloudriftAuditRole</code> in each member account (see IAM page + <code>docs/iam-setup.md</code>). Access keys alone in one account do <strong>not</strong> magically see every account — the role pattern must exist.</p>
+</article>
+<article class="page" id="page-real-scan" data-page="real-scan"><p class="sr-only">What scan does today vs intended.</p><h2 id="t-real-scan">Real scan path</h2>
+<p><strong>Intended:</strong> call AWS APIs across org accounts, validate DNS/HTTP, score risk, write findings.</p>
+<p><strong>Today:</strong> <code>cloudrift scan</code> still <strong>validates AWS credentials</strong> and creates a new timestamped folder under <code>output_dir</code> with <code>scan-metadata.json</code> and an empty <code>findings.json</code>. That proves the path and permissions; it is <strong>not</strong> yet a populated live assessment.</p>
+<p><strong>Scan IDs:</strong> the folder name (for example <code>20260514-120000</code>). The special name <code>latest</code> means “newest by <code>scan-metadata.json</code> timestamp”.</p>
+<p><strong>Source of truth:</strong> JSON files on disk. The API never “fixes” findings in memory for long-term storage.</p>
+<div class="fig"><svg viewBox="0 0 700 130" xmlns="http://www.w3.org/2000/svg" aria-label="Intended data pipeline" role="img"><rect width="700" height="130" fill="#070b10"/><text x="350" y="20" text-anchor="middle" fill="#9aa8bc" font-size="11" font-family="system-ui">Intended pipeline (library exists; default scan not fully wired)</text><rect x="16" y="44" width="88" height="48" rx="6" fill="#1a2332" stroke="#3dd6c3"/><text x="60" y="74" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Collectors</text><path d="M104 68h28" stroke="#5c6b82" stroke-width="2"/><rect x="132" y="44" width="88" height="48" rx="6" fill="#1a2332" stroke="#3dd6c3"/><text x="176" y="74" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Validators</text><path d="M220 68h28" stroke="#5c6b82" stroke-width="2"/><rect x="248" y="44" width="80" height="48" rx="6" fill="#1a2332" stroke="#3dd6c3"/><text x="288" y="74" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Scorers</text><path d="M328 68h28" stroke="#5c6b82" stroke-width="2"/><rect x="356" y="44" width="100" height="48" rx="6" fill="#1a2332" stroke="#f4a261"/><text x="406" y="74" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">findings.json</text><path d="M456 68h28" stroke="#5c6b82" stroke-width="2"/><rect x="484" y="44" width="100" height="48" rx="6" fill="#1a2332" stroke="#3dd6c3"/><text x="534" y="74" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Reports / API</text><path d="M584 68h28" stroke="#5c6b82" stroke-width="2"/><rect x="612" y="44" width="72" height="48" rx="6" fill="#122018" stroke="#93c5fd"/><text x="648" y="74" text-anchor="middle" fill="#e8edf4" font-size="9" font-family="system-ui">Neo4j</text></svg></div>
+</article>
+<article class="page" id="page-outputs" data-page="outputs"><p class="sr-only">Every file under a scan directory.</p><h2 id="t-outputs">Output artifacts</h2>
+<ul>
+<li><code>scan-metadata.json</code> — one object with scan id, timestamps, counts, totals.</li>
+<li><code>findings.json</code> — array of findings; may be empty after default scan.</li>
+<li><code>relationships.json</code> — optional graph edges for export (POINTS_TO, TRUSTS, …).</li>
+<li><code>assets/*.json</code> — optional arrays of asset nodes; merged in lexical file name order.</li>
+</ul>
+<p>There is <strong>no</strong> separate <code>summary.json</code> file — summaries are computed by the API from these inputs.</p>
+</article>
+<article class="page" id="page-cli" data-page="cli"><p class="sr-only">What each cloudrift subcommand does.</p><h2 id="t-cli">CLI commands</h2>
+<p>Global flag on all commands: <code>--config</code> path to <code>cloudrift.toml</code> (optional).</p>
+<table class="tbl"><thead><tr><th>Command</th><th>Purpose</th><th>Notable flags</th></tr></thead><tbody>
+<tr><td><code>cloudrift scan</code></td><td>Starts a scan run: checks AWS credentials, writes <code>output_dir/&lt;scan-id&gt;/</code> with <code>scan-metadata.json</code> and (today) empty <code>findings.json</code>. Calls AWS for session validation.</td><td><code>--output-dir</code>, <code>--neo4j</code> (export projection after write). <code>--no-http</code>, <code>--concurrency</code> exist but are <strong>not wired</strong>.</td></tr>
+<tr><td><code>cloudrift demo generate</code></td><td>Writes a <strong>deterministic</strong> populated scan (findings, relationships, assets) for UI/report training — <strong>no live AWS collection</strong>.</td><td><code>--output-dir</code>, <code>--scan-id</code>, <code>--neo4j</code>, <code>--dense</code> (richer trust graph for blast demos).</td></tr>
+<tr><td><code>cloudrift report</code></td><td>Reads <code>findings.json</code> for a scan and prints <code>table</code>, <code>json</code>, <code>csv</code>, or <code>markdown</code>.</td><td><code>--scan-id</code> (default <code>latest</code>), <code>--output-dir</code>, <code>--format</code>, <code>--output</code>.</td></tr>
+<tr><td><code>cloudrift dashboard</code></td><td>HTTP server: static SPA + REST API over <code>output_dir</code>.</td><td><code>--port</code>, <code>--open</code>, <code>--scan-id</code> (default URL hint), <code>--output-dir</code>.</td></tr>
+<tr><td><code>cloudrift query</code></td><td>Graph-tier: hybrid retrieval over Neo4j vectors (see embeddings page).</td><td><code>--scan-id</code>, <code>--output-dir</code>, <code>--query</code> or positional text, <code>--format table|json</code>, <code>--top-k</code>, <code>--require-stored-embedding-identity</code>, <code>--legacy-retrieval</code>.</td></tr>
+<tr><td><code>cloudrift version</code></td><td>Prints build version string.</td><td>—</td></tr>
+</tbody></table>
+</article>
+<article class="page" id="page-reports" data-page="reports"><p class="sr-only">report command and formats.</p><h2 id="t-reports">Reports (CLI)</h2>
+<p><code>cloudrift report --scan-id latest --format table|json|csv|markdown</code></p>
+<p>Excel (<code>.xlsx</code>) writers exist under <code>internal/output</code> for library/programmatic use, but the <strong>CLI <code>report</code> subcommand</strong> today supports only the four formats above.</p>
+<div class="copy-wrap"><button type="button" class="copy-btn" aria-label="Copy command">Copy</button><pre class="cmd"><code>cloudrift report --scan-id demo --format markdown --output ./out.md</code></pre></div>
+</article>
+<article class="page" id="page-dashboard" data-page="dashboard"><p class="sr-only">Pages and how data reaches the UI.</p><h2 id="t-dashboard">Dashboard guide</h2>
+<p>Start: <code>cloudrift dashboard --output-dir ./cloudrift-output --port 8080 --open</code></p>
+<p>The UI calls the same host’s <code>/api/...</code> routes. It lists scans by reading directories under <code>output_dir</code>. <strong>Main workflows</strong> (findings tables, diff, trust reports, accounts) use JSON only. <strong>Graph-tier pages</strong> (blast explorer, vector-backed query UI) need Neo4j + export — APIs return <code>graph_available: false</code> when the graph tier is absent.</p>
+<div class="fig"><svg viewBox="0 0 640 120" xmlns="http://www.w3.org/2000/svg" aria-label="Dashboard reads local files" role="img"><rect width="640" height="120" fill="#070b10"/><rect x="24" y="38" width="100" height="50" rx="6" fill="#1a2332" stroke="#3dd6c3"/><text x="74" y="70" text-anchor="middle" fill="#e8edf4" font-size="11" font-family="system-ui">Browser</text><path d="M124 63h40" stroke="#5c6b82" stroke-width="2"/><rect x="164" y="32" width="140" height="62" rx="6" fill="#122018" stroke="#3dd6c3"/><text x="234" y="58" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">cloudrift dashboard</text><text x="234" y="76" text-anchor="middle" fill="#9aa8bc" font-size="9" font-family="system-ui">HTTP /api + static UI</text><path d="M304 63h36" stroke="#5c6b82" stroke-width="2"/><rect x="340" y="38" width="120" height="50" rx="6" fill="#1a2332" stroke="#f4a261"/><text x="400" y="70" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">output_dir</text><path d="M460 63h32" stroke="#5c6b82" stroke-width="2"/><rect x="492" y="38" width="124" height="50" rx="6" fill="#1a2332" stroke="#5c6b82"/><text x="554" y="70" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">*.json scans</text></svg></div>
+<h3>Routes (high level)</h3>
+<ul>
+<li><code>/overview</code> — executive / high-signal / operations modes.</li>
+<li><code>/scan-control</code> — start scan, pick AWS profile for API, live progress.</li>
+<li><code>/findings</code>, <code>/triage</code> — tables.</li>
+<li><code>/accounts</code>, <code>/diff</code>, <code>/trust-report</code>, <code>/external-entities</code>.</li>
+<li><code>/blast-explorer</code> — best with Neo4j + relationships.</li>
+<li><code>/alerting</code> — Slack webhook rules.</li>
+<li><code>/query</code> — UI for graph retrieval when configured.</li>
+</ul>
+</article>
+<article class="page" id="page-neo4j" data-page="neo4j"><p class="sr-only">Neo4j graph tier coupled to advanced features.</p><h2 id="t-neo4j">Neo4j &amp; graph tier</h2>
+<p>Neo4j is <strong>not</strong> “a random extra database.” Cloudrift is <strong>coupled</strong> to it for an <strong>advanced tier</strong> of capability layered on the same JSON scans:</p>
+<ul>
+<li><strong>Graph relationships</strong> — structured <code>POINTS_TO</code>, <code>TRUSTS</code>, <code>OWNED_BY</code>, etc., for multi-hop reasoning.</li>
+<li><strong>Blast-radius exploration</strong> — UI and APIs that walk the graph from a finding, external entity, or principal.</li>
+<li><strong>Vector retrieval</strong> — embeddings over finding text for similarity search.</li>
+<li><strong><code>cloudrift query</code></strong> — CLI (and dashboard <code>/query</code>) over that stack; today <strong>retrieval-only</strong>, designed to grow toward richer RAG-style investigation.</li>
+</ul>
+<p><strong>Main workflows without Neo4j:</strong> everything that only needs <code>findings.json</code> / <code>scan-metadata.json</code> still works — the product deliberately degrades when the graph tier is off.</p>
+<p>Technically, export <strong>re-reads JSON from disk</strong> and upserts into Neo4j; if you wipe Neo4j, your files on disk remain authoritative.</p>
+<div class="fig"><svg viewBox="0 0 620 130" xmlns="http://www.w3.org/2000/svg" aria-label="Neo4j graph tier export" role="img"><rect width="620" height="130" fill="#070b10"/><rect x="20" y="42" width="90" height="50" rx="6" fill="#1a2332" stroke="#5c6b82"/><text x="65" y="73" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">JSON artifacts</text><path d="M110 67h32" stroke="#5c6b82" stroke-width="2"/><rect x="142" y="36" width="120" height="62" rx="6" fill="#122018" stroke="#3dd6c3"/><text x="202" y="60" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">graph export</text><text x="202" y="78" text-anchor="middle" fill="#9aa8bc" font-size="9" font-family="system-ui">re-read from disk</text><path d="M262 67h32" stroke="#5c6b82" stroke-width="2"/><rect x="294" y="42" width="88" height="50" rx="6" fill="#1a2332" stroke="#93c5fd"/><text x="338" y="73" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Neo4j</text><path d="M382 67h32" stroke="#5c6b82" stroke-width="2"/><rect x="414" y="42" width="90" height="50" rx="6" fill="#1a2332" stroke="#f4a261"/><text x="459" y="73" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Embeddings</text><path d="M504 67h28" stroke="#5c6b82" stroke-width="2"/><rect x="532" y="42" width="68" height="50" rx="6" fill="#1a2332" stroke="#3dd6c3"/><text x="566" y="73" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">query</text></svg></div>
+<p>Enable with <code>[neo4j]</code> in TOML and <code>--neo4j</code> on <code>scan</code> or <code>demo generate</code> after files exist.</p>
+</article>
+<article class="page" id="page-embeddings-query" data-page="embeddings-query"><p class="sr-only">Vectors and retrieval-only CLI.</p><h2 id="t-embeddings-query">Embeddings &amp; query</h2>
+<p><strong>Embeddings</strong> are numeric vectors that capture “meaning” of text so Neo4j can rank similar findings. They power the <strong>graph tier</strong> query path together with Bolt.</p>
+<p><strong>Default provider:</strong> OpenAI <code>text-embedding-3-small</code> (384 dimensions). Set <code>OPENAI_API_KEY</code> (or your configured env name).</p>
+<p><strong>Local provider:</strong> <span class="b stb">Stubbed</span> — selecting <code>local</code> returns a clear error until an on-box model ships.</p>
+<p><strong><code>cloudrift query</code>:</strong> prints grounded retrieval results and explicitly states that <strong>answer synthesis is not implemented</strong>.</p>
+</article>
+<article class="page" id="page-iam" data-page="iam"><p class="sr-only">Audit role and least privilege.</p><h2 id="t-iam">IAM &amp; permissions</h2>
+<p>Cloudrift’s org template defines a read role <code>CloudriftAuditRole</code> in member accounts, assumable from a management principal with an external ID condition.</p>
+<div class="fig"><svg viewBox="0 0 720 140" xmlns="http://www.w3.org/2000/svg" aria-label="Multi-account IAM flow" role="img"><rect width="720" height="140" fill="#070b10"/><text x="360" y="22" text-anchor="middle" fill="#9aa8bc" font-size="11" font-family="system-ui">Multi-account read (org pattern)</text><rect x="24" y="48" width="120" height="50" rx="6" fill="#1a2332" stroke="#3dd6c3"/><text x="84" y="80" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Your credentials</text><path d="M144 73h40" stroke="#5c6b82" stroke-width="2"/><rect x="184" y="48" width="140" height="50" rx="6" fill="#1a2332" stroke="#f4a261"/><text x="254" y="80" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Management account</text><path d="M324 73h40" stroke="#5c6b82" stroke-width="2"/><rect x="364" y="40" width="160" height="66" rx="6" fill="#122018" stroke="#3dd6c3"/><text x="444" y="66" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">sts:AssumeRole</text><text x="444" y="84" text-anchor="middle" fill="#9aa8bc" font-size="9" font-family="system-ui">CloudriftAuditRole</text><path d="M524 73h36" stroke="#5c6b82" stroke-width="2"/><rect x="560" y="48" width="136" height="50" rx="6" fill="#1a2332" stroke="#5c6b82"/><text x="628" y="80" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Member accounts</text></svg></div>
+<p>The role is <strong>read-oriented</strong> (list/get across Route53, S3, CloudFront, IAM, Organizations, etc.) — not AdministratorAccess for Cloudrift itself.</p>
+<p>See <code>iam/stackset-template.yaml</code> and <code>docs/iam-setup.md</code> for exact actions.</p>
+</article>
+<article class="page" id="page-sec-eng" data-page="sec-eng"><p class="sr-only">Practical triage loop.</p><h2 id="t-sec-eng">Security engineer workflow</h2>
+<ol>
+<li>Generate or import a scan with <strong>non-empty</strong> <code>findings.json</code> (demo is easiest).</li>
+<li>Use <strong>High-signal</strong> overview mode or API <code>/top-fixes</code> for ordering.</li>
+<li>Drill into a finding — read <code>evidence</code> fields; they are meant for humans.</li>
+<li>Use <strong>diff</strong between two scans to show what changed.</li>
+<li><strong>Graph tier:</strong> export to Neo4j when you need blast-radius, relationship-native views, and <code>query</code> / future RAG workflows.</li>
+</ol>
+</article>
+<article class="page" id="page-ciso" data-page="ciso"><p class="sr-only">Risk narrative without hype.</p><h2 id="t-ciso">CISO / leadership view</h2>
+<ul>
+<li><strong>Evidence first</strong> — each row ties to ARNs, hostnames, or trust principals.</li>
+<li><strong>Local control</strong> — artifacts stay on disk unless you opt into cloud APIs (OpenAI for embeddings only when you enable that path).</li>
+<li><strong>Honest scope</strong> — say plainly when a scan directory is empty; do not oversell “full org discovery” until orchestration lands.</li>
+</ul>
+</article>
+<article class="page" id="page-contributors" data-page="contributors"><p class="sr-only">Where to change code and tests.</p><h2 id="t-contributors">Contributor guide</h2>
+<ul>
+<li><code>internal/collectors</code> — add AWS reads here (keep side effects in collectors).</li>
+<li><code>internal/scorers</code> — pure scoring from models + evidence.</li>
+<li><code>internal/api/handlers</code> — REST shapes; keep list fields as arrays not null.</li>
+<li><code>dashboard/src/pages</code> — new routes in <code>App.tsx</code>.</li>
+<li><code>docs/</code> — update the right file: beginner flow here in <code>starter-doc.html</code>, setup in <code>getting-started.md</code>, deep detail in <code>technical.md</code>.</li>
+</ul>
+<p>Tests: <code>go test ./...</code>; dashboard: <code>cd dashboard && npm ci && npm run test:run</code>. After code edits: <code>.venv-graphify/bin/graphify update .</code> if you maintain the graph.</p>
+</article>
+<article class="page" id="page-troubleshooting" data-page="troubleshooting"><p class="sr-only">Common failures and fixes.</p><h2 id="t-troubleshooting">Troubleshooting</h2>
+<ul>
+<li><strong>Credentials not found</strong> — verify <code>aws sts get-caller-identity</code> with the same profile / env as Cloudrift.</li>
+<li><strong>Access denied on AssumeRole</strong> — trust policy, external ID, and role name must match template.</li>
+<li><strong>Empty dashboard</strong> — check <code>--output-dir</code>; ensure <code>findings.json</code> is not empty (use <code>demo generate</code>).</li>
+<li><strong>Neo4j connection failed</strong> — Bolt URI, firewall, <code>password_env</code> variable set.</li>
+<li><strong>OpenAI / embeddings errors</strong> — key missing or wrong env name in TOML.</li>
+<li><strong>Local embeddings unavailable</strong> — expected until implemented; use OpenAI or skip query.</li>
+<li><strong><code>tsc: command not found</code></strong> — run <code>npm ci</code> in <code>dashboard/</code> before <code>npm run build</code>.</li>
+</ul>
+</article>
+<article class="page" id="page-glossary" data-page="glossary"><p class="sr-only">Terms with short definitions.</p><h2 id="t-glossary">Glossary</h2>
+<dl class="gloss">
+<dt id="g-scan">Scan</dt><dd>One run that produces a folder under <code>output_dir</code>.</dd>
+<dt id="g-scanid">Scan ID</dt><dd>Folder name (or <code>latest</code> alias).</dd>
+<dt id="g-finding">Finding</dt><dd>One JSON object describing a risk with severity and evidence.</dd>
+<dt id="g-asset">Asset</dt><dd>AWS or DNS object discovered by collectors.</dd>
+<dt id="g-rel">Relationship</dt><dd>Directed edge between assets (e.g. DNS POINTS_TO bucket).</dd>
+<dt id="g-claim">Claimability</dt><dd>How exploitable an edge hostname is (e.g. reclaimable vs dangling).</dd>
+<dt id="g-dangle">Dangling</dt><dd>Resolves to AWS but backing resource is broken or ambiguous.</dd>
+<dt id="g-reclaim">Reclaimable</dt><dd>Attacker could plausibly register/recreate the target resource.</dd>
+<dt id="g-ext">External principal</dt><dd>Non-internal identity trusted by an IAM role policy.</dd>
+<dt id="g-neo4j">Neo4j (graph tier)</dt><dd>Coupled store for relationships, blast radius, vectors, and <code>query</code>; main JSON workflows still run without it.</dd>
+<dt id="g-emb">Embedding</dt><dd>Vector representing text for similarity search.</dd>
+<dt id="g-rag">RAG (here)</dt><dd>Retrieval-augmented lookup: fetch similar findings — <strong>no</strong> generated prose answers yet.</dd>
+<dt id="g-role">CloudriftAuditRole</dt><dd>Read-only member-account role assumed from management.</dd>
+</dl>
+</article>
+<article class="page" id="page-arsenal" data-page="arsenal"><p class="sr-only">What to verify in a review.</p><h2 id="t-arsenal">Black Hat reviewer notes</h2>
+<ul>
+<li>Run <code>demo generate</code> and narrate JSON + UI honestly.</li>
+<li>Show the <strong>graph tier</strong> (<code>--neo4j</code> + <code>query</code>) when infra exists; otherwise show honest JSON-only workflows.</li>
+<li>Review <code>internal/scans</code> path safety and lack of API auth (operator boundary).</li>
+</ul>
+</article>
+<article class="page" id="page-roadmap" data-page="roadmap"><p class="sr-only">Near, medium, and longer-term work.</p><h2 id="t-roadmap">Roadmap</h2>
+<ul>
+<li><strong>Near term:</strong> wire default scan to collectors/validators/scorers; remove dead CLI flags or wire them.</li>
+<li><strong>Medium term:</strong> structured logs, optional API auth, more collectors (ACM, API Gateway domains, …).</li>
+<li><strong>Future:</strong> local embedding runtime; richer remediation automation.</li>
+</ul>
+</article>
+</div>
+<footer>Honest-status documentation. Verify behavior against <code>cmd/cloudrift</code> and <code>internal/scanrun</code> before demos.</footer>
+</main>
+</div>
+<script>
+(function(){
+var IDS = ['welcome','problem','issue-types','four-questions','implementation-status','quick-start','aws-credentials','real-scan','outputs','cli','reports','dashboard','neo4j','embeddings-query','iam','sec-eng','ciso','contributors','troubleshooting','glossary','arsenal','roadmap'];
+var idx = {}; IDS.forEach(function(id,i){ idx[id]=i; });
+var pages = IDS.map(function(id){ return document.getElementById('page-'+id); });
+var titleEl = document.getElementById('page-title');
+var progEl = document.getElementById('page-progress');
+var navToggle = document.getElementById('nav-toggle');
+var navItems = document.getElementById('nav-items');
+var links = [].slice.call(document.querySelectorAll('#nav-items a.nav-item'));
+var filter = document.getElementById('nav-filter');
+var btnP = document.getElementById('btn-prev');
+var btnN = document.getElementById('btn-next');
+var btnStart = document.getElementById('btn-start');
+
+function setActive(id) {
+  if (idx[id] === undefined) id = IDS[0];
+  pages.forEach(function(p){ if(p) p.classList.remove('active'); });
+  var p = document.getElementById('page-'+id);
+  if (p) p.classList.add('active');
+  links.forEach(function(a){ a.classList.toggle('active', a.getAttribute('href') === '#'+id); });
+  var t = document.getElementById('t-'+id);
+  titleEl.textContent = t ? t.textContent : id;
+  var n = idx[id]+1;
+  progEl.textContent = 'Page ' + n + ' of ' + IDS.length;
+  btnP.disabled = idx[id]<=0;
+  btnN.disabled = idx[id]>=IDS.length-1;
+  if (location.hash !== '#'+id) history.replaceState(null,'','#'+id);
+}
+function showHash() {
+  var h = (location.hash||'').replace(/^#/,'');
+  if (!h || idx[h]===undefined) h = IDS[0];
+  setActive(h);
+}
+function go(delta) {
+  var h = (location.hash||'').replace(/^#/,'');
+  var i = idx[h]===undefined ? 0 : idx[h];
+  var n = Math.max(0, Math.min(IDS.length-1, i+delta));
+  location.hash = '#'+IDS[n];
+}
+window.addEventListener('hashchange', showHash);
+btnP.addEventListener('click', function(){ go(-1); });
+btnN.addEventListener('click', function(){ go(1); });
+if (btnStart) btnStart.addEventListener('click', function(){ location.hash = '#welcome'; });
+document.addEventListener('keydown', function(e){
+  if (e.target && (e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA')) return;
+  if (e.key==='ArrowLeft') { e.preventDefault(); go(-1); }
+  if (e.key==='ArrowRight') { e.preventDefault(); go(1); }
+});
+filter.addEventListener('input', function(){
+  var q = (filter.value||'').toLowerCase();
+  links.forEach(function(a){
+    var t = (a.getAttribute('data-title')||'') + ' ' + (a.textContent||'');
+    a.style.display = !q || t.indexOf(q)>=0 ? '' : 'none';
+  });
+});
+if (navToggle && navItems) {
+  var mq = window.matchMedia('(max-width:919px)');
+  function fold() {
+    if (mq.matches) {
+      navItems.style.display = 'none';
+      navToggle.setAttribute('aria-expanded','false');
+    } else {
+      navItems.style.display = '';
+      navToggle.setAttribute('aria-expanded','true');
+    }
+  }
+  fold();
+  mq.addEventListener('change', fold);
+  navToggle.addEventListener('click', function(){
+    var open = navItems.style.display === 'none';
+    navItems.style.display = open ? '' : 'none';
+    navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+}
+links.forEach(function(a){
+  a.addEventListener('click', function(){
+    if (window.matchMedia('(max-width:919px)').matches) {
+      navItems.style.display = 'none';
+      navToggle.setAttribute('aria-expanded','false');
+    }
+  });
+});
+document.querySelectorAll('.copy-wrap').forEach(function(w){
+  var btn = w.querySelector('.copy-btn');
+  var code = w.querySelector('code');
+  if (!btn || !code) return;
+  btn.addEventListener('click', function(){
+    var t = code.textContent || '';
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(function(){
+        var o = btn.textContent;
+        btn.textContent = 'Copied';
+        setTimeout(function(){ btn.textContent = o; }, 1400);
+      }).catch(function(){ window.prompt('Copy:', t); });
+    } else {
+      window.prompt('Copy:', t);
+    }
+  });
+});
+showHash();
+})();
+</script>
+</body>
+</html>

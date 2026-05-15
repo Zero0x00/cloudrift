@@ -176,6 +176,7 @@ func (s *scanControlCenter) CurrentRunStatus() http.HandlerFunc {
 func (s *scanControlCenter) RunHistory() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		s.mu.RLock()
+		// Use a non-nil empty slice so JSON is [] not null (matches API shape-stability docs).
 		items := append([]schema.ScanRunHistoryItem{}, s.history...)
 		s.mu.RUnlock()
 		writeJSON(w, http.StatusOK, schema.ScanRunHistoryResponse{Items: items})

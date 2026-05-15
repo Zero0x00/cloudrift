@@ -1,5 +1,18 @@
 # Cloudrift - Security Coverage & Scoring Reference
 
+> **Implementation note:** This document describes the **intended detection and scoring model** used by collectors/scorers in `internal/`. The default **`cloudrift scan`** path today still writes an **empty** `findings.json` (orchestration gap). Use **`cloudrift demo generate`** or tests to exercise populated findings until the CLI wires the full pipeline.
+
+## What Cloudrift does **not** detect (limits)
+
+- **Non-AWS takeovers** — CNAMEs to GitHub Pages, Heroku, Azure, etc. are out of scope for this codebase’s AWS-centric collectors (unless explicitly added).
+- **Application-layer bugs** — XSS, SQLi, auth bypass in your apps are not inferred from DNS alone.
+- **Insider threat or runtime exfiltration** — no host-based or network IDS story here.
+- **Misconfigurations inside VPC-only private APIs** unless collectors and IAM permissions reach them.
+- **Historical CloudTrail proof of abuse** — trust scoring uses IAM last-used metadata, not full log analytics (see “Not yet collected” below).
+- **Guaranteed completeness** — DNS/HTTP probes can miss transient failures; false positives and false negatives are possible; human review of `evidence` fields is expected.
+
+---
+
 ## What Attacks Are We Protecting Against?
 
 Cloudrift detects two categories of real-world attack surfaces in AWS environments:
