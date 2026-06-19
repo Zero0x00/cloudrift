@@ -75,8 +75,7 @@ func (c RoutingCatalog) LookupTeam(teamID string) (TeamSlackDestination, bool) {
 }
 
 func validSlackURL(url string) bool {
-	u := strings.TrimSpace(url)
-	return u != "" && strings.HasPrefix(u, "https://")
+	return allowedWebhookURL(url)
 }
 
 // ValidateRoutingCatalog returns an error if the catalog is inconsistent.

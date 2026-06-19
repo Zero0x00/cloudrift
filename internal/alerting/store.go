@@ -149,7 +149,7 @@ func (s *Store) SaveRoutingCatalog(c RoutingCatalog) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, append(raw, '\n'), 0o600)
+	return atomicWriteFile(path, append(raw, '\n'), 0o600)
 }
 
 func (s *Store) ListEvents(limit int) ([]AlertEvent, error) {
@@ -199,7 +199,7 @@ func (s *Store) writeRulesLocked(rules []AlertRule) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, append(raw, '\n'), 0o600)
+	return atomicWriteFile(path, append(raw, '\n'), 0o600)
 }
 
 func (s *Store) loadEventsLocked() ([]AlertEvent, error) {
@@ -236,7 +236,7 @@ func (s *Store) writeEventsLocked(events []AlertEvent) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, append(raw, '\n'), 0o600)
+	return atomicWriteFile(path, append(raw, '\n'), 0o600)
 }
 
 func (s *Store) ensureFileLocked(name string, initial []byte) (string, error) {
@@ -257,4 +257,27 @@ func (s *Store) ensureFileLocked(name string, initial []byte) (string, error) {
 		return "", err
 	}
 	return path, nil
+}
+
+// atomicWriteFile writes data to a temp file in the same directory and renames it into place,
+// so a crash mid-write can't leave a partially written (corrupt) JSON store on disk.
+func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".tmp-"+filepath.Base(path)+"-*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName) // no-op once the rename succeeds
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Chmod(perm); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpName, path)
 }

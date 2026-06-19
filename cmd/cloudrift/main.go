@@ -187,6 +187,9 @@ func exportScanToNeo4j(ctx context.Context, cfg *config.Config, scanPath string,
 		return err
 	}
 
+	// Generate embeddings (best-effort) so the vector index is populated for RAG / query.
+	graph.AttachEmbeddingsBestEffort(ctx, cfg, &meta, findings)
+
 	for _, ddl := range graph.SchemaStatements() {
 		if err := ex.Run(ctx, ddl, nil); err != nil {
 			return fmt.Errorf("neo4j schema setup failed: %w", err)

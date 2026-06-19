@@ -23,7 +23,6 @@ import (
 	"github.com/Zero0x00/cloudrift/internal/api/schema"
 	"github.com/Zero0x00/cloudrift/internal/config"
 	"github.com/Zero0x00/cloudrift/internal/graph"
-	"github.com/Zero0x00/cloudrift/internal/models"
 	"github.com/Zero0x00/cloudrift/internal/pipeline"
 	"github.com/Zero0x00/cloudrift/internal/scans"
 )
@@ -507,17 +506,30 @@ func exportScanToNeo4j(ctx context.Context, cfg *config.Config, scanPath string)
 	}
 	defer driver.Close(ctx)
 	ex := graph.NewDriverExecer(driver, "")
-	meta, findings, err := scans.LoadScanArtifacts(filepath.Dir(scanPath), filepath.Base(scanPath))
+	outDir, scanID := filepath.Dir(scanPath), filepath.Base(scanPath)
+	meta, findings, err := scans.LoadScanArtifacts(outDir, scanID)
 	if err != nil {
 		return err
 	}
 	if meta == nil {
 		return errors.New("scan metadata missing")
 	}
+	// Include assets + relationships so the projected graph is traversable (blast-radius /
+	// attack paths). Previously these were passed empty, yielding a findings-only graph.
+	assets, err := scans.LoadAssets(outDir, scanID)
+	if err != nil {
+		return err
+	}
+	rels, err := scans.LoadRelationships(outDir, scanID)
+	if err != nil {
+		return err
+	}
+	// Generate embeddings (best-effort) so the vector index is populated for RAG / query.
+	graph.AttachEmbeddingsBestEffort(ctx, cfg, meta, findings)
 	for _, ddl := range graph.SchemaStatements() {
 		if err := ex.Run(ctx, ddl, nil); err != nil {
 			return err
 		}
 	}
-	return graph.WriteScan(ctx, ex, *meta, []models.AssetNode{}, []models.Relationship{}, findings)
+	return graph.WriteScan(ctx, ex, *meta, assets, rels, findings)
 }

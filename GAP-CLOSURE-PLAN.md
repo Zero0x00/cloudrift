@@ -19,7 +19,15 @@
   stable (derived from module+ARN[+principal], not the mutable verdict). Diff matches by stable ID
   and adds a `changed_findings` category (severity transition) — backend, schema, TS type, and Diff
   UI updated. Tests updated for the new by-ID semantics.
-- **P3–P6 — pending.** (Frontend not yet locally type-checked — deps install deferred to P5.)
+- **P3 — DONE (core) & tested.** Dashboard Neo4j export now loads + projects assets and
+  relationships (was findings-only) via new reusable `scans.LoadAssets`/`LoadRelationships`. RAG
+  embeddings wired into BOTH export paths (`graph.AttachEmbeddingsBestEffort`, best-effort: skips
+  cleanly without an API key). SSRF guard on webhook delivery (`allowedWebhookURL` + dial-time
+  internal-IP block + no-redirect client) applied at validation and send, with tests. Alerting JSON
+  store writes are now atomic (temp+rename). Deferred: `scan_completion` always-fires is an
+  intentional notification (not gated); real per-account WS progress (low value / high plumbing).
+- **P4 — pending (needs product decision on auth model). P5–P6 — pending.** (Frontend not yet
+  locally type-checked — deps install deferred to P5.)
 
 ### Deliberate scope decisions (not implemented — owner's call)
 - **#2 dangling CDN**: detection stays scoped to the 4 recognized AWS error-body fingerprints.

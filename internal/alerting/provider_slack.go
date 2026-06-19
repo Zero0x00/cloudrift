@@ -15,7 +15,7 @@ type SlackProvider struct {
 
 func NewSlackProvider(client *http.Client) *SlackProvider {
 	if client == nil {
-		client = &http.Client{Timeout: 8 * time.Second}
+		client = newSafeWebhookClient(8 * time.Second)
 	}
 	return &SlackProvider{client: client}
 }
@@ -34,6 +34,18 @@ func (s *SlackProvider) Send(payload AlertPayload, target Channel) DeliveryResul
 			Attempted: true,
 			Success:   false,
 			Error:     "missing slack webhook URL",
+			SentAt:    now,
+		}
+	}
+	// SSRF guard: refuse to POST to non-https or internal/metadata targets (defense in depth;
+	// rule/routing validation also rejects these at write time).
+	if !allowedWebhookURL(webhook) {
+		return DeliveryResult{
+			Provider:  s.Name(),
+			Channel:   string(target.Type),
+			Attempted: false,
+			Success:   false,
+			Error:     "blocked webhook URL (must be https and not an internal/metadata host)",
 			SentAt:    now,
 		}
 	}
