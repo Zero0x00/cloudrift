@@ -14,12 +14,17 @@ import (
 	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
-func CollectStorage(ctx context.Context, accounts []Account) ([]models.AssetNode, error) {
+// CollectStorage returns S3 bucket assets plus the IDs of accounts whose bucket
+// enumeration failed. The failed set feeds scan coverage: the reclaimable verdict is
+// absence-based ("bucket not owned by any scanned account"), so a gap in bucket
+// enumeration must downgrade that verdict's confidence.
+func CollectStorage(ctx context.Context, accounts []Account) ([]models.AssetNode, []string, error) {
 	return CollectStorageWithConfig(ctx, config.Default(), accounts)
 }
 
-func CollectStorageWithConfig(ctx context.Context, cfg *config.Config, accounts []Account) ([]models.AssetNode, error) {
+func CollectStorageWithConfig(ctx context.Context, cfg *config.Config, accounts []Account) ([]models.AssetNode, []string, error) {
 	var out []models.AssetNode
+	var failed []string
 	sem := make(chan struct{}, max(1, cfg.Scan.RoleAssumptionConcurrency))
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -41,6 +46,7 @@ func CollectStorageWithConfig(ctx context.Context, cfg *config.Config, accounts 
 				if firstErr == nil {
 					firstErr = err
 				}
+				failed = append(failed, account.ID)
 				mu.Unlock()
 				return
 			}
@@ -77,10 +83,8 @@ func CollectStorageWithConfig(ctx context.Context, cfg *config.Config, accounts 
 		}()
 	}
 	wg.Wait()
-	if firstErr != nil {
-		return nil, firstErr
-	}
-	return out, nil
+	warnPartial("storage", firstErr)
+	return out, failed, nil
 }
 
 func websiteEndpointFor(bucket, region string) string {

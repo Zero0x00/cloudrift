@@ -30,6 +30,7 @@ type Result struct {
 	Assets   []models.AssetNode
 	Rels     []models.Relationship
 	Activity []collectors.RoleActivity
+	Coverage collectors.Coverage
 }
 
 // Source produces the raw inventory. Production uses NewAWSSource; tests inject fakes.
@@ -118,6 +119,9 @@ func Run(ctx context.Context, cfg *config.Config, outputDir, toolVersion string,
 		findings = enriched
 	}
 
+	// Coverage guard: an incomplete scan makes absence-based verdicts unsafe.
+	applyCoverageGuard(findings, res.Coverage)
+
 	scanID := time.Now().UTC().Format("20060102-150405")
 	stampScanID(scanID, findings, res.Assets, res.Rels)
 	sortFindings(findings)
@@ -126,6 +130,28 @@ func Run(ctx context.Context, cfg *config.Config, outputDir, toolVersion string,
 		return "", err
 	}
 	return scanID, nil
+}
+
+// applyCoverageGuard downgrades reclaimable/critical orphaned-edge findings when scan
+// coverage is incomplete. That verdict is absence-based ("bucket not owned by any
+// scanned account"); if we failed to assume some accounts, the bucket could be owned by
+// one of them, so critical confidence is not justified.
+func applyCoverageGuard(findings []models.Finding, cov collectors.Coverage) {
+	if cov.Complete() {
+		return
+	}
+	for i := range findings {
+		f := &findings[i]
+		if f.Module == models.ModuleOrphanedEdge &&
+			f.Claimability == models.ClaimReclaimable &&
+			f.Severity == models.SeverityCritical {
+			f.Severity = models.SeverityHigh
+			if f.Evidence == nil {
+				f.Evidence = map[string]any{}
+			}
+			f.Evidence["coverage_note"] = "downgraded from critical: scan coverage incomplete, bucket may be owned by an unscanned account"
+		}
+	}
 }
 
 func buildBucketNameSet(assets []models.AssetNode) map[string]bool {
@@ -235,7 +261,7 @@ func persist(outputDir, scanID, toolVersion string, res Result, findings []model
 		return fmt.Errorf("create scan dir: %w", err)
 	}
 
-	meta := buildMetadata(scanID, toolVersion, res.Accounts, findings)
+	meta := buildMetadata(scanID, toolVersion, res.Accounts, findings, res.Coverage)
 	if err := writeJSONFile(filepath.Join(scanPath, "scan-metadata.json"), meta); err != nil {
 		return err
 	}
@@ -251,7 +277,7 @@ func persist(outputDir, scanID, toolVersion string, res Result, findings []model
 	return nil
 }
 
-func buildMetadata(scanID, toolVersion string, accounts []collectors.Account, findings []models.Finding) models.ScanSnapshot {
+func buildMetadata(scanID, toolVersion string, accounts []collectors.Account, findings []models.Finding, cov collectors.Coverage) models.ScanSnapshot {
 	var critical, high int
 	var totalCost float64
 	for _, f := range findings {
@@ -263,15 +289,24 @@ func buildMetadata(scanID, toolVersion string, accounts []collectors.Account, fi
 		}
 		totalCost += f.MonthlyRiskCost
 	}
+	failed := make([]string, 0, len(cov.Failed))
+	for id := range cov.Failed {
+		failed = append(failed, id)
+	}
+	sort.Strings(failed)
 	return models.ScanSnapshot{
-		ScanID:           scanID,
-		Timestamp:        time.Now().UTC(),
-		AccountIDs:       accountIDs(accounts),
-		ToolVersion:      toolVersion,
-		FindingCount:     len(findings),
-		CriticalCount:    critical,
-		HighCount:        high,
-		TotalMonthlyCost: totalCost,
+		ScanID:                 scanID,
+		Timestamp:              time.Now().UTC(),
+		AccountIDs:             accountIDs(accounts),
+		ToolVersion:            toolVersion,
+		FindingCount:           len(findings),
+		CriticalCount:          critical,
+		HighCount:              high,
+		TotalMonthlyCost:       totalCost,
+		DiscoveredAccountCount: cov.Discovered,
+		ScannedAccountCount:    len(cov.Scanned),
+		FailedAccountIDs:       failed,
+		CoverageComplete:       cov.Complete(),
 	}
 }
 

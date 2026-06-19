@@ -35,7 +35,7 @@ func (awsSource) Collect(ctx context.Context, cfg *config.Config) (Result, error
 	orgClient := organizations.NewFromConfig(baseCfg)
 	sm := cloudaws.NewSessionManagerFromConfig(baseCfg, cfg.AWS.OrgRoleName)
 
-	accounts, err := collectors.CollectAccounts(ctx, cfg, orgClient, sm)
+	accounts, coverage, err := collectors.CollectAccounts(ctx, cfg, orgClient, sm)
 	if err != nil {
 		return Result{}, fmt.Errorf("collect accounts: %w", err)
 	}
@@ -49,11 +49,21 @@ func (awsSource) Collect(ctx context.Context, cfg *config.Config) (Result, error
 	}
 	assets = append(assets, dns...)
 
-	storage, err := collectors.CollectStorageWithConfig(ctx, cfg, accounts)
+	storage, storageFailed, err := collectors.CollectStorageWithConfig(ctx, cfg, accounts)
 	if err != nil {
 		return Result{}, fmt.Errorf("collect storage: %w", err)
 	}
 	assets = append(assets, storage...)
+	// Bucket-enumeration gaps directly weaken the reclaimable verdict, so fold them into
+	// coverage (Complete() becomes false, triggering the pipeline's reclaimable guard).
+	if len(storageFailed) > 0 {
+		if coverage.Failed == nil {
+			coverage.Failed = map[string]string{}
+		}
+		for _, id := range storageFailed {
+			coverage.Failed[id] = "s3 bucket enumeration failed"
+		}
+	}
 
 	edgeAssets, edgeRels, err := collectors.CollectEdgeWithConfig(ctx, cfg, accounts)
 	if err != nil {
@@ -74,5 +84,5 @@ func (awsSource) Collect(ctx context.Context, cfg *config.Config) (Result, error
 		return Result{}, fmt.Errorf("collect activity: %w", err)
 	}
 
-	return Result{Accounts: accounts, Assets: assets, Rels: rels, Activity: activity}, nil
+	return Result{Accounts: accounts, Assets: assets, Rels: rels, Activity: activity, Coverage: coverage}, nil
 }

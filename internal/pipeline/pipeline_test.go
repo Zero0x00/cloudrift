@@ -184,6 +184,51 @@ func TestRunModuleFilterExternalOnly(t *testing.T) {
 	}
 }
 
+func TestRunCoverageGuardDowngradesReclaimable(t *testing.T) {
+	withFakeValidation(t)
+	dir := t.TempDir()
+
+	res := sampleResult()
+	// One account could not be enumerated → coverage incomplete.
+	res.Coverage = collectors.Coverage{
+		Discovered: 2,
+		Scanned:    []string{"111111111111"},
+		Failed:     map[string]string{"222222222222": "s3 bucket enumeration failed"},
+	}
+
+	scanID, err := Run(context.Background(), config.Default(), dir, "test", fakeSource{result: res}, Options{Modules: []string{"orphaned_edge"}})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	findings := readFindings(t, dir, scanID)
+	if len(findings) != 1 {
+		t.Fatalf("expected 1 edge finding, got %d: %+v", len(findings), findings)
+	}
+	f := findings[0]
+	// Absence-based reclaimable must be downgraded critical->high under incomplete coverage.
+	if f.Claimability != models.ClaimReclaimable || f.Severity != models.SeverityHigh {
+		t.Fatalf("want reclaimable/high under incomplete coverage, got %s/%s", f.Claimability, f.Severity)
+	}
+	if _, ok := f.Evidence["coverage_note"]; !ok {
+		t.Errorf("expected coverage_note in evidence, got %v", f.Evidence)
+	}
+
+	b, err := os.ReadFile(filepath.Join(dir, scanID, "scan-metadata.json"))
+	if err != nil {
+		t.Fatalf("read metadata: %v", err)
+	}
+	var meta models.ScanSnapshot
+	if err := json.Unmarshal(b, &meta); err != nil {
+		t.Fatalf("unmarshal metadata: %v", err)
+	}
+	if meta.CoverageComplete {
+		t.Errorf("expected CoverageComplete=false")
+	}
+	if len(meta.FailedAccountIDs) != 1 || meta.FailedAccountIDs[0] != "222222222222" {
+		t.Errorf("expected failed account recorded, got %+v", meta.FailedAccountIDs)
+	}
+}
+
 // TestRunProducesAllSevenIssueTypes is the end-to-end proof that the wired pipeline detects
 // every issue type the tool is built for: the 4 orphaned-edge verdicts and the external-trust
 // verdicts (ghost-admin, unapproved-vendor, stale, active). Drives the pipeline with a fake
