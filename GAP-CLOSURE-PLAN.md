@@ -41,7 +41,13 @@
   package and removing the unsafe inline CSV writer. Remaining cosmetic dead code (blastradius
   `IsReachable`/`HasExternalRoot`, triplicate `\x1e` separators, orphaned `internal/remediator`)
   left as-is to avoid DTO/frontend churn — documented, low value.
-- **P6 — pending.**
+- **P6 — DONE (core).** `internal/pipeline.TestRunProducesAllSevenIssueTypes` drives the wired
+  pipeline (fake source + deterministic per-ARN validation, no AWS) and asserts all 4 orphaned-edge
+  claimabilities (reclaimable/dangling/edge_obscured/broken) AND all 4 external-trust verdicts
+  (ghost_admin_access/unknown_vendor/stale_review_now/active) are produced — the end-to-end proof
+  that every issue type the tool targets is detectable. Deferred: rewriting the 990-line demo
+  generator to call real scorers instead of fabricated literals (lowest value — the integration
+  test is the real proof; the demo already showcases all 7 in the UI). `go vet` clean; full suite green.
 
 ### Deliberate scope decisions (not implemented — owner's call)
 - **#2 dangling CDN**: detection stays scoped to the 4 recognized AWS error-body fingerprints.

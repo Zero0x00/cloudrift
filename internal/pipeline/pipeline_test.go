@@ -184,6 +184,126 @@ func TestRunModuleFilterExternalOnly(t *testing.T) {
 	}
 }
 
+// TestRunProducesAllSevenIssueTypes is the end-to-end proof that the wired pipeline detects
+// every issue type the tool is built for: the 4 orphaned-edge verdicts and the external-trust
+// verdicts (ghost-admin, unapproved-vendor, stale, active). Drives the pipeline with a fake
+// source + deterministic per-ARN validation (no AWS, no network).
+func TestRunProducesAllSevenIssueTypes(t *testing.T) {
+	dnsARN := func(h string) string { return "arn:aws:route53:::Z/" + h }
+
+	// Per-ARN validation results that drive the orphaned-edge classifier.
+	validations := map[string]validators.ValidationResult{
+		dnsARN("takeover.example.com"): {DNSStatus: "resolved", ErrorFingerprint: "s3_bucket_deleted"},     // #1 reclaimable
+		dnsARN("dangling.example.com"): {DNSStatus: "resolved", ErrorFingerprint: "cloudfront_origin_error"}, // #2 dangling
+		dnsARN("cdn.example.com"):      {DNSStatus: "resolved"},                                              // #3 edge_obscured (via alias join)
+		dnsARN("broken.example.com"):   {DNSStatus: "nxdomain"},                                              // #4 broken
+	}
+	orig := validateAssetsFn
+	validateAssetsFn = func(_ context.Context, nodes []models.AssetNode, _ int, _ bool, _ time.Duration, _ string) map[string]validators.ValidationResult {
+		out := make(map[string]validators.ValidationResult, len(nodes))
+		for _, n := range nodes {
+			if v, ok := validations[n.ARN]; ok {
+				out[n.ARN] = v
+			} else {
+				out[n.ARN] = validators.ValidationResult{DNSStatus: "resolved"}
+			}
+		}
+		return out
+	}
+	t.Cleanup(func() { validateAssetsFn = orig })
+
+	adminPolicy := []string{`{"Statement":[{"Effect":"Allow","Action":"*","Resource":"*"}]}`}
+	readPolicy := []string{`{"Statement":[{"Effect":"Allow","Action":["s3:GetObject"],"Resource":"*"}]}`}
+
+	role := func(name string, policy []string) models.AssetNode {
+		return models.AssetNode{
+			ARN: "arn:aws:iam::111111111111:role/" + name, AssetType: models.AssetIAMRole,
+			Name: name, AccountID: "111111111111", Properties: map[string]any{"inline_policy_documents": policy},
+		}
+	}
+	principal := func(id, acct string) models.AssetNode {
+		return models.AssetNode{
+			ARN: "arn:cloudrift:external-principal:::aws_account/" + id, AssetType: models.AssetExternalPrincipal,
+			Name: "arn:aws:iam::" + acct + ":root",
+			Properties: map[string]any{
+				"principal_type": "aws_account", "principal_value": "arn:aws:iam::" + acct + ":root", "external_account_id": acct,
+			},
+		}
+	}
+	trust := func(roleName, principalID string) models.Relationship {
+		return models.Relationship{
+			SourceARN: "arn:aws:iam::111111111111:role/" + roleName,
+			TargetARN: "arn:cloudrift:external-principal:::aws_account/" + principalID, RelType: models.RelTrusts,
+		}
+	}
+
+	res := Result{
+		Accounts: []collectors.Account{{ID: "111111111111", Name: "prod"}},
+		Assets: []models.AssetNode{
+			// Orphaned edge.
+			{ARN: dnsARN("takeover.example.com"), AssetType: models.AssetDNSRecord, Name: "takeover.example.com", AccountID: "111111111111",
+				Properties: map[string]any{"value": "gone-bucket.s3-website-us-east-1.amazonaws.com", "target_service": "s3_website"}},
+			{ARN: "arn:aws:s3:::owned-bucket", AssetType: models.AssetS3Bucket, Name: "owned-bucket", AccountID: "111111111111"},
+			{ARN: dnsARN("dangling.example.com"), AssetType: models.AssetDNSRecord, Name: "dangling.example.com", AccountID: "111111111111",
+				Properties: map[string]any{"value": "d-old.cloudfront.net"}},
+			{ARN: "arn:aws:cloudfront::111111111111:distribution/E", AssetType: models.AssetCloudFrontDist, Name: "E", AccountID: "111111111111",
+				Properties: map[string]any{"domain": "d-cdn.cloudfront.net", "alternate_domains": []string{"other.example.com"}}},
+			{ARN: dnsARN("cdn.example.com"), AssetType: models.AssetDNSRecord, Name: "cdn.example.com", AccountID: "111111111111",
+				Properties: map[string]any{"value": "d-cdn.cloudfront.net"}},
+			{ARN: dnsARN("broken.example.com"), AssetType: models.AssetDNSRecord, Name: "broken.example.com", AccountID: "111111111111",
+				Properties: map[string]any{"value": "missing.example.net"}},
+			// External trust.
+			role("Admin", adminPolicy), principal("p5", "222222222222"),   // #5 ghost_admin (approved acct isolates admin signal)
+			role("Vendor", readPolicy), principal("p6", "333333333333"),   // #6 unknown_vendor (unapproved acct)
+			role("Stale", readPolicy), principal("p7", "222222222222"),    // #7 stale (never used)
+			role("Active", readPolicy), principal("p8", "222222222222"),   // #7 active
+		},
+		Rels: []models.Relationship{
+			trust("Admin", "p5"), trust("Vendor", "p6"), trust("Stale", "p7"), trust("Active", "p8"),
+		},
+		Activity: []collectors.RoleActivity{
+			{RoleARN: "arn:aws:iam::111111111111:role/Admin", DaysSinceUsed: 5},
+			{RoleARN: "arn:aws:iam::111111111111:role/Vendor", DaysSinceUsed: 10},
+			{RoleARN: "arn:aws:iam::111111111111:role/Stale", DaysSinceUsed: -1},
+			{RoleARN: "arn:aws:iam::111111111111:role/Active", DaysSinceUsed: 5},
+		},
+	}
+
+	cfg := config.Default()
+	cfg.Trust.ApprovedExternalAccounts = []string{"222222222222"} // 333... stays unapproved
+
+	dir := t.TempDir()
+	scanID, err := Run(context.Background(), cfg, dir, "test", fakeSource{result: res}, Options{})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	findings := readFindings(t, dir, scanID)
+
+	claimabilities := map[models.Claimability]bool{}
+	verdicts := map[string]bool{}
+	for _, f := range findings {
+		if f.Module == models.ModuleOrphanedEdge {
+			claimabilities[f.Claimability] = true
+		}
+		if f.Module == models.ModuleExternalAccess {
+			if v, ok := f.Evidence["verdict"].(string); ok {
+				verdicts[v] = true
+			}
+		}
+	}
+
+	for _, c := range []models.Claimability{models.ClaimReclaimable, models.ClaimDangling, models.ClaimEdgeObscured, models.ClaimBroken} {
+		if !claimabilities[c] {
+			t.Errorf("missing orphaned-edge claimability %q (got %v)", c, claimabilities)
+		}
+	}
+	for _, v := range []string{"ghost_admin_access", "unknown_vendor", "stale_review_now", "active"} {
+		if !verdicts[v] {
+			t.Errorf("missing external-trust verdict %q (got %v)", v, verdicts)
+		}
+	}
+}
+
 func cdnResult(altDomains []string) Result {
 	return Result{
 		Assets: []models.AssetNode{
