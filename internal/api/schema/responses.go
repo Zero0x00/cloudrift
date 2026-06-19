@@ -253,11 +253,20 @@ type AccountBreakdownItem struct {
 
 // DiffResponse is the payload for GET /api/diff?old=:id&new=:id.
 type DiffResponse struct {
-	OldScanID        string            `json:"old_scan_id"`
-	NewScanID        string            `json:"new_scan_id"`
-	NewFindings      []FindingListItem `json:"new_findings"`
-	ResolvedFindings []FindingListItem `json:"resolved_findings"`
-	UnchangedCount   int               `json:"unchanged_count"`
+	OldScanID        string               `json:"old_scan_id"`
+	NewScanID        string               `json:"new_scan_id"`
+	NewFindings      []FindingListItem    `json:"new_findings"`
+	ResolvedFindings []FindingListItem    `json:"resolved_findings"`
+	ChangedFindings  []DiffChangedFinding `json:"changed_findings"`
+	UnchangedCount   int                  `json:"unchanged_count"`
+}
+
+// DiffChangedFinding is a finding present in both scans (matched by stable ID) whose
+// severity changed between them — surfaced instead of being hidden in unchanged_count.
+type DiffChangedFinding struct {
+	FindingListItem
+	OldSeverity string `json:"old_severity"`
+	NewSeverity string `json:"new_severity"`
 }
 
 // ScanProgressEvent is the websocket payload for /api/scan/progress.

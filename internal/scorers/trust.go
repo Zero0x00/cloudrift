@@ -3,6 +3,7 @@ package scorers
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"sort"
@@ -104,7 +105,9 @@ func ScoreTrust(
 		)
 
 		title := fmt.Sprintf("External trust on %s -> %s", role.Name, verdict)
-		hash := sha256.Sum256([]byte(role.ARN + "|" + rel.TargetARN + "|" + string(verdict)))
+		// Stable identity: module + role + external principal, NOT the (mutable) verdict, so a
+		// trust whose severity/verdict changes across scans keeps the same ID for diff "changed".
+		hash := sha256.Sum256([]byte(string(models.ModuleExternalAccess) + "|" + role.ARN + "|" + rel.TargetARN))
 		findingID := hex.EncodeToString(hash[:])[:12]
 		findings = append(findings, models.Finding{
 			ID:             findingID,
@@ -129,7 +132,10 @@ func ScoreTrust(
 				"unknown_vendor":      unknownVendor,
 				"activity_source":     "iam:getrole:role_last_used",
 				"activity_status":     activityStatus,
-				"permission_visibility": permissionVisibility,
+				// Normalize to map[string]any so in-memory consumers (e.g. scorers.PriorityScore)
+				// see the same shape as findings reloaded from JSON. Storing the struct directly
+				// made type assertions to map[string]any fail before a disk round-trip.
+				"permission_visibility": evidenceMap(permissionVisibility),
 			},
 		})
 	}
@@ -141,6 +147,21 @@ func ScoreTrust(
 		return findings[i].AffectedARN < findings[j].AffectedARN
 	})
 	return findings
+}
+
+// evidenceMap converts a typed value into the generic map[string]any shape that the
+// untyped evidence bag is expected to hold, via a JSON round-trip. This keeps evidence
+// consumers consistent whether a finding is fresh in memory or reloaded from findings.json.
+func evidenceMap(v any) map[string]any {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil
+	}
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil
+	}
+	return m
 }
 
 func classifyTrust(

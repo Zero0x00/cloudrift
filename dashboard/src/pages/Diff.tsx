@@ -1,5 +1,5 @@
 import { formatQueryError } from "../api/httpError";
-import type { FindingListItem } from "../api/types";
+import type { DiffChangedFinding, FindingListItem } from "../api/types";
 import { DiffFindingCard } from "../components/diff/DiffFindingCard";
 import { PageHeader } from "../components/PageHeader";
 import { ScanRequired } from "../components/ScanRequired";
@@ -29,10 +29,12 @@ export function DiffPage() {
   const data = query.data;
   const newFindings = data?.new_findings ?? [];
   const resolvedFindings = data?.resolved_findings ?? [];
+  const changedFindings = data?.changed_findings ?? [];
   const newCount = newFindings.length;
   const resolvedCount = resolvedFindings.length;
+  const changedCount = changedFindings.length;
   const unchanged = data?.unchanged_count ?? 0;
-  const noDrift = data && newCount === 0 && resolvedCount === 0;
+  const noDrift = data && newCount === 0 && resolvedCount === 0 && changedCount === 0;
 
   return (
     <section className="space-y-6">
@@ -66,10 +68,13 @@ export function DiffPage() {
               <span className="font-semibold text-emerald-800 dark:text-emerald-300">−{formatCount(resolvedCount)}</span>
               <span className="text-slate-500"> resolved</span>
               <span className="mx-2 text-slate-400 dark:text-slate-600">·</span>
+              <span className="font-semibold text-sky-800 dark:text-sky-300">~{formatCount(changedCount)}</span>
+              <span className="text-slate-500"> changed</span>
+              <span className="mx-2 text-slate-400 dark:text-slate-600">·</span>
               <span className="font-semibold tabular-nums text-slate-800 dark:text-slate-100">{formatCount(unchanged)}</span>
               <span className="text-slate-500"> unchanged</span>
             </p>
-            <p className="cr-helper">Title + ARN identity (API). Lists below use severity from each scan.</p>
+            <p className="cr-helper">Matched by stable finding ID. "Changed" = same finding, different severity across scans.</p>
           </div>
 
           <div className="hs-card-soft p-4 text-sm text-slate-700 dark:text-slate-300">
@@ -81,7 +86,7 @@ export function DiffPage() {
               <code className="text-cyan-800 dark:text-cyan-200/90">{data.new_scan_id}</code>
             </p>
             <p className="mt-2 cr-helper">
-              Identity for matching: finding title + affected ARN (per API). GET /api/diff?old=…&amp;new=…
+              Identity for matching: stable finding ID (per API). GET /api/diff?old=…&amp;new=…
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <label className="hs-label !mb-0">Baseline</label>
@@ -143,15 +148,16 @@ export function DiffPage() {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-4">
             <DiffMetric label="New findings" value={newCount} />
             <DiffMetric label="Resolved findings" value={resolvedCount} />
+            <DiffMetric label="Changed severity" value={changedCount} />
             <DiffMetric label="Unchanged" value={unchanged} />
           </div>
 
           {noDrift && unchanged > 0 ? (
             <StatePanel intent="empty" title="No drift in tracked identities">
-              No new or resolved findings by title+ARN identity.{" "}
+              No new, resolved, or severity-changed findings by stable ID.{" "}
               <span className="tabular-nums text-slate-600 dark:text-slate-400">{formatCount(unchanged)}</span> finding identities unchanged.
             </StatePanel>
           ) : null}
@@ -159,6 +165,8 @@ export function DiffPage() {
           {showNew && newCount > 0 ? (
             <DiffSection variant="new" title="New findings" subtitle="Present in the new scan only." items={newFindings} />
           ) : null}
+
+          {changedCount > 0 ? <ChangedSection items={changedFindings} /> : null}
 
           {showResolved && resolvedCount > 0 ? (
             <DiffSection
@@ -169,8 +177,8 @@ export function DiffPage() {
             />
           ) : null}
 
-          {!noDrift && newCount === 0 && resolvedCount === 0 ? (
-            <StatePanel intent="empty" title="No new or resolved rows">
+          {!noDrift && newCount === 0 && resolvedCount === 0 && changedCount === 0 ? (
+            <StatePanel intent="empty" title="No new, resolved, or changed rows">
               Diff lists are empty; see unchanged count above.
             </StatePanel>
           ) : null}
@@ -185,6 +193,33 @@ function DiffMetric({ label, value }: { label: string; value: number }) {
     <div className="hs-card p-4">
       <p className="hs-section-title">{label}</p>
       <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-900 dark:text-slate-100">{formatCount(value)}</p>
+    </div>
+  );
+}
+
+function ChangedSection({ items }: { items: DiffChangedFinding[] }) {
+  return (
+    <div>
+      <h2 className="hs-section-title !text-sm">Changed severity</h2>
+      <p className="mt-1 cr-helper">Same finding in both scans (matched by stable ID), severity differs.</p>
+      <div className="mt-3 space-y-2">
+        {items.map((item) => (
+          <div
+            key={`${item.id}-${item.affected_arn}`}
+            className="hs-card-soft flex flex-wrap items-center justify-between gap-2 px-4 py-3"
+          >
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{item.title}</p>
+              <p className="truncate cr-helper">{item.affected_arn}</p>
+            </div>
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tabular-nums">
+              <span className="text-slate-500 dark:text-slate-400">{item.old_severity}</span>
+              <span className="text-slate-400 dark:text-slate-600">→</span>
+              <span className="text-sky-800 dark:text-sky-300">{item.new_severity}</span>
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

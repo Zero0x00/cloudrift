@@ -14,7 +14,12 @@
   comparison implemented as a pipeline join (`annotateAlternateDomains`) + test. #5 admin-equivalent
   policy now bridges into trust severity (`trust.go`) + test. #2 and #6 are **intentional scope
   decisions left as-is** (see below).
-- **P2–P6 — pending.**
+- **P2 — DONE & tested.** Evidence type-coercion fixed (`permission_visibility` normalized to
+  `map[string]any` via `evidenceMap` so in-memory consumers match post-JSON). Finding IDs are now
+  stable (derived from module+ARN[+principal], not the mutable verdict). Diff matches by stable ID
+  and adds a `changed_findings` category (severity transition) — backend, schema, TS type, and Diff
+  UI updated. Tests updated for the new by-ID semantics.
+- **P3–P6 — pending.** (Frontend not yet locally type-checked — deps install deferred to P5.)
 
 ### Deliberate scope decisions (not implemented — owner's call)
 - **#2 dangling CDN**: detection stays scoped to the 4 recognized AWS error-body fingerprints.

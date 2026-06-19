@@ -234,11 +234,17 @@ export interface AccountsBreakdownResponse {
   items: AccountBreakdownItem[];
 }
 
+export interface DiffChangedFinding extends FindingListItem {
+  old_severity: string;
+  new_severity: string;
+}
+
 export interface DiffResponse {
   old_scan_id: string;
   new_scan_id: string;
   new_findings: FindingListItem[];
   resolved_findings: FindingListItem[];
+  changed_findings: DiffChangedFinding[];
   unchanged_count: number;
 }
 

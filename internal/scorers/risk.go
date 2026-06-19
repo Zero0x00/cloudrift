@@ -14,7 +14,10 @@ func ScoreRisk(node models.AssetNode, validation validators.ValidationResult, bu
 	claimability, severity := classifyRisk(node, validation, bucketNames)
 
 	title := fmt.Sprintf("%s -> %s", node.Name, claimability)
-	h := sha256.Sum256([]byte(node.ARN + "|" + title))
+	// Stable identity: derived from module + affected ARN only, NOT the (mutable) claimability.
+	// This keeps a finding's ID constant across scans when its verdict changes, so scan diffs
+	// can report it as "changed" rather than remove+add.
+	h := sha256.Sum256([]byte(string(models.ModuleOrphanedEdge) + "|" + node.ARN))
 	id := hex.EncodeToString(h[:])[:12]
 	return models.Finding{
 		ID:           id,
