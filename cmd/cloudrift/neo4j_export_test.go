@@ -13,7 +13,19 @@ import (
 	"github.com/Zero0x00/cloudrift/internal/config"
 	"github.com/Zero0x00/cloudrift/internal/graph"
 	"github.com/Zero0x00/cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/pipeline"
 )
+
+// fakeScanSource is a no-AWS pipeline source for exercising the scan→report/export wiring
+// without real cloud access. Shared across cmd tests (package main).
+type fakeScanSource struct {
+	result pipeline.Result
+	err    error
+}
+
+func (f fakeScanSource) Collect(_ context.Context, _ *config.Config) (pipeline.Result, error) {
+	return f.result, f.err
+}
 
 type fakeConnector struct {
 	ex      *fakeGraphExecer
@@ -143,10 +155,11 @@ func writeScanFiles(t *testing.T, scanPath string, meta models.ScanSnapshot, fin
 
 func TestExportScanToNeo4j_DisabledPathDoesNotRequireConfig(t *testing.T) {
 	dir := t.TempDir()
-	if _, err := runScan(context.Background(), dir); err != nil {
+	// A scan that does not enable --neo4j must succeed without any Neo4j config/env:
+	// pipeline.Run never touches Neo4j; export is a separate opt-in step.
+	if _, err := pipeline.Run(context.Background(), config.Default(), dir, "test", fakeScanSource{}, pipeline.Options{}); err != nil {
 		t.Fatal(err)
 	}
-	// No assertion needed here beyond runScan success: scan without --neo4j should not look at Neo4j config/env.
 }
 
 func TestExportScanToNeo4j_MissingUsername(t *testing.T) {

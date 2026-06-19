@@ -16,7 +16,7 @@ import (
 	"github.com/Zero0x00/cloudrift/internal/config"
 	"github.com/Zero0x00/cloudrift/internal/graph"
 	"github.com/Zero0x00/cloudrift/internal/models"
-	"github.com/Zero0x00/cloudrift/internal/scanrun"
+	"github.com/Zero0x00/cloudrift/internal/pipeline"
 	"github.com/Zero0x00/cloudrift/internal/scans"
 )
 
@@ -49,10 +49,14 @@ func newRootCommand() *cobra.Command {
 			if outputDir == "" {
 				outputDir = cfg.Output.OutputDir
 			}
+			noHTTP, _ := cmd.Flags().GetBool("no-http")
+			if c, _ := cmd.Flags().GetInt("concurrency"); c > 0 {
+				cfg.Scan.HTTPProbeConcurrency = c
+			}
 			if err := ensureValidSession(cmd.Context(), cfg.AWS.ManagementProfile, cmd); err != nil {
 				return err
 			}
-			scanID, err := runScan(cmd.Context(), outputDir)
+			scanID, err := runScan(cmd.Context(), cfg, outputDir, pipeline.Options{NoHTTP: noHTTP})
 			if err != nil {
 				return err
 			}
@@ -125,8 +129,8 @@ func ensureValidSession(ctx context.Context, profile string, cmd *cobra.Command)
 	return nil
 }
 
-func runScan(ctx context.Context, outputDir string) (string, error) {
-	return scanrun.Run(ctx, outputDir, version)
+func runScan(ctx context.Context, cfg *config.Config, outputDir string, opts pipeline.Options) (string, error) {
+	return pipeline.Run(ctx, cfg, outputDir, version, pipeline.NewAWSSource(), opts)
 }
 
 type neo4jConnectorFactory interface {

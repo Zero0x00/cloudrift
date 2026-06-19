@@ -82,6 +82,16 @@ func ScoreTrust(
 		adminState, isAdmin := resolveAdminState(role)
 		permissionVisibility := DeriveRolePermissionVisibility(role)
 
+		// Bridge policy-derived admin-equivalence into the severity escalation. The explicit
+		// Properties["is_admin"] hint is rarely populated by collectors, so without this the
+		// ghost_admin_access (critical) verdict could never fire from real policy data even
+		// when DeriveRolePermissionVisibility classifies the role as admin-like. Policy
+		// analysis (wildcard Action+Resource / equivalent capabilities) is authoritative here.
+		if permissionVisibility.Capabilities.AdminLike {
+			isAdmin = true
+			adminState = adminTrue
+		}
+
 		severity, verdict, unknownVendor := classifyTrust(
 			isAdmin,
 			adminState,

@@ -167,6 +167,29 @@ func TestScoreTrust_Bare12DigitAWSAccountPrincipalGetsExternalAccountID(t *testi
 	assertEvidenceValue(t, findings[0], "unknown_vendor", true)
 }
 
+func TestScoreTrust_AdminEquivalentPolicyEscalatesWithoutIsAdminFlag(t *testing.T) {
+	// No explicit is_admin hint, but an admin-equivalent inline policy (wildcard Action+Resource).
+	// The policy-derived admin signal must escalate to ghost_admin_access/critical.
+	role := models.AssetNode{
+		ARN:       roleARN,
+		AssetType: models.AssetIAMRole,
+		Name:      "TrustedRole",
+		AccountID: "111111111111",
+		Region:    "global",
+		Properties: map[string]any{
+			"inline_policy_documents": []string{`{"Statement":[{"Effect":"Allow","Action":"*","Resource":"*"}]}`},
+		},
+	}
+	findings := ScoreTrust(
+		[]models.AssetNode{role, basePrincipal("arn:aws:iam::222222222222:root", "aws_account")},
+		[]models.Relationship{baseRel()},
+		map[string]collectors.RoleActivity{roleARN: {RoleARN: roleARN, DaysSinceUsed: 5}},
+		testTrustConfig([]string{"222222222222"}),
+	)
+	assertSingleSeverity(t, findings, models.SeverityCritical)
+	assertEvidenceValue(t, findings[0], "verdict", "ghost_admin_access")
+}
+
 const (
 	roleARN      = "arn:aws:iam::111111111111:role/TrustedRole"
 	principalARN = "arn:cloudrift:external-principal:::aws_account/ZXh0ZXJuYWw"

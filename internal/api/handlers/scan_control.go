@@ -24,7 +24,7 @@ import (
 	"github.com/Zero0x00/cloudrift/internal/config"
 	"github.com/Zero0x00/cloudrift/internal/graph"
 	"github.com/Zero0x00/cloudrift/internal/models"
-	"github.com/Zero0x00/cloudrift/internal/scanrun"
+	"github.com/Zero0x00/cloudrift/internal/pipeline"
 	"github.com/Zero0x00/cloudrift/internal/scans"
 )
 
@@ -206,7 +206,15 @@ func (s *scanControlCenter) runScanAsync(req schema.ScanStartRequest, cfg *confi
 	}
 	s.updateRun(runID, "running", "scanning", "running scan")
 
-	scanID, err := scanrun.Run(context.Background(), s.outputDir, scanStartVersion)
+	// Honor the dashboard profile picker: the selected profile drives credential loading.
+	if req.Profile != "" {
+		cfg.AWS.ManagementProfile = req.Profile
+	}
+	scanOpts := pipeline.Options{NoHTTP: req.NoHTTP}
+	if req.Module != "" && req.Module != "all" {
+		scanOpts.Modules = []string{req.Module}
+	}
+	scanID, err := pipeline.Run(context.Background(), cfg, s.outputDir, scanStartVersion, pipeline.NewAWSSource(), scanOpts)
 	if err != nil {
 		s.failRun(runID, "scan failed")
 		return

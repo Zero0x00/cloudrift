@@ -7,12 +7,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Zero0x00/cloudrift/internal/config"
 	"github.com/Zero0x00/cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/pipeline"
 )
 
 func TestRunScanAndReport(t *testing.T) {
 	dir := t.TempDir()
-	if _, err := runScan(context.TODO(), dir); err != nil {
+	// Exercise the scan→report wiring via the pipeline with a no-AWS source.
+	if _, err := pipeline.Run(context.TODO(), config.Default(), dir, "test", fakeScanSource{}, pipeline.Options{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := runReport(dir, "latest", "table", ""); err != nil {
