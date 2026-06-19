@@ -1,6 +1,6 @@
 # Contributing to Cloudrift
 
-Thank you for helping. This project values **accurate docs**, **small focused changes**, and **honesty about gaps** (default scan still writes empty `findings.json` until orchestration is wired).
+Thank you for helping. This project values **accurate docs**, **small focused changes**, and **honesty about gaps**. The detection engine is now wired: a scan runs the full collectors → validators → scorers → persistence pipeline (`internal/pipeline`) and writes real `findings.json`.
 
 ---
 
@@ -55,6 +55,8 @@ After changing **Go or TS/JS** source, refresh the AST graph (if you use graphif
 | New AWS read / inventory | `internal/collectors/` |
 | Risk or trust scoring | `internal/scorers/` |
 | DNS/HTTP validation | `internal/validators/` |
+| Scan orchestration (collect → validate → score → persist) | `internal/pipeline/` (the single entry point both CLI `scan` and the dashboard scan-control handler call; AWS collection sits behind the `Source` interface in `source_aws.go` so the rest is testable without AWS) |
+| LLM answer synthesis for `cloudrift query` | `internal/synth/` (pluggable `Synthesizer`; `anthropic` is the operational provider, no-op fallback when no API key) |
 | REST handler or DTO | `internal/api/handlers/`, `internal/api/server.go` |
 | Scan directory layout rules | `internal/scans/` |
 | CLI subcommand / flags | `cmd/cloudrift/` (ensure flags are either wired or documented as stub) |
@@ -62,12 +64,16 @@ After changing **Go or TS/JS** source, refresh the AST graph (if you use graphif
 | New `report` format | Wire in `cmd/cloudrift` report path + `internal/output/` |
 | Tests | `_test.go` next to package; dashboard: `npm run test:run` |
 
+> Note: `internal/scanrun` was removed; its orchestration role is now `internal/pipeline`.
+
 ---
 
 ## How to write tests
 
 - **Go:** table-driven tests, golden files where output is stable, fakes for AWS in collectors.
 - **API:** assert JSON keys and types; list fields should be arrays, not `null`.
+- **Pipeline:** `internal/pipeline/pipeline_test.go` drives the full pipeline through a fake `Source` (no AWS, no network — validation is stubbed via the package seam), asserting persisted `findings.json`/`scan-metadata.json` across both detection modules. Extend it when you change orchestration or persistence.
+- **Synthesis:** `internal/synth/synth_test.go` uses `httptest` to stand in for the provider API — no API key required — covering request shape, refusal/degrade, and the no-op-without-key path.
 - **Avoid** giant integration tests unless necessary; unit-test pure functions first.
 
 ---

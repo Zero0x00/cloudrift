@@ -104,7 +104,7 @@ footer{margin-top:2.5rem;font-size:.8rem;color:var(--dim)}
 <div id="pages">
 <article class="page" id="page-welcome" data-page="welcome"><p class="sr-only">What Cloudrift is and how to use this guide.</p><h2 id="t-welcome">Welcome</h2>
 <p><strong>Cloudrift</strong> is built around <strong>calling AWS APIs</strong> to inventory org accounts, DNS, edge services (S3 website, CloudFront, …), and IAM trust — then writing results to <strong>JSON folders</strong> on disk. A <strong>web dashboard</strong> in the same binary reads those files. We added <strong><code>demo generate</code></strong> so you can learn the UI and report formats <strong>without</strong> dialing AWS — that is training data, not a substitute for a real scan.</p>
-<details class="wdim"><summary>What this means</summary><p>Production value comes from live AWS reads. Demo mode exists purely so designers, reviewers, and new contributors see populated tables and charts while the default <code>scan</code> path is still being wired to full collectors.</p></details>
+<details class="wdim"><summary>What this means</summary><p>Production value comes from live AWS reads. The default <code>scan</code> path is fully wired — it runs a real pipeline that collects from AWS, validates, scores, and writes real findings. Demo mode exists so designers, reviewers, and new contributors can see populated tables and charts without dialing AWS.</p></details>
 <p><strong>Who should use it:</strong> security engineers, cloud engineers, FinOps-adjacent folks, and leaders who want evidence-backed answers about forgotten DNS and external IAM trust.</p>
 <p class="legend"><span class="b impl">Implemented</span> works in code today · <span class="b opt">Skippable add-on</span> (e.g. OpenAI key for embeddings) · <span class="b coup">Graph tier</span> Neo4j-coupled advanced path · <span class="b stb">Stubbed</span> registered but not wired · <span class="b pln">Planned</span> on the roadmap</p>
 <p>Tip: use the <strong>Start here</strong> button, then <strong>Next</strong> through all pages once. Use the <a href="#glossary">Glossary</a> when a word is new.</p>
@@ -126,6 +126,7 @@ footer{margin-top:2.5rem;font-size:.8rem;color:var(--dim)}
 <p><strong>Ghost or admin-equivalent external trust</strong> — A role trusts an external account, SAML IdP, or OIDC app and carries broad permissions (or has never been used). <em>Why it matters:</em> durable lateral entry: whoever controls that external principal can assume into your estate.</p>
 <p><strong>Unapproved vendor account</strong> — Trust exists to an AWS account ID that is not on your allowlist. <em>Why it matters:</em> forgotten SaaS integrations and M&amp;A leftovers are common sources of long-lived access.</p>
 <p><strong>Stale vs active trust</strong> — <code>RoleLastUsed</code> and policy heuristics separate “probably forgotten” from “still exercised.” <em>Why it matters:</em> prioritization — rotate or remove dead trust before it becomes an attacker’s path of least resistance.</p>
+<p><strong>S3 bucket-policy exposure</strong> — A bucket policy grants public or cross-account access (read, or worse, write). Cloudrift reads each bucket policy and flags public/external grants, scoring write access higher than read. <em>Why it matters:</em> public-write and unapproved cross-account grants are direct data-exposure and tampering paths.</p>
 <p>For scoring tables and service coverage detail, see <code>docs/security-coverage.md</code>.</p>
 </article>
 <article class="page" id="page-four-questions" data-page="four-questions"><p class="sr-only">Four questions the product is built around.</p><h2 id="t-four-questions">What Cloudrift answers</h2>
@@ -138,14 +139,14 @@ footer{margin-top:2.5rem;font-size:.8rem;color:var(--dim)}
 </article>
 <article class="page" id="page-implementation-status" data-page="implementation-status"><p class="sr-only">Honest status table for new readers.</p><h2 id="t-implementation-status">Current implementation status</h2>
 <table class="tbl"><thead><tr><th>Area</th><th>Status</th><th>Notes</th></tr></thead><tbody>
-<tr><td>Default <code>cloudrift scan</code></td><td><span class="b impl">Implemented</span> but limited</td><td>Writes metadata + <strong>empty</strong> <code>findings.json</code> today.</td></tr>
+<tr><td>Default <code>cloudrift scan</code></td><td><span class="b impl">Implemented</span></td><td>Fully wired: runs a real pipeline (<code>internal/pipeline</code>) that collects from AWS, validates, scores, and writes real <code>findings.json</code>. Both the CLI and the dashboard "Start scan" use it.</td></tr>
 <tr><td><code>cloudrift demo generate</code></td><td><span class="b impl">Implemented</span></td><td>Deterministic populated scan for learning and UI.</td></tr>
 <tr><td>Dashboard + REST API (JSON workflows)</td><td><span class="b impl">Implemented</span></td><td>Reads <code>findings.json</code> and friends from <code>output_dir</code> — no Neo4j required for tables, diff, trust views, etc.</td></tr>
 <tr><td>Neo4j + graph export + blast APIs</td><td><span class="b coup">Graph tier</span></td><td><strong>Coupled product capability:</strong> relationship graph, blast-radius explorer, vector index, and <code>cloudrift query</code> / future RAG-style investigation. The app still runs without it; you lose those advanced surfaces.</td></tr>
-<tr><td><code>cloudrift query</code></td><td><span class="b coup">Graph tier</span></td><td>Needs Neo4j projection + embeddings provider; retrieval-only today (no LLM answer synthesis).</td></tr>
+<tr><td><code>cloudrift query</code></td><td><span class="b coup">Graph tier</span></td><td>Needs Neo4j projection + embeddings provider. Retrieval-only by default; <strong>optional</strong> LLM answer synthesis (<code>internal/synth</code>) grounded in the retrieved findings when a synthesis provider API key is configured.</td></tr>
 <tr><td>Local embeddings provider</td><td><span class="b stb">Stubbed</span></td><td><code>provider=local</code> fails by design until ONNX path exists.</td></tr>
-<tr><td><code>scan --no-http</code>, <code>--concurrency</code></td><td><span class="b stb">Stubbed</span></td><td>Flags exist but are not passed into <code>scanrun.Run</code>.</td></tr>
-<tr><td>Full live collectors → scan</td><td><span class="b pln">Planned</span></td><td>Libraries + tests exist; orchestration wiring outstanding.</td></tr>
+<tr><td><code>scan --no-http</code>, <code>--concurrency</code></td><td><span class="b impl">Implemented</span></td><td>Flags are wired into <code>pipeline.Run</code> (<code>--no-http</code> skips HTTP probing; <code>--concurrency</code> sets probe concurrency).</td></tr>
+<tr><td>Full live collectors → scan</td><td><span class="b impl">Implemented</span></td><td>Collectors, validators, and scorers are orchestrated by <code>internal/pipeline</code> and produce real findings.</td></tr>
 </tbody></table>
 </article>
 <article class="page" id="page-quick-start" data-page="quick-start"><p class="sr-only">Build, demo, dashboard, report.</p><h2 id="t-quick-start">Quick start (copy-paste)</h2>
@@ -156,7 +157,7 @@ footer{margin-top:2.5rem;font-size:.8rem;color:var(--dim)}
 <div class="copy-wrap"><button type="button" class="copy-btn" aria-label="Copy command">Copy</button><pre class="cmd"><code>go build -o cloudrift ./cmd/cloudrift</code></pre></div>
 <p>Or use <code>make build</code> from the repo Makefile (runs dashboard build + Go build).</p>
 <h3>Try without touching AWS</h3>
-<p>Use this block to <strong>visualize the product</strong> (dashboard, reports, optional graph export). It does <strong>not</strong> replace live AWS inventory — production findings come from real API calls once the scan pipeline is fully wired.</p>
+<p>Use this block to <strong>visualize the product</strong> (dashboard, reports, optional graph export). It does <strong>not</strong> replace live AWS inventory — production findings come from real API calls via <code>cloudrift scan</code>.</p>
 <div class="copy-wrap"><button type="button" class="copy-btn" aria-label="Copy command">Copy</button><pre class="cmd"><code>cloudrift demo generate --output-dir ./cloudrift-output</code></pre></div>
 <div class="copy-wrap"><button type="button" class="copy-btn" aria-label="Copy command">Copy</button><pre class="cmd"><code>cloudrift report --scan-id latest --format table</code></pre></div>
 <div class="copy-wrap"><button type="button" class="copy-btn" aria-label="Copy command">Copy</button><pre class="cmd"><code>cloudrift dashboard --output-dir ./cloudrift-output --open</code></pre></div>
@@ -171,16 +172,16 @@ management_profile = &quot;my-readonly-profile&quot;</code></pre></div>
 <p><strong>Multi-account:</strong> your management identity must be allowed to <code>sts:AssumeRole</code> into <code>CloudriftAuditRole</code> in each member account (see IAM page + <code>docs/iam-setup.md</code>). Access keys alone in one account do <strong>not</strong> magically see every account — the role pattern must exist.</p>
 </article>
 <article class="page" id="page-real-scan" data-page="real-scan"><p class="sr-only">What scan does today vs intended.</p><h2 id="t-real-scan">Real scan path</h2>
-<p><strong>Intended:</strong> call AWS APIs across org accounts, validate DNS/HTTP, score risk, write findings.</p>
-<p><strong>Today:</strong> <code>cloudrift scan</code> still <strong>validates AWS credentials</strong> and creates a new timestamped folder under <code>output_dir</code> with <code>scan-metadata.json</code> and an empty <code>findings.json</code>. That proves the path and permissions; it is <strong>not</strong> yet a populated live assessment.</p>
+<p><strong>What it does:</strong> <code>cloudrift scan</code> runs a real pipeline (<code>internal/pipeline</code>) that calls AWS APIs across org accounts, validates DNS/HTTP, scores risk, and writes real findings.</p>
+<p><strong>Output:</strong> a new timestamped folder under <code>output_dir</code> with <code>scan-metadata.json</code> and a populated <code>findings.json</code>. Both the CLI <code>scan</code> and the dashboard "Start scan" button drive the same pipeline.</p>
 <p><strong>Scan IDs:</strong> the folder name (for example <code>20260514-120000</code>). The special name <code>latest</code> means “newest by <code>scan-metadata.json</code> timestamp”.</p>
 <p><strong>Source of truth:</strong> JSON files on disk. The API never “fixes” findings in memory for long-term storage.</p>
-<div class="fig"><svg viewBox="0 0 700 130" xmlns="http://www.w3.org/2000/svg" aria-label="Intended data pipeline" role="img"><rect width="700" height="130" fill="#070b10"/><text x="350" y="20" text-anchor="middle" fill="#9aa8bc" font-size="11" font-family="system-ui">Intended pipeline (library exists; default scan not fully wired)</text><rect x="16" y="44" width="88" height="48" rx="6" fill="#1a2332" stroke="#3dd6c3"/><text x="60" y="74" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Collectors</text><path d="M104 68h28" stroke="#5c6b82" stroke-width="2"/><rect x="132" y="44" width="88" height="48" rx="6" fill="#1a2332" stroke="#3dd6c3"/><text x="176" y="74" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Validators</text><path d="M220 68h28" stroke="#5c6b82" stroke-width="2"/><rect x="248" y="44" width="80" height="48" rx="6" fill="#1a2332" stroke="#3dd6c3"/><text x="288" y="74" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Scorers</text><path d="M328 68h28" stroke="#5c6b82" stroke-width="2"/><rect x="356" y="44" width="100" height="48" rx="6" fill="#1a2332" stroke="#f4a261"/><text x="406" y="74" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">findings.json</text><path d="M456 68h28" stroke="#5c6b82" stroke-width="2"/><rect x="484" y="44" width="100" height="48" rx="6" fill="#1a2332" stroke="#3dd6c3"/><text x="534" y="74" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Reports / API</text><path d="M584 68h28" stroke="#5c6b82" stroke-width="2"/><rect x="612" y="44" width="72" height="48" rx="6" fill="#122018" stroke="#93c5fd"/><text x="648" y="74" text-anchor="middle" fill="#e8edf4" font-size="9" font-family="system-ui">Neo4j</text></svg></div>
+<div class="fig"><svg viewBox="0 0 700 130" xmlns="http://www.w3.org/2000/svg" aria-label="Intended data pipeline" role="img"><rect width="700" height="130" fill="#070b10"/><text x="350" y="20" text-anchor="middle" fill="#9aa8bc" font-size="11" font-family="system-ui">Scan pipeline (wired end-to-end; default scan writes real findings)</text><rect x="16" y="44" width="88" height="48" rx="6" fill="#1a2332" stroke="#3dd6c3"/><text x="60" y="74" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Collectors</text><path d="M104 68h28" stroke="#5c6b82" stroke-width="2"/><rect x="132" y="44" width="88" height="48" rx="6" fill="#1a2332" stroke="#3dd6c3"/><text x="176" y="74" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Validators</text><path d="M220 68h28" stroke="#5c6b82" stroke-width="2"/><rect x="248" y="44" width="80" height="48" rx="6" fill="#1a2332" stroke="#3dd6c3"/><text x="288" y="74" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Scorers</text><path d="M328 68h28" stroke="#5c6b82" stroke-width="2"/><rect x="356" y="44" width="100" height="48" rx="6" fill="#1a2332" stroke="#f4a261"/><text x="406" y="74" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">findings.json</text><path d="M456 68h28" stroke="#5c6b82" stroke-width="2"/><rect x="484" y="44" width="100" height="48" rx="6" fill="#1a2332" stroke="#3dd6c3"/><text x="534" y="74" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Reports / API</text><path d="M584 68h28" stroke="#5c6b82" stroke-width="2"/><rect x="612" y="44" width="72" height="48" rx="6" fill="#122018" stroke="#93c5fd"/><text x="648" y="74" text-anchor="middle" fill="#e8edf4" font-size="9" font-family="system-ui">Neo4j</text></svg></div>
 </article>
 <article class="page" id="page-outputs" data-page="outputs"><p class="sr-only">Every file under a scan directory.</p><h2 id="t-outputs">Output artifacts</h2>
 <ul>
 <li><code>scan-metadata.json</code> — one object with scan id, timestamps, counts, totals.</li>
-<li><code>findings.json</code> — array of findings; may be empty after default scan.</li>
+<li><code>findings.json</code> — array of findings produced by the scan pipeline.</li>
 <li><code>relationships.json</code> — optional graph edges for export (POINTS_TO, TRUSTS, …).</li>
 <li><code>assets/*.json</code> — optional arrays of asset nodes; merged in lexical file name order.</li>
 </ul>
@@ -189,17 +190,17 @@ management_profile = &quot;my-readonly-profile&quot;</code></pre></div>
 <article class="page" id="page-cli" data-page="cli"><p class="sr-only">What each cloudrift subcommand does.</p><h2 id="t-cli">CLI commands</h2>
 <p>Global flag on all commands: <code>--config</code> path to <code>cloudrift.toml</code> (optional).</p>
 <table class="tbl"><thead><tr><th>Command</th><th>Purpose</th><th>Notable flags</th></tr></thead><tbody>
-<tr><td><code>cloudrift scan</code></td><td>Starts a scan run: checks AWS credentials, writes <code>output_dir/&lt;scan-id&gt;/</code> with <code>scan-metadata.json</code> and (today) empty <code>findings.json</code>. Calls AWS for session validation.</td><td><code>--output-dir</code>, <code>--neo4j</code> (export projection after write). <code>--no-http</code>, <code>--concurrency</code> exist but are <strong>not wired</strong>.</td></tr>
+<tr><td><code>cloudrift scan</code></td><td>Runs a real scan via <code>internal/pipeline</code>: collects from AWS, validates DNS/HTTP, scores, and writes <code>output_dir/&lt;scan-id&gt;/</code> with <code>scan-metadata.json</code> and a populated <code>findings.json</code>.</td><td><code>--output-dir</code>, <code>--neo4j</code> (export projection after write), <code>--no-http</code> (DNS-only), <code>--concurrency</code> (HTTP probe concurrency).</td></tr>
 <tr><td><code>cloudrift demo generate</code></td><td>Writes a <strong>deterministic</strong> populated scan (findings, relationships, assets) for UI/report training — <strong>no live AWS collection</strong>.</td><td><code>--output-dir</code>, <code>--scan-id</code>, <code>--neo4j</code>, <code>--dense</code> (richer trust graph for blast demos).</td></tr>
-<tr><td><code>cloudrift report</code></td><td>Reads <code>findings.json</code> for a scan and prints <code>table</code>, <code>json</code>, <code>csv</code>, or <code>markdown</code>.</td><td><code>--scan-id</code> (default <code>latest</code>), <code>--output-dir</code>, <code>--format</code>, <code>--output</code>.</td></tr>
+<tr><td><code>cloudrift report</code></td><td>Reads <code>findings.json</code> for a scan and writes <code>table</code>, <code>json</code>, <code>csv</code>, <code>markdown</code>, <code>excel</code>/<code>xlsx</code>, or <code>sarif</code>.</td><td><code>--scan-id</code> (default <code>latest</code>), <code>--output-dir</code>, <code>--format</code>, <code>--output</code>.</td></tr>
 <tr><td><code>cloudrift dashboard</code></td><td>HTTP server: static SPA + REST API over <code>output_dir</code>.</td><td><code>--port</code>, <code>--open</code>, <code>--scan-id</code> (default URL hint), <code>--output-dir</code>.</td></tr>
 <tr><td><code>cloudrift query</code></td><td>Graph-tier: hybrid retrieval over Neo4j vectors (see embeddings page).</td><td><code>--scan-id</code>, <code>--output-dir</code>, <code>--query</code> or positional text, <code>--format table|json</code>, <code>--top-k</code>, <code>--require-stored-embedding-identity</code>, <code>--legacy-retrieval</code>.</td></tr>
 <tr><td><code>cloudrift version</code></td><td>Prints build version string.</td><td>—</td></tr>
 </tbody></table>
 </article>
 <article class="page" id="page-reports" data-page="reports"><p class="sr-only">report command and formats.</p><h2 id="t-reports">Reports (CLI)</h2>
-<p><code>cloudrift report --scan-id latest --format table|json|csv|markdown</code></p>
-<p>Excel (<code>.xlsx</code>) writers exist under <code>internal/output</code> for library/programmatic use, but the <strong>CLI <code>report</code> subcommand</strong> today supports only the four formats above.</p>
+<p><code>cloudrift report --scan-id latest --format table|json|csv|markdown|excel|sarif</code></p>
+<p>The CLI <code>report</code> subcommand supports six formats: <code>table</code>, <code>json</code>, <code>csv</code>, <code>markdown</code>, <code>excel</code> (also accepts <code>xlsx</code>), and <code>sarif</code>. All writers live under <code>internal/output</code>.</p>
 <div class="copy-wrap"><button type="button" class="copy-btn" aria-label="Copy command">Copy</button><pre class="cmd"><code>cloudrift report --scan-id demo --format markdown --output ./out.md</code></pre></div>
 </article>
 <article class="page" id="page-dashboard" data-page="dashboard"><p class="sr-only">Pages and how data reaches the UI.</p><h2 id="t-dashboard">Dashboard guide</h2>
@@ -223,18 +224,18 @@ management_profile = &quot;my-readonly-profile&quot;</code></pre></div>
 <li><strong>Graph relationships</strong> — structured <code>POINTS_TO</code>, <code>TRUSTS</code>, <code>OWNED_BY</code>, etc., for multi-hop reasoning.</li>
 <li><strong>Blast-radius exploration</strong> — UI and APIs that walk the graph from a finding, external entity, or principal.</li>
 <li><strong>Vector retrieval</strong> — embeddings over finding text for similarity search.</li>
-<li><strong><code>cloudrift query</code></strong> — CLI (and dashboard <code>/query</code>) over that stack; today <strong>retrieval-only</strong>, designed to grow toward richer RAG-style investigation.</li>
+<li><strong><code>cloudrift query</code></strong> — CLI (and dashboard <code>/query</code>) over that stack; retrieval-only by default, with <strong>optional</strong> LLM answer synthesis grounded in the retrieved findings when a synthesis provider API key is configured.</li>
 </ul>
 <p><strong>Main workflows without Neo4j:</strong> everything that only needs <code>findings.json</code> / <code>scan-metadata.json</code> still works — the product deliberately degrades when the graph tier is off.</p>
 <p>Technically, export <strong>re-reads JSON from disk</strong> and upserts into Neo4j; if you wipe Neo4j, your files on disk remain authoritative.</p>
 <div class="fig"><svg viewBox="0 0 620 130" xmlns="http://www.w3.org/2000/svg" aria-label="Neo4j graph tier export" role="img"><rect width="620" height="130" fill="#070b10"/><rect x="20" y="42" width="90" height="50" rx="6" fill="#1a2332" stroke="#5c6b82"/><text x="65" y="73" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">JSON artifacts</text><path d="M110 67h32" stroke="#5c6b82" stroke-width="2"/><rect x="142" y="36" width="120" height="62" rx="6" fill="#122018" stroke="#3dd6c3"/><text x="202" y="60" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">graph export</text><text x="202" y="78" text-anchor="middle" fill="#9aa8bc" font-size="9" font-family="system-ui">re-read from disk</text><path d="M262 67h32" stroke="#5c6b82" stroke-width="2"/><rect x="294" y="42" width="88" height="50" rx="6" fill="#1a2332" stroke="#93c5fd"/><text x="338" y="73" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Neo4j</text><path d="M382 67h32" stroke="#5c6b82" stroke-width="2"/><rect x="414" y="42" width="90" height="50" rx="6" fill="#1a2332" stroke="#f4a261"/><text x="459" y="73" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Embeddings</text><path d="M504 67h28" stroke="#5c6b82" stroke-width="2"/><rect x="532" y="42" width="68" height="50" rx="6" fill="#1a2332" stroke="#3dd6c3"/><text x="566" y="73" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">query</text></svg></div>
 <p>Enable with <code>[neo4j]</code> in TOML and <code>--neo4j</code> on <code>scan</code> or <code>demo generate</code> after files exist.</p>
 </article>
-<article class="page" id="page-embeddings-query" data-page="embeddings-query"><p class="sr-only">Vectors and retrieval-only CLI.</p><h2 id="t-embeddings-query">Embeddings &amp; query</h2>
+<article class="page" id="page-embeddings-query" data-page="embeddings-query"><p class="sr-only">Vectors and retrieval CLI with optional synthesis.</p><h2 id="t-embeddings-query">Embeddings &amp; query</h2>
 <p><strong>Embeddings</strong> are numeric vectors that capture “meaning” of text so Neo4j can rank similar findings. They power the <strong>graph tier</strong> query path together with Bolt.</p>
 <p><strong>Default provider:</strong> OpenAI <code>text-embedding-3-small</code> (384 dimensions). Set <code>OPENAI_API_KEY</code> (or your configured env name).</p>
 <p><strong>Local provider:</strong> <span class="b stb">Stubbed</span> — selecting <code>local</code> returns a clear error until an on-box model ships.</p>
-<p><strong><code>cloudrift query</code>:</strong> prints grounded retrieval results and explicitly states that <strong>answer synthesis is not implemented</strong>.</p>
+<p><strong><code>cloudrift query</code>:</strong> prints grounded retrieval results. When a synthesis provider API key is configured (<code>[synthesis]</code> in config; <code>ANTHROPIC_API_KEY</code> by default), it <strong>optionally</strong> adds an LLM-composed answer grounded in those retrieved findings (<code>internal/synth</code>); otherwise it stays retrieval-only.</p>
 </article>
 <article class="page" id="page-iam" data-page="iam"><p class="sr-only">Audit role and least privilege.</p><h2 id="t-iam">IAM &amp; permissions</h2>
 <p>Cloudrift’s org template defines a read role <code>CloudriftAuditRole</code> in member accounts, assumable from a management principal with an external ID condition.</p>
@@ -255,7 +256,7 @@ management_profile = &quot;my-readonly-profile&quot;</code></pre></div>
 <ul>
 <li><strong>Evidence first</strong> — each row ties to ARNs, hostnames, or trust principals.</li>
 <li><strong>Local control</strong> — artifacts stay on disk unless you opt into cloud APIs (OpenAI for embeddings only when you enable that path).</li>
-<li><strong>Honest scope</strong> — say plainly when a scan directory is empty; do not oversell “full org discovery” until orchestration lands.</li>
+<li><strong>Honest scope</strong> — coverage is bounded by the collectors that have run and the IAM access granted; report what was actually scanned rather than implying total org visibility.</li>
 </ul>
 </article>
 <article class="page" id="page-contributors" data-page="contributors"><p class="sr-only">Where to change code and tests.</p><h2 id="t-contributors">Contributor guide</h2>
@@ -292,7 +293,7 @@ management_profile = &quot;my-readonly-profile&quot;</code></pre></div>
 <dt id="g-ext">External principal</dt><dd>Non-internal identity trusted by an IAM role policy.</dd>
 <dt id="g-neo4j">Neo4j (graph tier)</dt><dd>Coupled store for relationships, blast radius, vectors, and <code>query</code>; main JSON workflows still run without it.</dd>
 <dt id="g-emb">Embedding</dt><dd>Vector representing text for similarity search.</dd>
-<dt id="g-rag">RAG (here)</dt><dd>Retrieval-augmented lookup: fetch similar findings — <strong>no</strong> generated prose answers yet.</dd>
+<dt id="g-rag">RAG (here)</dt><dd>Retrieval-augmented lookup: fetch similar findings, with <strong>optional</strong> LLM-generated prose answers grounded in them when a synthesis provider key is configured.</dd>
 <dt id="g-role">CloudriftAuditRole</dt><dd>Read-only member-account role assumed from management.</dd>
 </dl>
 </article>
@@ -300,13 +301,13 @@ management_profile = &quot;my-readonly-profile&quot;</code></pre></div>
 <ul>
 <li>Run <code>demo generate</code> and narrate JSON + UI honestly.</li>
 <li>Show the <strong>graph tier</strong> (<code>--neo4j</code> + <code>query</code>) when infra exists; otherwise show honest JSON-only workflows.</li>
-<li>Review <code>internal/scans</code> path safety and lack of API auth (operator boundary).</li>
+<li>Review <code>internal/scans</code> path safety. The server binds <code>127.0.0.1</code> by default (a <code>--host</code> flag opts into non-loopback); optional HTTP Basic auth gates the whole server when <code>CLOUDRIFT_API_TOKEN</code> is set.</li>
 </ul>
 </article>
 <article class="page" id="page-roadmap" data-page="roadmap"><p class="sr-only">Near, medium, and longer-term work.</p><h2 id="t-roadmap">Roadmap</h2>
 <ul>
-<li><strong>Near term:</strong> wire default scan to collectors/validators/scorers; remove dead CLI flags or wire them.</li>
-<li><strong>Medium term:</strong> structured logs, optional API auth, more collectors (ACM, API Gateway domains, …).</li>
+<li><strong>Near term:</strong> broaden collector coverage and harden the wired scan pipeline.</li>
+<li><strong>Medium term:</strong> structured logs, more collectors (ACM, API Gateway domains, …).</li>
 <li><strong>Future:</strong> local embedding runtime; richer remediation automation.</li>
 </ul>
 </article>

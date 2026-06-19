@@ -2,6 +2,8 @@
 
 This file exists as a **historical / umbrella spec anchor** for Cloudrift. **The running code is the source of truth** for behavior; this document is not a frozen contract.
 
+> Status update: the detection engine is now wired — a scan runs the full collect → validate → score → persist pipeline (`internal/pipeline`), the orchestration seam both CLI `scan` and the dashboard use. `cloudrift query` also supports optional LLM answer synthesis (`internal/synth`), which runs when a provider API key is configured and otherwise degrades to retrieval-only.
+
 ## Current code vs original intent
 
 Implementation details and **known deviations** from early product sketches are maintained in:

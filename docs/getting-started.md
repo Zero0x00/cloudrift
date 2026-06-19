@@ -10,10 +10,21 @@ This guide is for someone who can open a terminal but may not know AWS Organizat
 | --- | --- | --- |
 | **Go 1.24+** | Build `cloudrift` from source | Yes for `go build` / `make build` |
 | **Node.js 20+ and npm** | Build the embedded dashboard before `go build` | Yes for full UI in dev builds; release binaries already embed UI |
-| **AWS credentials** | **Real scans and `cloudrift scan` credential checks** call the AWS SDK — production value is AWS-backed | Required for live assessment (once scan populates findings); **not** needed for `demo generate` alone |
-| **AWS CLI** | Helps verify credentials (`aws sts get-caller-identity`) | Recommended |
+| **AWS credentials** | **Real scans** call the AWS SDK to discover, probe, and score org assets — production value is AWS-backed | Required for live assessment; **not** needed for `demo generate` alone |
+| **AWS CLI** | Helps verify credentials (`aws sts get-caller-identity`); also used to refresh an expired SSO session | Recommended |
 | **Neo4j 5+** | **Graph tier** — relationships, blast-radius, embeddings, `cloudrift query` | Only if you use that tier |
-| **OpenAI API key** | Default embedding provider for **graph-tier** `query` when Neo4j is used | Only for that path |
+| **OpenAI API key** | Default embedding provider for **graph-tier** `query` when Neo4j is used | Optional, only for that path |
+| **Anthropic API key** | Optional LLM answer synthesis on top of `cloudrift query` retrieval | Optional, only for synthesized answers |
+
+### Environment variables
+
+| Variable | Used by | Notes |
+| --- | --- | --- |
+| `CLOUDRIFT_CONFIG` | all commands | Path to `cloudrift.toml` (else `./cloudrift.toml`). Equivalent to `--config`. |
+| `CLOUDRIFT_NEO4J_PASSWORD` | `--neo4j` export, `query` | Default env var name referenced by `[neo4j].password_env`. |
+| `OPENAI_API_KEY` | `query` embeddings | Default embedding-provider key (override via `[embeddings].openai_api_key_env`). Optional. |
+| `ANTHROPIC_API_KEY` | `query` synthesis | Enables LLM answer synthesis (override via `[synthesis].api_key_env`). Optional. |
+| `CLOUDRIFT_API_TOKEN` | `dashboard` | When set, gates the dashboard (API + UI) behind HTTP Basic auth. Optional. |
 
 ---
 
@@ -52,7 +63,7 @@ Verify:
 
 ## 3. Try locally without AWS (demo UI path)
 
-**Why this exists:** `cloudrift demo generate` writes **deterministic** `findings.json` (and related files) so you can explore the **dashboard and reports** without calling AWS APIs for inventory. It does **not** replace a real org scan — live data still comes from **AWS APIs** once the default `scan` path is fully wired.
+**Why this exists:** `cloudrift demo generate` writes **deterministic** `findings.json` (and related files) so you can explore the **dashboard and reports** without calling AWS APIs for inventory. It does **not** replace a real org scan — live data comes from a real `cloudrift scan` against your AWS org (see section 5).
 
 ```bash
 ./cloudrift demo generate --output-dir ./cloudrift-output
@@ -105,17 +116,24 @@ Search order: path in `CLOUDRIFT_CONFIG`, else `./cloudrift.toml` next to where 
 ./cloudrift scan --output-dir ./cloudrift-output
 ```
 
-**Credentials:** this command **checks AWS** (`ensureValidSession`) before writing artifacts — AWS is part of the real path even when findings are still empty.
+**Credentials:** this command **checks AWS** (`ensureValidSession`) before doing any work. If your SSO session has expired, it attempts `aws sso login` and retries; if the AWS CLI isn't installed, it prints the manual login command.
 
-**What you get today:** a timestamped directory with `scan-metadata.json` and **`findings.json` with an empty array `[]`**. Collectors/scorers exist in `internal/` but default scan orchestration is not yet populating live findings.
+**What you get:** a timestamped directory with `scan-metadata.json`, `findings.json` (real discovered + scored findings), per-collector files under `assets/`, and `relationships.json`. The pipeline collects org inventory, probes edge assets over HTTP, and scores them.
 
-**Graph tier export** (after scan files exist):
+**Useful flags:**
+
+```bash
+./cloudrift scan --no-http              # skip HTTP probing
+./cloudrift scan --concurrency 100      # HTTP probe concurrency (default 50)
+```
+
+**Graph tier export** (writes the scan, then projects it into Neo4j):
 
 ```bash
 ./cloudrift scan --output-dir ./cloudrift-output --neo4j
 ```
 
-Requires `[neo4j]` in TOML and the password environment variable referenced there.
+Requires `[neo4j]` in TOML and the password env var it references (default `CLOUDRIFT_NEO4J_PASSWORD`).
 
 ---
 
@@ -123,6 +141,12 @@ Requires `[neo4j]` in TOML and the password environment variable referenced ther
 
 ```bash
 ./cloudrift dashboard --output-dir ./cloudrift-output --port 8080 --open
+```
+
+The dashboard binds **`127.0.0.1` by default**. To expose it on the network, pass `--host 0.0.0.0`; the command warns you to set auth first. Setting `CLOUDRIFT_API_TOKEN` gates the whole server (API + UI) behind HTTP Basic auth — the token is the password (username is ignored):
+
+```bash
+CLOUDRIFT_API_TOKEN=s3cr3t ./cloudrift dashboard --host 0.0.0.0
 ```
 
 The dashboard **runs fully from JSON** for core pages (listings, findings, diff, trust). **Graph-tier** views (blast explorer, vector query UI) need Neo4j + export; APIs return `graph_available: false` when the graph tier is off.
@@ -133,13 +157,13 @@ Overview has three modes (Executive Summary, High-Signal, Operations) via URL st
 
 ## 7. Reports (CLI)
 
-Supported formats: **`table`**, **`json`**, **`csv`**, **`markdown`**.
+Supported formats: **`table`**, **`json`**, **`csv`**, **`markdown`**, **`excel`** (`.xlsx`), **`sarif`** (SARIF 2.1.0, for GitHub code scanning). `table` prints to stdout; the others write a file — to `--output` if given, otherwise `<scan-dir>/report.<ext>`.
 
 ```bash
 ./cloudrift report --scan-id latest --format markdown --output ./report.md
+./cloudrift report --format excel       # writes <scan-dir>/report.xlsx
+./cloudrift report --format sarif        # writes <scan-dir>/report.sarif
 ```
-
-Excel (`.xlsx`) helpers exist in `internal/output` for programmatic use; they are **not** wired to `cloudrift report` today.
 
 ---
 
@@ -157,10 +181,12 @@ JSON files on disk remain the **source of truth**; Neo4j is a projection.
 
 ## 9. `cloudrift query` (graph tier)
 
-Hybrid retrieval over embedded finding text in Neo4j. **Retrieval only** — no LLM-generated narrative answers.
+Hybrid retrieval over embedded finding text in Neo4j, with **optional** LLM answer synthesis grounded in the retrieved findings.
 
 - Default embeddings: OpenAI `text-embedding-3-small` — set `OPENAI_API_KEY` (or the env name in `[embeddings].openai_api_key_env`).
 - **`provider=local` is stubbed** and returns an error until a local model ships.
+- **Answer synthesis** is enabled when a synthesis provider API key is configured (`[synthesis]` in TOML; default provider Anthropic, key from `ANTHROPIC_API_KEY`). The retrieved findings are passed to the LLM to compose a grounded answer that cites finding IDs. Without a key, output is **retrieval-only**.
+- Output `--format` is `table` (human summary) or `json`. `--top-k` defaults to 10 (max 100).
 
 Example:
 
@@ -176,10 +202,11 @@ Example:
 | --- | --- | --- |
 | `NoCredentialProviders` / auth errors | No credentials in chain | Run `aws sts get-caller-identity` with same profile/env |
 | `AccessDenied` on `AssumeRole` | Trust policy, external ID, or role name | Compare member account role to `iam/stackset-template.yaml` |
-| Dashboard empty | Empty `findings.json` | Run `demo generate` or pick a scan that has findings |
-| `cloudrift scan` “succeeds” but no rows in UI | Expected today | Use demo data until scan wiring lands |
+| Dashboard empty | Empty `findings.json` | Pick a scan that has findings, or run `demo generate` |
+| Dashboard returns 401 | `CLOUDRIFT_API_TOKEN` is set | Provide the token as the Basic-auth password, or unset the env var |
 | Neo4j errors | Wrong URI, auth, or firewall | Check `bolt://` host, `password_env`, Docker port 7687 |
-| Query / embedding errors | Missing OpenAI key | Set key or skip `query` |
+| Query / embedding errors | Missing OpenAI key | Set `OPENAI_API_KEY` or skip `query` |
+| Query returns hits but no narrative answer | No synthesis key | Set `ANTHROPIC_API_KEY` (or `[synthesis].api_key_env`) to enable LLM answers |
 | `provider=local` fails | Stub | Use `openai` or omit query |
 | `npm run build` fails | Missing deps | `cd dashboard && npm ci` |
 

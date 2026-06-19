@@ -69,12 +69,11 @@ cloudrift/
 
 ### `cloudrift scan` flags (stubbed vs effective)
 
-- **Implemented:** `--output-dir`, `--neo4j` (optional export after the scan directory is written).
-- **Stubbed / not wired:** `--no-http` and `--concurrency` are registered on the `scan` command but **not passed** into `scanrun.Run` (which only writes metadata + empty `findings.json`). Treat them as placeholders until orchestration connects to the HTTP validator pipeline.
+- **Implemented:** `--output-dir`, `--neo4j` (optional export after the scan directory is written), `--no-http` (threaded into `pipeline.Options{NoHTTP}` → DNS-only validation), and `--concurrency` (when `>0`, overrides `cfg.Scan.HTTPProbeConcurrency`).
 
 ### Important relationship: library vs CLI `scan`
 
-The **`internal/`** packages implement a full pipeline (collectors → validators → scorers → output). **`runScan` / `scanrun.Run`** (used by CLI `scan` and by the dashboard **Scan Control** start path) currently creates a scan directory with **empty `findings.json`** and metadata only. End-to-end population of findings from AWS in the default scan path is a **documented gap**; tests, demos, and UI workflows often rely on **pre-populated** `findings.json` under `output_dir/<scan-id>/`.
+The **`internal/`** packages implement a full pipeline (collectors → validators → scorers → output), now wired together as **`internal/pipeline`**. CLI `scan` (`runScan` → `pipeline.Run`) and the dashboard **Scan Control** start path both run this real pipeline against the `Source` interface (`NewAWSSource` in production; fakes in tests) and persist real findings/assets/relationships under `output_dir/<scan-id>/`. Tests and demos can still use **pre-populated** artifacts, but findings are no longer empty by default.
 
 **Demo bundle:** `cloudrift demo generate` writes a **deterministic** scan directory (`demo-<UTC-timestamp>`) with non-empty `findings.json`, `scan-metadata.json` (counts consistent with findings), `relationships.json`, and `assets/*.json`, suitable for dashboard and **graph-tier** Neo4j export (`--neo4j`). This is fixture data, not live AWS collection.
 
@@ -82,7 +81,7 @@ The **`internal/`** packages implement a full pipeline (collectors → validator
 
 ## 3. API documentation
 
-Base URL: same host as the dashboard (default `http://0.0.0.0:8080`). JSON only for REST. No authentication in-tree (local/controlled use assumed).
+Base URL: same host as the dashboard (default `http://127.0.0.1:8080` — loopback by default; `--host` opts into a non-loopback bind). JSON only for REST. Authentication is optional and off by default: setting `CLOUDRIFT_API_TOKEN` gates the entire server (REST + UI) behind HTTP Basic auth (see [Security review](#9-security-review)).
 
 ### Error envelope
 
@@ -326,9 +325,11 @@ GET /api/scans/20260418-120000/findings/abc123def456 HTTP/1.1
 
 **Identity:** `lower(trim(title)) + "|" + lower(trim(affected_arn))`.
 
-**Outputs:** `DiffResponse` - `new_findings`, `resolved_findings`, `unchanged_count`.
+**Outputs:** `DiffResponse` - `new_findings`, `resolved_findings`, `changed_findings`, `unchanged_count`.
 
-**Shape stability:** `new_findings` and `resolved_findings` are always arrays (`[]` when empty).
+**Changed findings:** Findings present in both scans (same stable identity) whose **severity** transitioned are reported in `changed_findings`. Each item is a `FindingListItem` plus `old_severity` and `new_severity`, sorted by new severity (descending) then id. Same-severity matches count toward `unchanged_count`.
+
+**Shape stability:** `new_findings`, `resolved_findings`, and `changed_findings` are always arrays (`[]` when empty).
 
 **Example:**
 
@@ -367,11 +368,11 @@ Used by the dashboard route `/scan-control`. **No secrets** in responses (profil
 |--------|------|---------|
 | `GET` | `/api/runtime/status` | AWS profile names, default profile, booleans for OpenAI key env set, Neo4j config present, optional alert envs |
 | `POST` | `/api/runtime/validate-profile` | Body: `{ "profile": "..." }` - STS `GetCallerIdentity` check; safe operator message |
-| `POST` | `/api/scan/start` | Body: `ScanStartRequest` - `profile`, `module` (`all\|orphaned_edge\|external_access`), `no_http`, `neo4j`, optional `provider` (`openai\|local`). Starts **`scanrun.Run`** asynchronously; **graph-tier** Neo4j export after scan dir exists when `neo4j` is true. **Single active run:** second start returns 409 while status is `running`. **`provider: local`:** **Stubbed** — same as config: local embeddings are not operational; graph embedding steps require OpenAI until `internal/graph` local path ships. |
+| `POST` | `/api/scan/start` | Body: `ScanStartRequest` - `profile`, `module` (`all\|orphaned_edge\|external_access`), `no_http`, `neo4j`, optional `provider` (`openai\|local`). Validates the selected profile, then runs the **real pipeline** (`pipeline.Run`) asynchronously; the selected `module` scopes `Options.Modules`. **Graph-tier** Neo4j export runs after the scan completes when `neo4j` is true. **Single active run:** second start returns 409 while status is `running`. **`provider: local`:** local embeddings are not operational; graph embedding steps require OpenAI until `internal/graph` local path ships. |
 | `GET` | `/api/scan/status` | Current run: `run_id`, `status`, `stage`, `message`, `scan_id` when known, timestamps |
 | `GET` | `/api/scan/history` | Recent completed/failed runs (bounded list) |
 
-**Note:** The started scan still produces **empty `findings.json`** today, same as CLI `scan`; Neo4j export runs only when requested and only projects files present under the scan directory.
+**Note:** The started scan runs the same pipeline as the library/CLI path and produces real artifacts (`findings.json`, assets, relationships) under a new scan directory. When `neo4j` is true the export projects the full graph — metadata, **assets, and relationships** (not findings-only) — and attaches finding embeddings best-effort (`graph.AttachEmbeddingsBestEffort`) so the vector index is populated; embedding requires an OpenAI key and is skipped cleanly without one (the graph export still succeeds, without vector search).
 
 **Shape stability:** `runtime_status.aws_profiles` and `scan_history.items` are always arrays (`[]` when empty).
 
@@ -438,7 +439,7 @@ flowchart LR
   API --> UI
 ```
 
-*Solid lines reflect the **intended** pipeline. Today, default `scan` / Scan Control still writes an empty `findings.json`; populating `DIR` uses tests, **`cloudrift demo generate`**, or external/manual artifact preparation until full orchestration is wired.*
+*These lines reflect the live pipeline: `scan` / Scan Control run `pipeline.Run` (collectors → validators → scorers → output) and populate `DIR` with real findings. Tests and **`cloudrift demo generate`** can also seed `DIR` with deterministic fixture artifacts.*
 
 ---
 
@@ -595,8 +596,11 @@ There is **no database** in core Phase 1–2 flow. **Phase 3** adds a **Neo4j gr
 | Path traversal | Scan IDs resolved via `scans.ResolveScanDirectoryName` then `IsSafeScanID` before `filepath.Join`; static FS uses `embed.FS` + clean paths |
 | Secrets in logs | Avoid logging raw credentials; CE warnings may include AWS error text - review in sensitive envs |
 | OpenAI HTTP errors | `internal/graph/embedder.go` truncates HTTP error response bodies (`truncateForOperatorMessage`) so operator messages do not dump unbounded third-party payloads |
-| API auth | None - bind to localhost or protect with network policy / reverse proxy |
+| Network bind | Dashboard/API binds **`127.0.0.1` by default** (`cmd/cloudrift/dashboard.go`). `--host` opts into a non-loopback bind (e.g. `0.0.0.0`) and prints a warning to set `CLOUDRIFT_API_TOKEN` |
+| API auth | Optional. Setting `CLOUDRIFT_API_TOKEN` gates the **entire server** (REST + static UI) behind HTTP Basic auth (`internal/api/auth.go`, `basicAuthGate`); the token is the password (username ignored), compared constant-time. Browser-native prompt; same-origin `fetch()` inherits the credentials, so the SPA is unchanged. Unset → no auth (safe because the default bind is loopback) |
+| CSP | `securityHeaders` in `internal/api/server.go` sets `script-src 'self'` (no inline scripts), `default-src 'self'`, `style-src 'self' 'unsafe-inline'` (CSS-in-JS), `connect-src 'self'`, `worker-src 'self' blob:`, `frame-ancestors 'none'`, `base-uri 'self'`; plus `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` |
 | XSS (dashboard) | Evidence rendered as `JSON.stringify` in `<pre>` or text nodes; no `dangerouslySetInnerHTML` |
+| Alerting webhooks (SSRF) | Slack webhook delivery is guarded in `internal/alerting/webhook_safety.go`: **https-only**, rejects `localhost`/internal IP literals (loopback/private/link-local/unspecified, covering metadata `169.254.169.254`), a **no-redirect** client, and a dial-time `Control` hook that re-checks the **resolved** connection IP (defeats DNS-rebinding). Enforced at rule/routing write time and again at send time in `provider_slack.go` |
 | WebSocket | Origin allowlist (loopback only) |
 | Finding id | Bounded charset and length to reduce abuse |
 | Neo4j embedding metadata | Writer only persists embedding columns when identity is complete (non-empty model); avoids incompatible partial rows |
@@ -607,7 +611,7 @@ There is **no database** in core Phase 1–2 flow. **Phase 3** adds a **Neo4j gr
 
 ### Code quality / gaps
 
-- Wire `runScan` to collectors → validators → scorers → `writeFindings` (single orchestration module).
+- Scan orchestration is wired in `internal/pipeline` (collectors → validators → scorers → persisted findings), consumed by `runScan` and the dashboard Scan Control path.
 - `diff` and `remediate` are not active CLI commands; `commands_test` guards against accidental registration.
 - `internal/graph` contains the optional Phase 3 Neo4j schema and writer projection, isolated from Phase 1/2 paths. Asset nodes use a single `:Asset` label with `asset_type` discriminator.
 
@@ -617,9 +621,11 @@ There is **no database** in core Phase 1–2 flow. **Phase 3** adds a **Neo4j gr
 
 `embeddings.provider = “local”` is planned (future on-box MiniLM/ONNX) but not supported - `Embed` always returns `ErrLocalEmbeddingsUnavailable`.
 
+**Embeddings are attached on the Neo4j export path.** `graph.AttachEmbeddingsBestEffort` generates finding embeddings via the configured provider and stamps the embedding identity onto `ScanSnapshot` meta just before export — invoked from both the CLI export (`cmd/cloudrift/main.go`) and the dashboard Scan Control export (`internal/api/handlers/scan_control.go`). Without this step no `:Finding` node ever gets an embedding and the vector index stays empty. It is **best-effort**: a missing/failed provider (e.g. no `OPENAI_API_KEY`, or `provider=local`) logs a warning and the graph export still succeeds — just without vector search. With a configured OpenAI key the vector index can now actually be populated.
+
 `graph.RetrieveFindingContext` runs `ValidateEmbeddingCompatibility` before any vector read, then runs hybrid Cypher (`HybridVectorRetrievalCypher`). Retrieval hits are scoped to the requested `scan_id` via a `CAPTURED` relationship filter; there is no cross-scan neighbor mixing.
 
-No LLM answer synthesis in `cloudrift query` - output is retrieval-only. Empty hits may reflect probe/TopK limits, missing embeddings, or an absent vector index; use `EmptyHint` and `OperatorNotes` rather than inferring “no risk.”
+Empty hits may reflect probe/TopK limits, missing embeddings, or an absent vector index; use `EmptyHint` and `OperatorNotes` rather than inferring “no risk.”
 
 Operator UX notes:
 
@@ -628,18 +634,26 @@ Operator UX notes:
 - `LegacyEmbeddingUnverified` - `ScanSnapshot` has no stored embedding identity; compatibility check skipped.
 - Missing vector index: check with `graph.IsRAGVectorIndexMissing(err)`, show `graph.RAGVectorIndexOperatorMessage`. Do not parse raw Neo4j error strings.
 
+### Answer synthesis (RAG layer)
+
+`cloudrift query` now does **optional LLM answer synthesis** grounded in the retrieved findings, via the new `internal/synth` package. After retrieval, the hits are handed to a synthesizer that asks an LLM to compose a concise, action-oriented answer citing each finding by id; the system prompt forbids inventing findings/ARNs/accounts not in the context.
+
+- **Pluggable provider:** `synth.Synthesizer` is an interface (`Available()`, `Synthesize()`). `synth.New(cfg)` returns the operational **Anthropic/Claude** implementation when a key is present, else a no-op (never nil) so callers always branch on `Result.Used`. Anthropic is called over **raw `net/http`** to the Messages API (`POST /v1/messages`, `x-api-key`, `anthropic-version: 2023-06-01`) — matching how `embedder.go` calls OpenAI, avoiding a heavy SDK.
+- **Config `[synthesis]`:** `provider` (default `anthropic`), `model` (default `claude-opus-4-8`), `api_key_env` (default `ANTHROPIC_API_KEY`), `max_tokens` (default `2048`).
+- **Degrades cleanly:** no key, unknown provider, empty question, or zero hits → `Used=false` (retrieval-only, no error). A provider error or safety refusal also degrades to retrieval-only and never fails the query.
+
 ### CLI `cloudrift query` (Phase 3)
 
 - **Entry:** `cmd/cloudrift/query.go` - `newQueryCommand`, `runQueryCLI`, `runQueryRetrieval` (injectable `RowReader` test seam).
 - **Flags:** Positional `QUERY_TEXT...` or `--query` (mutually exclusive). `--scan-id` (default `latest`), `--output-dir` (default `./cloudrift-output`), `--format table|json`, `--top-k`, `--require-stored-embedding-identity`, `--legacy-retrieval` (boolean; uses legacy retrieval path when set). There is **no** `--profile` flag on `cloudrift query`; credentials follow the same config + default chain as other commands.
 - **Disk:** Reads only `scan-metadata.json` for `scan_id` and embedding identity.
-- **Output:** Human mode prints query, scan id, top-k, embedding verification line, vector probe stats, operator notes, per-hit grounding fields, and `Answer synthesis: not implemented`. JSON mode emits a single object with `answer_synthesis: “”`.
+- **Output:** Human mode prints query, scan id, top-k, embedding verification line, vector probe stats, operator notes, and per-hit grounding fields. When synthesis ran it appends `Answer (LLM synthesis grounded in the hits above):` followed by the answer; otherwise `Answer synthesis: retrieval-only (set a synthesis provider API key to enable LLM answers).`. JSON mode emits a single object whose `answer_synthesis` holds the synthesized answer (`""` when retrieval-only).
 - **Errors:** `queryRetrievalError` wraps known sentinels with operator-safe messages; raw Neo4j text is not surfaced as primary guidance.
 
 ### Suggested redesigns (non-blocking)
 
-- Extract `internal/pipeline` for scan orchestration shared by CLI and future workers.
-- Optional auth middleware for dashboard when bound beyond loopback.
+- `internal/pipeline` now provides shared scan orchestration (`pipeline.Run`) for the CLI and the dashboard Scan Control path; future workers can reuse it.
+- Optional auth middleware now exists (`CLOUDRIFT_API_TOKEN` → HTTP Basic). A token store / per-user auth remains future work.
 - Tests are strong in `internal/`; CLI integration test for full scan is thin.
 
 ---

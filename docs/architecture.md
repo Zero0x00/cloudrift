@@ -9,7 +9,7 @@
 Think of three layers:
 
 1. **Collect and score** (mostly in `internal/collectors`, `internal/validators`, `internal/scorers`) — library code that knows how to talk to AWS and how to grade risk.
-2. **Write scans to disk** (`internal/scans`, `internal/scanrun`) — each run is a folder of JSON.
+2. **Orchestrate and write scans to disk** (`internal/pipeline`, `internal/scans`) — `internal/pipeline` wires collectors → validators → scorers into a single runnable scan; each run is a folder of JSON.
 3. **Read scans** — the **CLI** (`report`, `query`), the **HTTP API** (`internal/api`), and the **embedded React app** read JSON files; **graph-tier** features also read **Neo4j** when configured.
 
 The dashboard **never replaces** the JSON files as the long-term store of findings.
@@ -37,7 +37,7 @@ flowchart LR
   D --> B
 ```
 
-### Intended pipeline (library vs default CLI)
+### Detection pipeline (actual)
 
 ```mermaid
 flowchart LR
@@ -48,7 +48,7 @@ flowchart LR
   F --> N[Neo4j graph tier]
 ```
 
-**Honesty box:** the default `cloudrift scan` command today stops short of populating `findings.json`. The boxes above reflect **intended** flow; use `cloudrift demo generate` or tests to exercise a populated `findings.json`.
+This is the **actual** flow. `internal/pipeline` orchestrates it end to end (collect → assemble org-wide bucket-name set → validate → score → persist JSON), and both `cloudrift scan` and the dashboard Scan Control start path route through `pipeline.Run`. For an AWS-free walkthrough, `cloudrift demo generate` still synthesizes a populated `findings.json`.
 
 ### Dashboard data path
 
@@ -78,13 +78,19 @@ The primary pipeline is **file-backed**:
 
 Storage is intentionally flat-file JSON under `cloudrift-output/<scan-id>/`. Scan directory access uses shared rules in `internal/scans` (`ResolveScanDirectoryName`, `IsSafeScanID`, `latest` resolution).
 
-**Current orchestration note:** the default CLI scan path (`cloudrift scan`) and dashboard Scan Control start path currently create scan metadata plus an empty `findings.json`. The collectors/scorers pipeline exists in `internal/` and is covered by tests, but full end-to-end wiring into the default scan command remains an explicit gap.
+**Orchestration (`internal/pipeline`):** the detection engine is wired end to end. `pipeline.Run` drives the full flow: collect (org accounts → per-account collectors for DNS, storage/S3, edge/CloudFront, trust/IAM, activity, and bucket policies) → assemble the org-wide bucket-name set → validate (DNS/HTTP probe, skippable) → score (`internal/scorers`: `ScoreRisk`, `ScoreTrust`, `ScoreResourceExposure`, `ScoreCost`, plus optional Cost Explorer enrichment) → persist `findings.json`, `scan-metadata.json`, `assets/assets.json`, and `relationships.json`. AWS collection sits behind a `Source` interface (`pipeline.NewAWSSource`) so the scoring/persistence stages stay testable without real AWS access. Both `cloudrift scan` (`cmd/cloudrift/main.go`) and the dashboard Scan Control start path (`internal/api/handlers/scan_control.go`) route through `pipeline.Run`; the older `internal/scanrun` stub has been removed.
+
+**S3 resource-policy exposure:** cross-account / public S3 exposure is detected from resource-based bucket policies, as part of the **external_access** module. The collector `CollectBucketPolicies` (`internal/collectors/bucketpolicy.go`) reuses the already-listed buckets to read policies, and `ScoreResourceExposure` (`internal/scorers/resource_exposure.go`) grades the resulting cross-account/public grants.
+
+**Scan coverage tracking:** collectors are resilient — a per-account failure (assume-role, bucket enumeration, or denied policy read) is recorded and skipped rather than failing the whole scan. `scan-metadata.json` now records `DiscoveredAccountCount`, `ScannedAccountCount`, `FailedAccountIDs`, and `CoverageComplete`. When coverage is incomplete, the pipeline downgrades absence-based critical orphaned-edge verdicts (a bucket could be owned by an unscanned account), annotating the finding with a coverage note.
 
 ## Phase 3 (graph tier — Neo4j)
 
-**Neo4j** is a **coupled graph tier**: `cloudrift scan --neo4j` (or `cloudrift demo generate --neo4j`) projects scan JSON into a graph database for **relationships**, **blast-radius**, **embeddings**, and **`cloudrift query`** (retrieval-only today; room for richer RAG-style investigation). **`findings.json` / `scan-metadata.json` remain the source of truth** on disk. **Main** dashboard/API workflows that only need JSON still run when Neo4j is absent.
+**Neo4j** is a **coupled graph tier**: `cloudrift scan --neo4j` (or `cloudrift demo generate --neo4j`) projects scan JSON into a graph database for **relationships**, **blast-radius**, **embeddings**, and **`cloudrift query`** (embedding-backed hybrid retrieval, with **optional LLM answer synthesis** layered on top — see below). **`findings.json` / `scan-metadata.json` remain the source of truth** on disk. **Main** dashboard/API workflows that only need JSON still run when Neo4j is absent.
 
 Embeddings and hybrid retrieval live in `internal/graph`; operator-facing CLI entry is `cloudrift query`.
+
+**Optional RAG synthesis (`internal/synth`):** `cloudrift query` retrieves grounding findings, then — when a synthesis provider and API key are configured — asks an LLM to compose a grounded natural-language answer that cites the retrieved finding IDs. The `Synthesizer` interface is pluggable (Anthropic/Claude is the operational provider today). Without a configured provider/key it degrades to a no-op, preserving the prior retrieval-only behavior; synthesis never fails the query.
 
 ## Dashboard and API behavior
 
@@ -93,6 +99,7 @@ Embeddings and hybrid retrieval live in `internal/graph`; operator-facing CLI en
 - High-Signal is optimized for prioritized triage (top fixes + remediation groups); Operations is optimized for action flow (status, ownership risk, next actions).
 - Dashboard mode is preserved while navigating within dashboard context; entering dashboard from other routes defaults to executive mode.
 - `scan_id` remains URL-driven and is preserved through app navigation.
+- When configured, the dashboard's Neo4j export (`exportScanToNeo4j` in `internal/api/handlers/scan_control.go`) projects **assets and relationships** alongside findings — yielding a traversable graph for blast-radius / attack paths rather than a findings-only graph — and attaches embeddings on export (best-effort, so the vector index is populated for query/RAG).
 - Theme is token-driven (`darkMode: class`) with contrast-tuned helper text, table headers, borders, and focus-visible treatment shared across pages.
 
 ## Response-shape consistency
