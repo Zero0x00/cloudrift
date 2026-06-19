@@ -16,11 +16,12 @@ import (
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/go-chi/chi/v5"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 
 	"github.com/Zero0x00/cloudrift/internal/alerting"
-	cloudriftaws "github.com/Zero0x00/cloudrift/internal/aws"
 	"github.com/Zero0x00/cloudrift/internal/api/schema"
+	cloudriftaws "github.com/Zero0x00/cloudrift/internal/aws"
 	"github.com/Zero0x00/cloudrift/internal/config"
 	"github.com/Zero0x00/cloudrift/internal/graph"
 	"github.com/Zero0x00/cloudrift/internal/pipeline"
@@ -487,6 +488,43 @@ func safeAWSConfigPathFromEnv(envName, allowedDir string) (string, bool) {
 		return "", false
 	}
 	return clean, true
+}
+
+type neo4jExportResponse struct {
+	ScanID string `json:"scan_id"`
+	Status string `json:"status"`
+	Neo4j  bool   `json:"neo4j"`
+}
+
+// ExportToNeo4j projects an existing on-disk scan into Neo4j on demand, without re-running
+// a scan. It is the standalone counterpart to the post-scan export in runScanAsync — it lets
+// the dashboard populate the graph from any scan already in output_dir (including demo data),
+// so the blast-radius explorer and graph queries have something to traverse.
+func (s *scanControlCenter) ExportToNeo4j() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cfg, err := config.Load(s.configPath)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "config_load_error", "failed to load runtime config", nil)
+			return
+		}
+		if !neo4jConfigured(cfg) {
+			writeError(w, http.StatusBadRequest, "neo4j_not_configured", "Neo4j is not configured (set neo4j.uri, neo4j.username, and the neo4j.password_env variable)", nil)
+			return
+		}
+		scanID, ok := scanIDFromPath(s.outputDir, chi.URLParam(r, "id"))
+		if !ok {
+			writeError(w, http.StatusBadRequest, "invalid_scan_id", "invalid or unknown scan id", nil)
+			return
+		}
+		// Graph projection + best-effort embeddings can take a little while; bound it.
+		ctx, cancel := context.WithTimeout(r.Context(), 120*time.Second)
+		defer cancel()
+		if err := exportScanToNeo4j(ctx, cfg, filepath.Join(s.outputDir, scanID)); err != nil {
+			writeError(w, http.StatusBadGateway, "neo4j_export_failed", "failed to export scan to Neo4j", map[string]any{"detail": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, neo4jExportResponse{ScanID: scanID, Status: "exported", Neo4j: true})
+	}
 }
 
 func exportScanToNeo4j(ctx context.Context, cfg *config.Config, scanPath string) error {

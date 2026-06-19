@@ -68,6 +68,7 @@ func apiRouter(outputDir, configPath string) http.Handler {
 	r.Get("/scans/{id}/principals/blast-radius/explorer", handlers.BlastRadiusPrincipalExplorer(blast, outputDir))
 	r.Get("/scans/{id}/blast-radius/explorer/expand", handlers.BlastRadiusExplorerExpand(blast, outputDir))
 	r.Get("/scans/{id}/accounts", handlers.ListAccounts(outputDir))
+	r.Post("/scans/{id}/neo4j-export", control.ExportToNeo4j())
 	r.Get("/diff", handlers.DiffScans(outputDir))
 	r.Get("/scan/progress", handlers.ScanProgressWS(control))
 	r.Get("/runtime/status", control.RuntimeStatus())
