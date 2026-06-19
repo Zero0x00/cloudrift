@@ -40,13 +40,15 @@ func TestDashboardCommandInvalidPort(t *testing.T) {
 func TestDashboardCommandInvokesStartServer(t *testing.T) {
 	cfg := ""
 	var (
+		gotHost     string
 		gotPort     int
 		gotOutput   string
 		gotConfig   string
 		gotStaticFS fs.FS
 	)
 	orig := dashboardStart
-	dashboardStart = func(port int, outputDir, configPath string, staticFS fs.FS) error {
+	dashboardStart = func(host string, port int, outputDir, configPath string, staticFS fs.FS) error {
+		gotHost = host
 		gotPort = port
 		gotOutput = outputDir
 		gotConfig = configPath
@@ -61,6 +63,9 @@ func TestDashboardCommandInvokesStartServer(t *testing.T) {
 	}
 	if err := cmd.RunE(cmd, nil); err != nil {
 		t.Fatal(err)
+	}
+	if gotHost != "127.0.0.1" {
+		t.Fatalf("host: expected loopback default, got %q", gotHost)
 	}
 	if gotPort != 9443 {
 		t.Fatalf("port: got %d", gotPort)

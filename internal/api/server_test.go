@@ -36,6 +36,40 @@ func TestNewRouter_MountsAPIAndStatic(t *testing.T) {
 	}
 }
 
+func TestNewRouter_OptionalTokenAuth(t *testing.T) {
+	static := fstest.MapFS{"index.html": &fstest.MapFile{Data: []byte("<html>ok</html>")}}
+	t.Setenv(APITokenEnv, "s3cr3t")
+	router := NewRouter(t.TempDir(), "", static)
+
+	// No credentials → 401 (gate covers API and static).
+	noAuth := httptest.NewRecorder()
+	router.ServeHTTP(noAuth, httptest.NewRequest(http.MethodGet, "/api/scans", nil))
+	if noAuth.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 without token, got %d", noAuth.Code)
+	}
+	if noAuth.Header().Get("WWW-Authenticate") == "" {
+		t.Fatalf("expected WWW-Authenticate challenge")
+	}
+
+	// Wrong token → 401.
+	wrong := httptest.NewRequest(http.MethodGet, "/api/scans", nil)
+	wrong.SetBasicAuth("anyuser", "nope")
+	wrongRR := httptest.NewRecorder()
+	router.ServeHTTP(wrongRR, wrong)
+	if wrongRR.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 with wrong token, got %d", wrongRR.Code)
+	}
+
+	// Correct token (as Basic password) → 200.
+	ok := httptest.NewRequest(http.MethodGet, "/api/scans", nil)
+	ok.SetBasicAuth("anyuser", "s3cr3t")
+	okRR := httptest.NewRecorder()
+	router.ServeHTTP(okRR, ok)
+	if okRR.Code != http.StatusOK {
+		t.Fatalf("expected 200 with correct token, got %d", okRR.Code)
+	}
+}
+
 func TestStaticRouter_NoFS(t *testing.T) {
 	h := staticRouter(nil)
 	req := httptest.NewRequest(http.MethodGet, "/", nil)

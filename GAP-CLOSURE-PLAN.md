@@ -26,8 +26,13 @@
   internal-IP block + no-redirect client) applied at validation and send, with tests. Alerting JSON
   store writes are now atomic (temp+rename). Deferred: `scan_completion` always-fires is an
   intentional notification (not gated); real per-account WS progress (low value / high plumbing).
-- **P4 — pending (needs product decision on auth model). P5–P6 — pending.** (Frontend not yet
-  locally type-checked — deps install deferred to P5.)
+- **P4 — DONE & tested.** Server now binds **127.0.0.1 by default** with a `--host` flag to opt
+  into `0.0.0.0` (prints a warning when non-loopback). Optional auth: setting `CLOUDRIFT_API_TOKEN`
+  gates the whole server (API + UI) behind HTTP Basic (browser-native; same-origin `fetch`
+  inherits creds, so zero frontend changes). CSP tightened to `script-src 'self'` (kept
+  `style-src 'unsafe-inline'` for CSS-in-JS). Removed dead `strconvItoa`. Tests cover the auth gate.
+  Caveat: CSP change not yet verified against the running UI (frontend build pending P5).
+- **P5–P6 — pending.** (Frontend not yet locally type-checked — deps install deferred to P5.)
 
 ### Deliberate scope decisions (not implemented — owner's call)
 - **#2 dangling CDN**: detection stays scoped to the 4 recognized AWS error-body fingerprints.
