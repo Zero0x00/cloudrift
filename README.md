@@ -19,7 +19,6 @@ All guides now live in one place — pick the format you prefer:
 | --- | --- |
 | **[docs.html](docs.html)** | **Start here** — the full interactive docs site (open in a browser). Audience views (Operator / Security reviewer / Developer), grouped sidebar, search, and light/dark theme. Self-contained, works offline. |
 | [docs/cloudrift-docs.md](docs/cloudrift-docs.md) | The same content as a single Markdown file (GitHub-renderable) with a table of contents — Overview, Getting Started, Architecture, CLI, Configuration, Security Coverage, IAM Setup, API & Technical Reference, Contributing. |
-| [starter-doc.html](starter-doc.html) | Reviewer walkthrough hub (narrative + diagrams). |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution quick-reference (full guide is in the docs). |
 
 > The previous per-topic files under `docs/` were consolidated into `docs/cloudrift-docs.md` and rendered into `docs.html`.

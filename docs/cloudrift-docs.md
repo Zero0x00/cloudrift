@@ -3,6 +3,7 @@
 Cloudrift is a CLI and embedded dashboard for discovering orphaned AWS edge assets (DNS, S3 websites, CloudFront) and risky cross-account IAM trust relationships. It scans your AWS organization, writes findings as local JSON (no database required), and provides evidence-backed severity scoring. This document consolidates the project's overview, setup, architecture, command reference, configuration, security coverage, IAM deployment, technical/API reference, and contribution guidelines into a single source.
 
 <!-- audience-map
+start-here: operator, security, developer
 overview: operator, security, developer
 getting-started: operator, developer
 architecture: security, developer
@@ -16,6 +17,7 @@ contributing: developer
 
 ## Table of Contents
 
+- [Start here](#start-here)
 - [Overview](#overview)
 - [Getting Started](#getting-started)
 - [Architecture](#architecture)
@@ -25,6 +27,41 @@ contributing: developer
 - [IAM Setup](#iam-setup)
 - [API & Technical Reference](#api--technical-reference)
 - [Contributing](#contributing)
+
+## Start here
+
+New to Cloudrift? Read this first, then jump to the section for your role. Use the **audience switcher** at the top of this page (Operator / Security reviewer / Developer) to filter the docs to what's relevant to you.
+
+**What it is.** Cloudrift calls AWS APIs to inventory your organization's edge assets (DNS, S3 websites, CloudFront), IAM trust relationships, and S3 bucket policies — then writes the findings to JSON folders on disk and serves them through an embedded web dashboard. `cloudrift demo generate` populates the UI with sample data so you can explore without AWS credentials (it's training data, not a substitute for a real scan).
+
+### The two problems it solves
+
+- **Orphaned edge assets (subdomain takeover & friends).** A DNS name like `docs.example.com` still points at AWS — an S3 website, a CloudFront distribution — but the resource behind it is gone or mis-linked. An attacker who recreates the same globally-named bucket, or abuses a dangling distribution, can serve content under *your* trusted hostname: phishing, malware distribution, brand damage.
+- **Stale external IAM trust.** An IAM role in your account can be assumed by an external AWS account, SAML IdP, or OIDC app — or a bucket policy can grant cross-account/public access. If nobody reviewed it lately it's easy to forget, but the trust stays valid until you remove it: durable lateral access into your estate.
+
+Even security issues have a **cost angle** — you pay for the DNS, certificates, and edge behind an orphaned asset while also carrying takeover risk.
+
+### The four questions Cloudrift answers
+
+1. **What exists?** Hostnames, buckets, distributions, roles — tied to accounts.
+2. **Who owns it?** Account IDs, tags, and OU paths route work to the right team.
+3. **Is it claimable?** For edge findings, a claimability verdict says whether a stranger could plausibly take control.
+4. **What is it costing?** Static estimates plus an optional Cost Explorer merge give FinOps-friendly signals.
+
+### Try it in 60 seconds (no AWS)
+
+```bash
+cloudrift demo generate
+cloudrift dashboard --open
+```
+
+### Where to go next, by role
+
+- **Operator** (run scans, use the dashboard): [Getting Started](#getting-started) → [CLI Commands](#cli-commands) → [Configuration](#configuration) → [IAM Setup](#iam-setup).
+- **Security reviewer** (interpret findings): [Security Coverage](#security-coverage) → [Architecture](#architecture).
+- **Developer** (contribute): [Architecture](#architecture) → [API & Technical Reference](#api--technical-reference) → [Contributing](#contributing).
+
+> **Status at a glance:** the scan engine is fully wired (real collect → validate → score → persist pipeline); the dashboard + REST API work from JSON on disk; Neo4j is an optional graph tier (blast-radius, vector search, and `cloudrift query` with optional LLM answer synthesis); the `local` embeddings provider is a stub.
 
 ---
 
@@ -220,7 +257,7 @@ Current version: injected from git tag (`git describe`). See `tech-spec-v2.md` f
 
 ## Getting Started
 
-This guide is for someone who can open a terminal but may not know AWS Organizations, Neo4j, or embeddings. For a **clickable walkthrough** with diagrams, open [starter-doc.html](../starter-doc.html) in your browser. For a command cheat sheet, see [CLI Commands](#cli-commands).
+This guide is for someone who can open a terminal but may not know AWS Organizations, Neo4j, or embeddings. For a command cheat sheet, see [CLI Commands](#cli-commands), or read the [Start here](#start-here) orientation.
 
 ### 1. Prerequisites
 
@@ -408,7 +445,7 @@ Further detail: [API & Technical Reference](#api--technical-reference), [Archite
 
 ## Architecture
 
-**Purpose of this section:** explain how the system fits together in **plain language**, where each part lives in the repo, and how data moves. For step-by-step setup, use [Getting Started](#getting-started). For API and embedding details, use the [API & Technical Reference](#api--technical-reference). **Inline SVG diagrams** for beginners live in [starter-doc.html](../starter-doc.html).
+**Purpose of this section:** explain how the system fits together in **plain language**, where each part lives in the repo, and how data moves. For step-by-step setup, use [Getting Started](#getting-started). For API and embedding details, use the [API & Technical Reference](#api--technical-reference).
 
 ### Mental model (beginner)
 
@@ -510,7 +547,7 @@ List-like API fields are intentionally normalized to stable arrays (`[]`) where 
 
 For API routes, dashboard behavior (including light/dark theme), Mermaid diagrams, debugging, and security notes, see the [API & Technical Reference](#api--technical-reference).
 
-**Reviewer-oriented hub:** open [`starter-doc.html`](../starter-doc.html) at the repository root (single self-contained HTML; hash navigation).
+**Interactive site:** this documentation is also available as [`docs.html`](../docs.html) at the repository root — a single self-contained HTML site with audience views, sidebar, and search.
 
 ---
 
@@ -628,7 +665,7 @@ cloudrift query --query "dangling DNS records" --format json
 
 Prints the build version. No flags.
 
-For narrative context (AWS vs demo, Neo4j graph tier), see [starter-doc.html](../starter-doc.html) (sections **CLI commands**, **Kinds of issues**, **Neo4j & graph tier**).
+For narrative orientation, see [Start here](#start-here).
 
 ---
 
@@ -860,7 +897,7 @@ Severity for resource-based bucket-policy grants (`internal/scorers/resource_exp
 
 ## IAM Setup
 
-This section explains **slowly** how Cloudrift reaches AWS accounts and what you must deploy. For API-level scan control, see the [API & Technical Reference](#api--technical-reference). For a visual walkthrough, see [starter-doc.html](../starter-doc.html) (IAM section).
+This section explains **slowly** how Cloudrift reaches AWS accounts and what you must deploy. For API-level scan control, see the [API & Technical Reference](#api--technical-reference).
 
 ### What you are trying to achieve
 
@@ -1542,14 +1579,14 @@ Operator UX notes:
 
 ### 11. Related docs
 
-- [starter-doc.html](../starter-doc.html) - Interactive reviewer hub (single HTML, hash navigation)
+- [docs.html](../docs.html) - Interactive documentation site (single self-contained HTML; audience views, sidebar, search)
 - [Architecture](#architecture) - Phase 1–2 file-backed pipeline summary
 - [Getting Started](#getting-started) - Local setup and first run
 - [IAM Setup](#iam-setup) - Org-wide audit role deployment
 - [Security Coverage](#security-coverage) - Attack scenarios, scoring, and data collection reference
 - `tech-spec-v2.md` - Spec anchor / deviation pointer
 
-*Last updated: 2026-05-14 — CLI profile flags corrected; `cloudrift scan` stub flags documented; related links point to `starter-doc.html`.*
+*Consolidated from the per-topic docs into this single file; the interactive version is [docs.html](../docs.html).*
 
 ---
 
@@ -1582,7 +1619,7 @@ Or `make build` / `make test` from the repo root.
 
 ### Documentation
 
-- **Beginner / narrative:** [starter-doc.html](../starter-doc.html) (single HTML; edit directly).
+- **Interactive site:** [docs.html](../docs.html) (single self-contained HTML; audience views, sidebar, search).
 - **Setup steps:** [Getting Started](#getting-started).
 - **Architecture (plain language):** [Architecture](#architecture).
 - **Deep implementation:** [API & Technical Reference](#api--technical-reference).
@@ -1630,7 +1667,7 @@ Match the issue or PR description. Do not refactor unrelated packages or "clean 
 - New DNS or HTTP error **fingerprint** in validators (with tests).
 - New **pricing** or cost-estimate rule for an asset type (document assumptions).
 - Dashboard **empty state** copy or accessibility for a page that assumes data.
-- **Glossary** or starter-doc clarification (still no marketing fluff).
+- **Glossary** or orientation clarification (still no marketing fluff).
 - **Unit test** for a scorer edge case (null evidence, boundary severity).
 
 ### Security

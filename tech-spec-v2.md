@@ -10,7 +10,6 @@ Implementation details and **known deviations** from early product sketches are 
 
 - [`docs/cloudrift-docs.md`](docs/cloudrift-docs.md) — the consolidated documentation: API & Technical Reference (contracts, security notes, embeddings, query CLI, debugging), Architecture (phase model, diagrams), Security Coverage, and more.
 - [`docs.html`](docs.html) — the same content as an interactive site (audience views, sidebar, search).
-- [`starter-doc.html`](starter-doc.html) — beginner-oriented reviewer hub with status labels.
 
 When product intent changes, update the consolidated docs first; keep this file as a short pointer unless you are reviving a formal versioned spec.
 
