@@ -325,6 +325,7 @@ export interface Neo4jExportResponse {
   scan_id: string;
   status: string;
   neo4j: boolean;
+  clustered: boolean;
 }
 
 export interface ScanRunStatusResponse {

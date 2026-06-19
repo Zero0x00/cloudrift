@@ -267,7 +267,11 @@ export function ScanControlCenterPage() {
             </div>
             {exportNeo4j.isSuccess ? (
               <p className="mt-3 text-sm text-emerald-300">
-                Exported scan <code className="cr-mono">{exportNeo4j.data.scan_id}</code> to Neo4j — open the Blast Explorer to view the graph.
+                Exported scan <code className="cr-mono">{exportNeo4j.data.scan_id}</code> to Neo4j
+                {exportNeo4j.data.clustered
+                  ? " and clustered it (GDS Louvain communities + PageRank centrality written back)"
+                  : " (GDS clustering skipped — install the Neo4j Graph Data Science plugin to add communities + centrality)"}
+                {" "}— open the Blast Explorer to view the graph.
               </p>
             ) : null}
             {exportNeo4j.isError ? <p className="mt-3 text-sm text-rose-300">{formatQueryError(exportNeo4j.error)}</p> : null}

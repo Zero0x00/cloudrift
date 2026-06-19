@@ -199,6 +199,11 @@ func exportScanToNeo4j(ctx context.Context, cfg *config.Config, scanPath string,
 	if err := graph.WriteScan(ctx, ex, meta, assets, rels, findings); err != nil {
 		return fmt.Errorf("neo4j export failed: %w", err)
 	}
+	// Best-effort GDS clustering + centrality (writes community/centrality node properties).
+	// Skipped cleanly when the GDS plugin is absent — projection above already succeeded.
+	if gerr := graph.RunGDS(ctx, ex, filepath.Base(scanPath)); gerr != nil {
+		fmt.Fprintf(os.Stderr, "note: %v\n", gerr)
+	}
 	return nil
 }
 

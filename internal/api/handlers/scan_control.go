@@ -223,7 +223,7 @@ func (s *scanControlCenter) runScanAsync(req schema.ScanStartRequest, cfg *confi
 
 	if req.Neo4j {
 		s.updateRun(runID, "running", "neo4j_export", "exporting scan to Neo4j")
-		if err := exportScanToNeo4j(context.Background(), cfg, filepath.Join(s.outputDir, scanID)); err != nil {
+		if _, err := exportScanToNeo4j(context.Background(), cfg, filepath.Join(s.outputDir, scanID)); err != nil {
 			s.failRun(runID, "scan completed, but Neo4j export failed")
 			return
 		}
@@ -491,9 +491,10 @@ func safeAWSConfigPathFromEnv(envName, allowedDir string) (string, bool) {
 }
 
 type neo4jExportResponse struct {
-	ScanID string `json:"scan_id"`
-	Status string `json:"status"`
-	Neo4j  bool   `json:"neo4j"`
+	ScanID    string `json:"scan_id"`
+	Status    string `json:"status"`
+	Neo4j     bool   `json:"neo4j"`
+	Clustered bool   `json:"clustered"`
 }
 
 // ExportToNeo4j projects an existing on-disk scan into Neo4j on demand, without re-running
@@ -519,55 +520,69 @@ func (s *scanControlCenter) ExportToNeo4j() http.HandlerFunc {
 		// Graph projection + best-effort embeddings can take a little while; bound it.
 		ctx, cancel := context.WithTimeout(r.Context(), 120*time.Second)
 		defer cancel()
-		if err := exportScanToNeo4j(ctx, cfg, filepath.Join(s.outputDir, scanID)); err != nil {
+		clustered, err := exportScanToNeo4j(ctx, cfg, filepath.Join(s.outputDir, scanID))
+		if err != nil {
 			writeError(w, http.StatusBadGateway, "neo4j_export_failed", "failed to export scan to Neo4j", map[string]any{"detail": err.Error()})
 			return
 		}
-		writeJSON(w, http.StatusOK, neo4jExportResponse{ScanID: scanID, Status: "exported", Neo4j: true})
+		writeJSON(w, http.StatusOK, neo4jExportResponse{ScanID: scanID, Status: "exported", Neo4j: true, Clustered: clustered})
 	}
 }
 
-func exportScanToNeo4j(ctx context.Context, cfg *config.Config, scanPath string) error {
+// exportScanToNeo4j projects an on-disk scan into Neo4j and, best-effort, runs GDS
+// clustering + centrality. The returned clustered flag is true only when GDS actually wrote
+// community/centrality properties (GDS plugin present); a missing plugin yields clustered=false
+// with no error, since the projection itself succeeded.
+func exportScanToNeo4j(ctx context.Context, cfg *config.Config, scanPath string) (clustered bool, err error) {
 	uri := strings.TrimSpace(cfg.Neo4j.URI)
 	user := strings.TrimSpace(cfg.Neo4j.Username)
 	passEnv := strings.TrimSpace(cfg.Neo4j.PasswordEnv)
 	if uri == "" || user == "" || passEnv == "" {
-		return errors.New("neo4j configuration is incomplete")
+		return false, errors.New("neo4j configuration is incomplete")
 	}
 	pass := strings.TrimSpace(os.Getenv(passEnv))
 	if pass == "" {
-		return fmt.Errorf("neo4j password env %s is empty", passEnv)
+		return false, fmt.Errorf("neo4j password env %s is empty", passEnv)
 	}
 	driver, err := neo4j.NewDriverWithContext(uri, neo4j.BasicAuth(user, pass, ""))
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer driver.Close(ctx)
 	ex := graph.NewDriverExecer(driver, "")
 	outDir, scanID := filepath.Dir(scanPath), filepath.Base(scanPath)
 	meta, findings, err := scans.LoadScanArtifacts(outDir, scanID)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if meta == nil {
-		return errors.New("scan metadata missing")
+		return false, errors.New("scan metadata missing")
 	}
 	// Include assets + relationships so the projected graph is traversable (blast-radius /
 	// attack paths). Previously these were passed empty, yielding a findings-only graph.
 	assets, err := scans.LoadAssets(outDir, scanID)
 	if err != nil {
-		return err
+		return false, err
 	}
 	rels, err := scans.LoadRelationships(outDir, scanID)
 	if err != nil {
-		return err
+		return false, err
 	}
 	// Generate embeddings (best-effort) so the vector index is populated for RAG / query.
 	graph.AttachEmbeddingsBestEffort(ctx, cfg, meta, findings)
 	for _, ddl := range graph.SchemaStatements() {
 		if err := ex.Run(ctx, ddl, nil); err != nil {
-			return err
+			return false, err
 		}
 	}
-	return graph.WriteScan(ctx, ex, *meta, assets, rels, findings)
+	if err := graph.WriteScan(ctx, ex, *meta, assets, rels, findings); err != nil {
+		return false, err
+	}
+	// Best-effort GDS clustering (Louvain) + centrality (PageRank), written back as the
+	// `community` / `centrality` node properties. Never fails the export: a missing GDS plugin
+	// or analytics error returns ErrGDSUnavailable, which we treat as clustered=false.
+	if gerr := graph.RunGDS(ctx, ex, scanID); gerr != nil {
+		return false, nil
+	}
+	return true, nil
 }
