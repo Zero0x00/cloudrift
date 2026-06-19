@@ -68,6 +68,8 @@ func BuildExplorerPayload(
 			IsExternal:      isExternal,
 			ImpactScore:     impact,
 			DisplayNameHint: st,
+			Community:       intPropPtr(n.Props, "community"),
+			Centrality:      floatPropPtr(n.Props, "centrality"),
 		})
 	}
 	eids := make([]string, 0, len(g.Edges))
@@ -147,6 +149,45 @@ func firstStringProp(m map[string]any, keys ...string) string {
 		}
 	}
 	return ""
+}
+
+// intPropPtr reads a numeric node property (e.g. GDS Louvain "community") as *int.
+// Neo4j integers arrive as int64; nil when the property is absent (GDS not run).
+func intPropPtr(m map[string]any, key string) *int {
+	if m == nil {
+		return nil
+	}
+	switch v := m[key].(type) {
+	case int64:
+		x := int(v)
+		return &x
+	case int:
+		x := v
+		return &x
+	case float64:
+		x := int(v)
+		return &x
+	}
+	return nil
+}
+
+// floatPropPtr reads a numeric node property (e.g. GDS PageRank "centrality") as *float64.
+func floatPropPtr(m map[string]any, key string) *float64 {
+	if m == nil {
+		return nil
+	}
+	switch v := m[key].(type) {
+	case float64:
+		x := v
+		return &x
+	case int64:
+		x := float64(v)
+		return &x
+	case int:
+		x := float64(v)
+		return &x
+	}
+	return nil
 }
 
 func edgeExpl(t string) string {

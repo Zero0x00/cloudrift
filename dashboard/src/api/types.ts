@@ -610,6 +610,8 @@ export interface BlastGraphNode {
   is_external: boolean;
   impact_score?: number;
   display_name_hint?: string;
+  community?: number | null;
+  centrality?: number | null;
 }
 
 export interface BlastGraphEdge {

@@ -1097,6 +1097,8 @@ When the **Neo4j [Graph Data Science (GDS) plugin](https://neo4j.com/docs/graph-
 - **Louvain community detection** → writes a `community` property on every node (auto-clustering of related accounts/assets/findings).
 - **PageRank centrality** → writes a `centrality` property (a proxy for "most central / highest-blast-radius" nodes).
 
+When the graph is clustered, the dashboard **Blast Explorer** colors each node by its `community` and shows a legend (community id → color, with node counts), so clusters are visible at a glance; focus, selected, and critical-path nodes still stand out via size/emphasis. Without GDS, nodes fall back to semantic coloring (finding / external / account / critical).
+
 This is **best-effort and non-fatal**: if the GDS plugin is absent (or analytics fail), the export still succeeds — clustering is simply skipped, the export response reports `clustered: false`, and the dashboard tells you to install the GDS plugin. Query the enrichment with, e.g.:
 
 ```cypher

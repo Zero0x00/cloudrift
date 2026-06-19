@@ -114,7 +114,24 @@ function layeredAttackPathLayout(
   return pos;
 }
 
+// Categorical palette for GDS Louvain communities. Indexed by community id (mod length).
+const COMMUNITY_PALETTE = [
+  "#38bdf8", "#34d399", "#f59e0b", "#f472b6", "#a78bfa", "#fb7185",
+  "#22d3ee", "#a3e635", "#fbbf24", "#c084fc", "#2dd4bf", "#fca5a5"
+];
+
+function communityColor(c: number): string {
+  const len = COMMUNITY_PALETTE.length;
+  return COMMUNITY_PALETTE[((c % len) + len) % len];
+}
+
 function nodeColor(n: BlastGraphNode): string {
+  // When the graph was clustered (GDS), color by community so structure pops; focus,
+  // selected, and critical-path nodes still stand out via size/emissive/opacity and the
+  // focus label background.
+  if (n.community != null) {
+    return communityColor(n.community);
+  }
   if (n.type === "finding") {
     return "#ea580c";
   }
@@ -370,6 +387,18 @@ export function BlastExplorerCanvas({
     [nodes, edges, focusId, blastMode]
   );
 
+  // Distinct GDS communities present (id → node count), largest first, for the legend.
+  // Empty when the graph wasn't clustered, so the legend hides and nodes use semantic colors.
+  const communities = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const n of nodes) {
+      if (n.community != null) {
+        counts.set(n.community, (counts.get(n.community) ?? 0) + 1);
+      }
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  }, [nodes]);
+
   if (nodes.length === 0) {
     return (
       <div className="flex h-[320px] max-h-[56vh] min-h-[280px] items-center justify-center rounded-lg border border-slate-700/80 bg-slate-950 text-sm text-slate-500">
@@ -387,7 +416,7 @@ export function BlastExplorerCanvas({
         </div>
       )}
     >
-      <div className="h-[380px] max-h-[56vh] min-h-[300px] w-full overflow-hidden rounded-lg border border-slate-700/80 bg-slate-950">
+      <div className="relative h-[380px] max-h-[56vh] min-h-[300px] w-full overflow-hidden rounded-lg border border-slate-700/80 bg-slate-950">
         <Canvas
           camera={{ position: [0, 0, 16], fov: 48, near: 0.1, far: 200 }}
           dpr={[1, 2]}
@@ -438,6 +467,20 @@ export function BlastExplorerCanvas({
             maxDistance={55}
           />
         </Canvas>
+        {communities.length > 0 ? (
+          <div className="absolute right-2 top-2 max-h-[60%] overflow-auto rounded-md border border-slate-700/80 bg-slate-900/85 px-2.5 py-2 text-[10px] text-slate-200 shadow-lg backdrop-blur">
+            <p className="mb-1 font-semibold uppercase tracking-wide text-slate-400">Communities (GDS)</p>
+            <ul className="space-y-1">
+              {communities.map(([c, count]) => (
+                <li key={c} className="flex items-center gap-1.5">
+                  <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: communityColor(c) }} />
+                  <span className="font-mono">#{c}</span>
+                  <span className="text-slate-400">· {count}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </div>
     </ErrorBoundary>
   );
