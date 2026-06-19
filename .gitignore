@@ -1,5 +1,4 @@
 node_modules/
-dashboard/dist/assets/
 cloudrift-output/
 .env
 *.env

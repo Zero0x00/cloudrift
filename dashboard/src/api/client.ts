@@ -14,6 +14,7 @@ import type {
   ScanRunStatusResponse,
   ScanStartRequest,
   ScanStartResponse,
+  Neo4jExportResponse,
   ScanSummaryResponse,
   ValidateProfileResponse,
   SSOLoginResponse,
@@ -221,6 +222,11 @@ export const apiClient = {
     return fetchJSON<ScanStartResponse>("/scan/start", {
       method: "POST",
       body: JSON.stringify(req)
+    });
+  },
+  exportScanToNeo4j(scanId: string): Promise<Neo4jExportResponse> {
+    return fetchJSON<Neo4jExportResponse>(`/scans/${encodeURIComponent(scanId)}/neo4j-export`, {
+      method: "POST"
     });
   },
   getScanRunStatus(): Promise<ScanRunStatusResponse> {

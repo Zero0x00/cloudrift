@@ -41,6 +41,24 @@ func TestScoreRisk_BucketExistsFallsBackToDangling(t *testing.T) {
 	}
 }
 
+func TestScoreRisk_ClaimableThirdPartyIsReclaimableHigh(t *testing.T) {
+	node := models.AssetNode{
+		ARN:       "arn:tp",
+		AssetType: models.AssetDNSRecord,
+		Name:      "docs.example.com",
+		AccountID: "9999",
+		Properties: map[string]any{
+			"value": "myorg.github.io",
+		},
+	}
+	// Unclaimed GitHub Pages site: validator matched a claimable signature.
+	result := validators.ValidationResult{DNSStatus: "resolved", ErrorFingerprint: "github_pages_unclaimed", Claimable: true}
+	f := ScoreRisk(node, result, map[string]bool{})
+	if f.Claimability != models.ClaimReclaimable || f.Severity != models.SeverityHigh {
+		t.Fatalf("expected reclaimable/high, got %s/%s", f.Claimability, f.Severity)
+	}
+}
+
 func TestScoreRisk_DanglingFromAWSControlledEndpoint(t *testing.T) {
 	node := models.AssetNode{
 		ARN:       "arn:3",

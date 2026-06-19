@@ -424,9 +424,9 @@ func validateRule(rule AlertRule) error {
 	if rule.Channel.Type != ChannelSlackWebhook {
 		return fmt.Errorf("unsupported channel type %q", rule.Channel.Type)
 	}
-	url := strings.TrimSpace(rule.Channel.SlackWebhookURL)
-	if url != "" && !strings.HasPrefix(url, "https://") {
-		return fmt.Errorf("slack webhook URL must start with https:// when set")
+	webhookURL := strings.TrimSpace(rule.Channel.SlackWebhookURL)
+	if webhookURL != "" && !allowedWebhookURL(webhookURL) {
+		return fmt.Errorf("slack webhook URL must be https and must not target an internal/metadata host")
 	}
 	return nil
 }

@@ -93,9 +93,7 @@ func CollectDNSWithConfig(ctx context.Context, cfg *config.Config, accounts []Ac
 		}()
 	}
 	wg.Wait()
-	if firstErr != nil {
-		return nil, firstErr
-	}
+	warnPartial("dns", firstErr)
 	return out, nil
 }
 

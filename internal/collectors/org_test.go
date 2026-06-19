@@ -56,7 +56,7 @@ func TestCollectAccounts_MapsTagsAndOUPath(t *testing.T) {
 		Credentials: awsv2.NewCredentialsCache(credentials.NewStaticCredentialsProvider("id", "secret", "token")),
 	}
 	sm := internalaws.NewSessionManagerFromConfig(base, cfg.AWS.OrgRoleName)
-	accounts, err := CollectAccounts(ctx, cfg, &fakeOrgAPI{}, sm)
+	accounts, coverage, err := CollectAccounts(ctx, cfg, &fakeOrgAPI{}, sm)
 	if err != nil {
 		t.Fatalf("collect accounts failed: %v", err)
 	}
@@ -69,5 +69,8 @@ func TestCollectAccounts_MapsTagsAndOUPath(t *testing.T) {
 	}
 	if got.OUPath == "unknown" || got.OUPath == "" {
 		t.Fatalf("expected ou path, got %q", got.OUPath)
+	}
+	if !coverage.Complete() || coverage.Discovered != 1 || len(coverage.Scanned) != 1 {
+		t.Fatalf("unexpected coverage: %+v", coverage)
 	}
 }

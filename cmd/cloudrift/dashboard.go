@@ -27,6 +27,7 @@ func newDashboardCommand(cfgPath *string) *cobra.Command {
 		openBrowser bool
 		scanID      string
 		outputDir   string
+		host        = "127.0.0.1"
 	)
 
 	cmd := &cobra.Command{
@@ -43,6 +44,8 @@ func newDashboardCommand(cfgPath *string) *cobra.Command {
 				}
 				outputDir = cfg.Output.OutputDir
 			}
+			// Stamp dashboard-initiated scans with the same build version as `cloudrift version`.
+			api.SetBuildVersion(version)
 			staticFS, err := dashboardStaticFS()
 			if err != nil {
 				return err
@@ -54,14 +57,18 @@ func newDashboardCommand(cfgPath *string) *cobra.Command {
 					tryOpenDashboard(port, scanID)
 				}()
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Cloudrift dashboard listening on http://%s\n", net.JoinHostPort("0.0.0.0", strconv.Itoa(port)))
+			fmt.Fprintf(cmd.OutOrStdout(), "Cloudrift dashboard listening on http://%s\n", net.JoinHostPort(host, strconv.Itoa(port)))
+			if host != "127.0.0.1" && host != "localhost" && host != "::1" {
+				fmt.Fprintf(cmd.OutOrStdout(), "WARNING: bound to non-loopback host %q — set %s to require auth.\n", host, api.APITokenEnv)
+			}
 			if scanID != "" {
 				fmt.Fprintf(cmd.OutOrStdout(), "Default scan context (browser open URL): scan_id=%q\n", scanID)
 			}
-			return dashboardStart(port, outputDir, *cfgPath, staticFS)
+			return dashboardStart(host, port, outputDir, *cfgPath, staticFS)
 		},
 	}
 	cmd.Flags().IntVar(&port, "port", port, "HTTP listen port")
+	cmd.Flags().StringVar(&host, "host", host, "Bind address. Defaults to loopback; set to 0.0.0.0 to expose on the network (set CLOUDRIFT_API_TOKEN to require auth)")
 	cmd.Flags().BoolVar(&openBrowser, "open", false, "Open dashboard in the default browser after startup")
 	cmd.Flags().StringVar(&scanID, "scan-id", "", "Optional default scan id (added to open URL as scan_id query param)")
 	cmd.Flags().StringVar(&outputDir, "output-dir", "", "Directory containing scan output (default: config output_dir)")

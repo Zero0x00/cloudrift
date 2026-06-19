@@ -76,6 +76,11 @@ type BlastGraphNode struct {
 	IsExternal      bool    `json:"is_external"`
 	ImpactScore     float64 `json:"impact_score,omitempty"`
 	DisplayNameHint string  `json:"display_name_hint,omitempty"`
+	// Community and Centrality come from the GDS-written node properties (Louvain
+	// community id, PageRank centrality) when the graph was clustered. Nil when GDS
+	// analytics were not run, so the UI falls back to semantic coloring.
+	Community  *int     `json:"community,omitempty"`
+	Centrality *float64 `json:"centrality,omitempty"`
 }
 
 // BlastGraphEdge is a single directed relationship in the UI graph.

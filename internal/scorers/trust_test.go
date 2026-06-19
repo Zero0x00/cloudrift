@@ -167,6 +167,69 @@ func TestScoreTrust_Bare12DigitAWSAccountPrincipalGetsExternalAccountID(t *testi
 	assertEvidenceValue(t, findings[0], "unknown_vendor", true)
 }
 
+func TestScoreTrust_PermissionVisibilityEvidenceIsMapAndDrivesPriority(t *testing.T) {
+	// admin-like inline policy → permission_visibility.capabilities.admin_like = true.
+	role := models.AssetNode{
+		ARN:       roleARN,
+		AssetType: models.AssetIAMRole,
+		Name:      "TrustedRole",
+		AccountID: "111111111111",
+		Region:    "global",
+		Properties: map[string]any{
+			"inline_policy_documents": []string{`{"Statement":[{"Effect":"Allow","Action":"*","Resource":"*"}]}`},
+		},
+	}
+	findings := ScoreTrust(
+		[]models.AssetNode{role, basePrincipal("arn:aws:iam::222222222222:root", "aws_account")},
+		[]models.Relationship{baseRel()},
+		map[string]collectors.RoleActivity{roleARN: {RoleARN: roleARN, DaysSinceUsed: 5}},
+		testTrustConfig([]string{"222222222222"}),
+	)
+	if len(findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d", len(findings))
+	}
+	f := findings[0]
+
+	// Evidence must be a generic map in-memory (not a struct), or downstream consumers break.
+	pv, ok := f.Evidence["permission_visibility"].(map[string]any)
+	if !ok {
+		t.Fatalf("permission_visibility should be map[string]any in-memory, got %T", f.Evidence["permission_visibility"])
+	}
+	caps, ok := pv["capabilities"].(map[string]any)
+	if !ok || caps["admin_like"] != true {
+		t.Fatalf("expected capabilities.admin_like=true, got %v", pv["capabilities"])
+	}
+
+	// PriorityReason reads admin-like through the evidence map; before the fix it failed
+	// in-memory because the value was a struct, not a map.
+	if !strings.Contains(PriorityReason(f), "admin-like") {
+		t.Fatalf("priority reason should reflect admin-like external trust, got %q", PriorityReason(f))
+	}
+}
+
+func TestScoreTrust_AdminEquivalentPolicyEscalatesWithoutIsAdminFlag(t *testing.T) {
+	// No explicit is_admin hint, but an admin-equivalent inline policy (wildcard Action+Resource).
+	// The policy-derived admin signal must escalate to ghost_admin_access/critical.
+	role := models.AssetNode{
+		ARN:       roleARN,
+		AssetType: models.AssetIAMRole,
+		Name:      "TrustedRole",
+		AccountID: "111111111111",
+		Region:    "global",
+		Properties: map[string]any{
+			"inline_policy_documents": []string{`{"Statement":[{"Effect":"Allow","Action":"*","Resource":"*"}]}`},
+		},
+	}
+	findings := ScoreTrust(
+		[]models.AssetNode{role, basePrincipal("arn:aws:iam::222222222222:root", "aws_account")},
+		[]models.Relationship{baseRel()},
+		map[string]collectors.RoleActivity{roleARN: {RoleARN: roleARN, DaysSinceUsed: 5}},
+		testTrustConfig([]string{"222222222222"}),
+	)
+	assertSingleSeverity(t, findings, models.SeverityCritical)
+	assertEvidenceValue(t, findings[0], "verdict", "ghost_admin_access")
+}
+
 const (
 	roleARN      = "arn:aws:iam::111111111111:role/TrustedRole"
 	principalARN = "arn:cloudrift:external-principal:::aws_account/ZXh0ZXJuYWw"

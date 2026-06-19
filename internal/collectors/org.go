@@ -3,6 +3,8 @@ package collectors
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"sort"
 	"sync"
 
 	awsv2 "github.com/aws/aws-sdk-go-v2/aws"
@@ -12,6 +14,27 @@ import (
 	"github.com/Zero0x00/cloudrift/internal/aws"
 	"github.com/Zero0x00/cloudrift/internal/config"
 )
+
+// Coverage records which org accounts a scan actually reached. It is the trust signal
+// for findings: a reclaimable verdict is only safe when coverage is complete, because a
+// bucket "missing" from scanned accounts could still be owned by an account we skipped.
+type Coverage struct {
+	Discovered int               `json:"discovered"`        // accounts returned by Organizations
+	Scanned    []string          `json:"scanned"`           // account IDs successfully assumed
+	Failed     map[string]string `json:"failed,omitempty"`  // account ID -> assume error
+}
+
+// Complete reports whether every discovered account was successfully assumed.
+func (c Coverage) Complete() bool { return len(c.Failed) == 0 }
+
+// warnPartial logs (without aborting) when a collector produced partial results because
+// some per-account API calls failed. Collectors stay resilient: one account's missing
+// permission or throttle must not discard every other account's findings.
+func warnPartial(collector string, err error) {
+	if err != nil {
+		slog.Warn("collector produced partial results", "collector", collector, "error", err)
+	}
+}
 
 type Account struct {
 	ID      string
@@ -30,21 +53,22 @@ type OrganizationsAPI interface {
 	DescribeOrganizationalUnit(ctx context.Context, params *organizations.DescribeOrganizationalUnitInput, optFns ...func(*organizations.Options)) (*organizations.DescribeOrganizationalUnitOutput, error)
 }
 
-func CollectAccounts(ctx context.Context, cfg *config.Config, orgAPI OrganizationsAPI, sm *aws.SessionManager) ([]Account, error) {
+func CollectAccounts(ctx context.Context, cfg *config.Config, orgAPI OrganizationsAPI, sm *aws.SessionManager) ([]Account, Coverage, error) {
 	var accounts []types.Account
 	p := organizations.NewListAccountsPaginator(orgAPI, &organizations.ListAccountsInput{})
 	for p.HasMorePages() {
 		out, err := p.NextPage(ctx)
 		if err != nil {
-			return nil, err
+			// Listing the org itself is fatal — without it there is nothing to scan.
+			return nil, Coverage{}, err
 		}
 		accounts = append(accounts, out.Accounts...)
 	}
 
 	out := make([]Account, len(accounts))
+	failed := make(map[string]string)
 	sem := make(chan struct{}, max(1, cfg.Scan.RoleAssumptionConcurrency))
 	var wg sync.WaitGroup
-	var firstErr error
 	var mu sync.Mutex
 	for i, a := range accounts {
 		i, a := i, a
@@ -54,32 +78,46 @@ func CollectAccounts(ctx context.Context, cfg *config.Config, orgAPI Organizatio
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
-			session, err := sm.AssumeAccount(ctx, awsv2.ToString(a.Id))
+			accID := awsv2.ToString(a.Id)
+			session, err := sm.AssumeAccount(ctx, accID)
 			if err != nil {
+				// Resilient: an account we cannot assume (closed, missing audit role, SCP
+				// denial) is recorded and skipped, never aborting the whole org scan.
 				mu.Lock()
-				if firstErr == nil {
-					firstErr = err
-				}
+				failed[accID] = err.Error()
 				mu.Unlock()
 				return
 			}
 
 			out[i] = Account{
-				ID:      awsv2.ToString(a.Id),
+				ID:      accID,
 				Name:    awsv2.ToString(a.Name),
-				OUPath:  buildOUPath(ctx, orgAPI, awsv2.ToString(a.Id)),
-				Team:    tagValue(ctx, orgAPI, awsv2.ToString(a.Id), "Team"),
-				Owner:   tagValue(ctx, orgAPI, awsv2.ToString(a.Id), "Owner"),
-				Contact: tagValue(ctx, orgAPI, awsv2.ToString(a.Id), "Contact"),
+				OUPath:  buildOUPath(ctx, orgAPI, accID),
+				Team:    tagValue(ctx, orgAPI, accID, "Team"),
+				Owner:   tagValue(ctx, orgAPI, accID, "Owner"),
+				Contact: tagValue(ctx, orgAPI, accID, "Contact"),
 				Session: &session,
 			}
 		}()
 	}
 	wg.Wait()
-	if firstErr != nil {
-		return nil, firstErr
+
+	// Compact to successfully-assumed accounts; failed entries are left zero-value.
+	scanned := make([]Account, 0, len(out))
+	scannedIDs := make([]string, 0, len(out))
+	for _, acc := range out {
+		if acc.Session == nil {
+			continue
+		}
+		scanned = append(scanned, acc)
+		scannedIDs = append(scannedIDs, acc.ID)
 	}
-	return out, nil
+	sort.Strings(scannedIDs)
+	cov := Coverage{Discovered: len(accounts), Scanned: scannedIDs, Failed: failed}
+	if len(failed) > 0 {
+		slog.Warn("account collection skipped accounts that could not be assumed", "failed", len(failed), "discovered", len(accounts))
+	}
+	return scanned, cov, nil
 }
 
 func tagValue(ctx context.Context, orgAPI OrganizationsAPI, accountID, key string) string {

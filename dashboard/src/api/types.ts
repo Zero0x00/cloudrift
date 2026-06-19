@@ -234,11 +234,17 @@ export interface AccountsBreakdownResponse {
   items: AccountBreakdownItem[];
 }
 
+export interface DiffChangedFinding extends FindingListItem {
+  old_severity: string;
+  new_severity: string;
+}
+
 export interface DiffResponse {
   old_scan_id: string;
   new_scan_id: string;
   new_findings: FindingListItem[];
   resolved_findings: FindingListItem[];
+  changed_findings: DiffChangedFinding[];
   unchanged_count: number;
 }
 
@@ -313,6 +319,13 @@ export interface ScanStartResponse {
   run_id: string;
   status: string;
   message: string;
+}
+
+export interface Neo4jExportResponse {
+  scan_id: string;
+  status: string;
+  neo4j: boolean;
+  clustered: boolean;
 }
 
 export interface ScanRunStatusResponse {
@@ -597,6 +610,8 @@ export interface BlastGraphNode {
   is_external: boolean;
   impact_score?: number;
   display_name_hint?: string;
+  community?: number | null;
+  centrality?: number | null;
 }
 
 export interface BlastGraphEdge {

@@ -104,12 +104,13 @@ func DiffScans(outputDir string) http.HandlerFunc {
 			return
 		}
 
-		newItems, resolvedItems, unchanged := diffFindings(oldFindings, newFindings)
+		newItems, resolvedItems, changedItems, unchanged := diffFindings(oldFindings, newFindings)
 		writeJSON(w, http.StatusOK, schema.DiffResponse{
 			OldScanID:        oldScan,
 			NewScanID:        newScan,
 			NewFindings:      newItems,
 			ResolvedFindings: resolvedItems,
+			ChangedFindings:  changedItems,
 			UnchangedCount:   unchanged,
 		})
 	}
@@ -338,39 +339,66 @@ func aggregateAccounts(findings []models.Finding) []schema.AccountBreakdownItem 
 	return accounts
 }
 
-func diffFindings(oldFindings, newFindings []models.Finding) ([]schema.FindingListItem, []schema.FindingListItem, int) {
-	oldIndex := map[string]models.Finding{}
-	for _, finding := range oldFindings {
-		oldIndex[diffIdentity(finding)] = finding
-	}
-	newIndex := map[string]models.Finding{}
-	for _, finding := range newFindings {
-		newIndex[diffIdentity(finding)] = finding
-	}
+func diffFindings(oldFindings, newFindings []models.Finding) ([]schema.FindingListItem, []schema.FindingListItem, []schema.DiffChangedFinding, int) {
+	oldIndex := indexFindings(oldFindings)
+	newIndex := indexFindings(newFindings)
 
 	newItems := make([]schema.FindingListItem, 0)
 	resolved := make([]schema.FindingListItem, 0)
+	changed := make([]schema.DiffChangedFinding, 0)
 	unchanged := 0
 
 	for key, finding := range newIndex {
-		if _, ok := oldIndex[key]; ok {
-			unchanged++
+		old, ok := oldIndex[key]
+		if !ok {
+			newItems = append(newItems, toFindingListItem(finding))
 			continue
 		}
-		newItems = append(newItems, toFindingListItem(finding))
+		// Present in both (same stable identity): a severity change is the actionable signal.
+		if !strings.EqualFold(string(old.Severity), string(finding.Severity)) {
+			item := toFindingListItem(finding)
+			changed = append(changed, schema.DiffChangedFinding{
+				FindingListItem: item,
+				OldSeverity:     strings.ToLower(strings.TrimSpace(string(old.Severity))),
+				NewSeverity:     strings.ToLower(strings.TrimSpace(string(finding.Severity))),
+			})
+			continue
+		}
+		unchanged++
 	}
 	for key, finding := range oldIndex {
-		if _, ok := newIndex[key]; ok {
-			continue
+		if _, ok := newIndex[key]; !ok {
+			resolved = append(resolved, toFindingListItem(finding))
 		}
-		resolved = append(resolved, toFindingListItem(finding))
 	}
 	sortFindingItems(newItems)
 	sortFindingItems(resolved)
-	return newItems, resolved, unchanged
+	sort.SliceStable(changed, func(i, j int) bool {
+		ri := severityRank(models.Severity(changed[i].Severity))
+		rj := severityRank(models.Severity(changed[j].Severity))
+		if ri != rj {
+			return ri > rj
+		}
+		return changed[i].ID < changed[j].ID
+	})
+	return newItems, resolved, changed, unchanged
 }
 
+func indexFindings(findings []models.Finding) map[string]models.Finding {
+	index := make(map[string]models.Finding, len(findings))
+	for _, finding := range findings {
+		index[diffIdentity(finding)] = finding
+	}
+	return index
+}
+
+// diffIdentity keys a finding for cross-scan matching. Stable finding IDs are authoritative
+// (so reclassified findings match across scans); the (title, ARN) composite is a fallback for
+// legacy/hand-authored findings that lack an ID.
 func diffIdentity(f models.Finding) string {
+	if id := strings.TrimSpace(f.ID); id != "" {
+		return id
+	}
 	return strings.ToLower(strings.TrimSpace(f.Title)) + "|" + strings.ToLower(strings.TrimSpace(f.AffectedARN))
 }
 

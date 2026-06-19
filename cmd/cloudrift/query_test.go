@@ -239,7 +239,7 @@ func TestWriteQueryJSON(t *testing.T) {
 		EmptyHint:              graph.RAGEmptyHintNone,
 	}
 	var buf bytes.Buffer
-	if err := writeQueryJSON(&buf, "qtext", "sid", 0, resp); err != nil {
+	if err := writeQueryJSON(&buf, "qtext", "sid", 0, resp, ""); err != nil {
 		t.Fatal(err)
 	}
 	var got map[string]any
@@ -263,7 +263,7 @@ func TestWriteQueryHuman_LegacyStderr(t *testing.T) {
 		OperatorNotes:             []string{"note one"},
 	}
 	var out, errOut bytes.Buffer
-	if err := writeQueryHuman(&out, &errOut, "q", "s", 0, resp); err != nil {
+	if err := writeQueryHuman(&out, &errOut, "q", "s", 0, resp, ""); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(out.String(), "LEGACY") {

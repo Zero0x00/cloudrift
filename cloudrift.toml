@@ -5,3 +5,23 @@ output_dir = "./cloudrift-output"
 uri = "bolt://127.0.0.1:7687"
 username = "neo4j"
 password_env = "CLOUDRIFT_NEO4J_PASSWORD"
+
+# Optional sections below. This file is optional and the built-in defaults work
+# without it; uncomment and edit only what you need to override.
+
+# [synthesis]
+# provider = "anthropic"             # LLM provider for `cloudrift query` answer synthesis
+# model = "claude-opus-4-8"
+# api_key_env = "ANTHROPIC_API_KEY"  # synthesis runs only when this env var is set; otherwise query stays retrieval-only
+# max_tokens = 2048                  # answer length cap
+
+# [scan]
+# http_probe_concurrency = 50
+# role_assumption_concurrency = 10
+# http_timeout_seconds = 10
+# user_agent = "github.com/Zero0x00/cloudrift/0.1"
+
+# [trust]
+# approved_external_accounts = []    # AWS account IDs treated as approved cross-account principals
+# stale_threshold_days = 90
+# ghost_threshold_days = 365

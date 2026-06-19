@@ -3,9 +3,11 @@ package api
 import (
 	"context"
 	"io/fs"
+	"net"
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,8 +25,15 @@ func NewRouter(outputDir, configPath string, staticFS fs.FS) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
+	r.Use(requestLogger)
 	r.Use(middleware.Recoverer)
 	r.Use(securityHeaders)
+
+	// Optional auth: when CLOUDRIFT_API_TOKEN is set, gate the whole server (API + UI) behind
+	// HTTP Basic auth. Unset → no auth (safe because the server defaults to a loopback bind).
+	if token := strings.TrimSpace(os.Getenv(APITokenEnv)); token != "" {
+		r.Use(basicAuthGate(token))
+	}
 
 	r.Mount("/api", apiRouter(outputDir, configPath))
 	r.Mount("/", staticRouter(staticFS))
@@ -60,6 +69,7 @@ func apiRouter(outputDir, configPath string) http.Handler {
 	r.Get("/scans/{id}/principals/blast-radius/explorer", handlers.BlastRadiusPrincipalExplorer(blast, outputDir))
 	r.Get("/scans/{id}/blast-radius/explorer/expand", handlers.BlastRadiusExplorerExpand(blast, outputDir))
 	r.Get("/scans/{id}/accounts", handlers.ListAccounts(outputDir))
+	r.Post("/scans/{id}/neo4j-export", control.ExportToNeo4j())
 	r.Get("/diff", handlers.DiffScans(outputDir))
 	r.Get("/scan/progress", handlers.ScanProgressWS(control))
 	r.Get("/runtime/status", control.RuntimeStatus())
@@ -84,9 +94,15 @@ func apiRouter(outputDir, configPath string) http.Handler {
 	return r
 }
 
-func StartServer(port int, outputDir, configPath string, staticFS fs.FS) error {
-	addr := ":" + strconvItoa(port)
+func StartServer(host string, port int, outputDir, configPath string, staticFS fs.FS) error {
+	addr := net.JoinHostPort(host, strconv.Itoa(port))
 	return http.ListenAndServe(addr, NewRouter(outputDir, configPath, staticFS))
+}
+
+// SetBuildVersion sets the tool version stamped into dashboard-initiated scans so it matches
+// the binary's `cloudrift version`. Call once at startup before serving (empty is ignored).
+func SetBuildVersion(v string) {
+	handlers.SetBuildVersion(v)
 }
 
 func staticRouter(staticFS fs.FS) http.Handler {
@@ -130,34 +146,20 @@ func staticRouter(staticFS fs.FS) http.Handler {
 	return r
 }
 
-func strconvItoa(v int) string {
-	if v == 0 {
-		return "0"
-	}
-	sign := ""
-	if v < 0 {
-		sign = "-"
-		v = -v
-	}
-	buf := [20]byte{}
-	i := len(buf)
-	for v > 0 {
-		i--
-		buf[i] = byte('0' + v%10)
-		v /= 10
-	}
-	return sign + string(buf[i:])
-}
-
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Referrer-Policy", "no-referrer")
-		// Blast explorer labels (troika text via drei) rely on a blob: worker. Allow workers from self + blob.
+		// script-src is locked to 'self' (no inline scripts — the Vite bundle is external), which
+		// is the meaningful XSS hardening. style-src keeps 'unsafe-inline' because the UI's
+		// CSS-in-JS (tremor/drei) injects inline <style>; worker-src allows the blast-explorer
+		// blob worker (troika text). connect-src 'self' covers same-origin REST + the progress WS.
 		w.Header().Set(
 			"Content-Security-Policy",
-			"default-src 'self' 'unsafe-inline'; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'",
+			"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "+
+				"img-src 'self' data:; font-src 'self' data:; connect-src 'self'; "+
+				"worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'",
 		)
 		next.ServeHTTP(w, r)
 	})

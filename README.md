@@ -3,7 +3,7 @@
 Cloudrift is a CLI and embedded dashboard for discovering orphaned AWS edge assets (DNS, S3 websites, CloudFront) and risky cross-account IAM trust relationships. It scans your AWS organization, writes findings as local JSON (no database required), and provides evidence-backed severity scoring.
 
 **Key points:**
-- Calls AWS APIs to inventory edge and IAM-trust risk across your org
+- Calls AWS APIs to inventory edge, IAM-trust, and S3 resource-policy exposure across your org
 - Writes findings to local JSON per scan — read via dashboard, CLI reports, or your own tooling
 - Dashboard provides interactive exploration and a scan control center
 - `cloudrift demo generate` populates the UI with sample data (no AWS needed)
@@ -11,18 +11,17 @@ Cloudrift is a CLI and embedded dashboard for discovering orphaned AWS edge asse
 
 ---
 
-## Documentation index
+## Documentation
 
-| Document | Purpose |
+All guides now live in one place — pick the format you prefer:
+
+| Where | What |
 | --- | --- |
-| [starter-doc.html](starter-doc.html) | **Start here** — 20-minute walkthrough with diagrams and status |
-| [docs/cli-commands.md](docs/cli-commands.md) | What each command does and flags available |
-| [docs/getting-started.md](docs/getting-started.md) | Quick-start guide (demo or live AWS scan) |
-| [docs/architecture.md](docs/architecture.md) | System design and where code lives |
-| [docs/technical.md](docs/technical.md) | API reference, debugging, embeddings, security |
-| [docs/iam-setup.md](docs/iam-setup.md) | AWS org setup and audit role deployment |
-| [docs/security-coverage.md](docs/security-coverage.md) | What is and isn't detected; severity caveats |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
+| **[docs.html](docs.html)** | **Start here** — the full interactive docs site (open in a browser). Audience views (Operator / Security reviewer / Developer), grouped sidebar, search, and light/dark theme. Self-contained, works offline. |
+| [docs/cloudrift-docs.md](docs/cloudrift-docs.md) | The same content as a single Markdown file (GitHub-renderable) with a table of contents — Overview, Getting Started, Architecture, CLI, Configuration, Security Coverage, IAM Setup, API & Technical Reference, Contributing. |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution quick-reference (full guide is in the docs). |
+
+> The previous per-topic files under `docs/` were consolidated into `docs/cloudrift-docs.md` and rendered into `docs.html`.
 
 ---
 
@@ -30,15 +29,15 @@ Cloudrift is a CLI and embedded dashboard for discovering orphaned AWS edge asse
 
 | Feature | Status | Notes |
 | --- | --- | --- |
-| `cloudrift scan` | Partial | Writes metadata + empty findings (discovery layer not yet wired) |
+| `cloudrift scan` | Complete | Runs the full pipeline: collects org accounts, per-account inventory (DNS/Route53, S3, CloudFront, IAM trust, role activity, S3 bucket policies), validates DNS/HTTP, scores, and persists findings as JSON |
 | `cloudrift demo generate` | Complete | Deterministic populated scan for learning the UI |
 | Dashboard + REST API | Complete | Works from JSON on disk; Neo4j optional |
-| `cloudrift report` | Complete | Export findings as table, JSON, CSV, or markdown |
-| `cloudrift query` | Complete | Vector search over Neo4j (retrieval-only, no LLM synthesis) |
-| Neo4j integration | Optional | Adds blast-radius explorer, graph relationships, vector index |
+| `cloudrift report` | Complete | Export findings as table, JSON, CSV, markdown, Excel, or SARIF |
+| `cloudrift query` | Complete | Vector search over Neo4j; optional LLM answer synthesis when a synthesis provider is configured |
+| Neo4j integration | Optional | Adds blast-radius explorer, graph relationships, vector index. Populate it on demand from the dashboard ("Export latest scan to Neo4j") or `POST /api/scans/{id}/neo4j-export`. With the Neo4j GDS plugin installed, export also writes Louvain `community` + PageRank `centrality` (auto clustering); degrades cleanly without it |
 | Local embeddings | Stub | `provider=local` will error until implemented |
 
-**Try immediately (no AWS):** `cloudrift demo generate && cloudrift dashboard --open`
+**Try immediately (no AWS):** `cloudrift demo generate && cloudrift dashboard --open`. A live scan (`cloudrift scan`) runs against a real AWS organization with credentials configured.
 
 ---
 
@@ -63,7 +62,7 @@ sha256sum -c checksums.txt --ignore-missing
 
 ### Option 2 - `go install`
 
-Requires Go 1.24+. The dashboard UI is embedded at release time; `go install` builds API-only (no UI).
+Requires Go 1.24+. The pre-built dashboard UI is committed to the repo (`dashboard/dist`) and embedded into the binary, so `go install` and a plain `go build` produce a working UI without an npm step.
 
 ```bash
 go install github.com/Zero0x00/cloudrift/cmd/cloudrift@latest
@@ -72,7 +71,7 @@ cloudrift version
 
 ### Option 3 - Build from source
 
-Requires Go 1.24+ and Node.js 20+:
+Requires Go 1.24+ (Node.js 20+ only if you want to rebuild the UI from source):
 
 ```bash
 git clone https://github.com/Zero0x00/cloudrift.git
@@ -88,6 +87,7 @@ cloudrift version
 
 - **Orphaned edge:** DNS hostnames that resolve but point to deleted/misconfigured S3 buckets, CloudFront origins, or ELBs — with a verdict (reclaimable, dangling, etc.)
 - **External trust:** IAM roles trusting external AWS accounts or principals, scored by last-used date, admin privileges, and risk profile
+- **Resource-policy exposure:** S3 bucket policies granting cross-account or public access — exposure that IAM role-trust scanning misses
 - **Visibility:** Self-hosted dashboard and CLI reports over the same HTTP server — no cloud dependency
 
 ---
@@ -97,7 +97,7 @@ cloudrift version
 ### AWS
 
 - **AWS credentials** for the management account (or delegated audit role) that can assume org member roles
-- See [docs/iam-setup.md](docs/iam-setup.md) for org setup and StackSet deployment
+- See [docs/cloudrift-docs.md → IAM Setup](docs/cloudrift-docs.md#iam-setup) for org setup and StackSet deployment
 
 ### Optional
 
@@ -124,8 +124,8 @@ cloudrift version
 ## Build commands
 
 ```bash
-make build    # Full build with dashboard (requires npm + go)
-make dev      # Binary only, no npm step (API still works, no UI)
+make build    # Rebuild the dashboard UI from source, then compile (requires npm + go)
+make dev      # Compile only, no npm step (embeds the committed dashboard/dist UI)
 make test     # Run all tests
 ```
 
@@ -146,10 +146,13 @@ Key sections:
 - `[output]` — scan output directory (default: `./cloudrift-output`)
 - `[neo4j]` — `uri`, `username`, `password_env` (optional)
 - `[embeddings]` — embedding provider (default: `openai`, local stub)
+- `[synthesis]` — optional LLM answer synthesis for `query` (`provider` default `anthropic`, `model` default `claude-opus-4-8`, `api_key_env` default `ANTHROPIC_API_KEY`). Synthesis only runs when the API key env var is set; otherwise `query` is retrieval-only.
 
 Environment:
 
 - `CLOUDRIFT_APP_BASE_URL` — base URL for alert links in Slack (e.g. `https://your-host:8080`); defaults to `http://127.0.0.1:8080`
+- `CLOUDRIFT_API_TOKEN` — when set, gates the dashboard/API server (API + UI) behind HTTP Basic auth
+- `ANTHROPIC_API_KEY` — provider API key for `query` LLM synthesis (env var name configurable via `[synthesis].api_key_env`)
 
 ---
 
@@ -159,11 +162,11 @@ Global option: `--config <path>` to specify a TOML config file.
 
 | Command | Purpose | Key flags |
 | --- | --- | --- |
-| `scan` | Scan AWS org for edge + IAM findings | `--output-dir`, `--neo4j` |
+| `scan` | Scan AWS org for edge + IAM + resource-policy findings | `--output-dir`, `--neo4j`, `--no-http`, `--concurrency` |
 | `demo generate` | Create deterministic sample scan | `--output-dir`, `--neo4j`, `--dense` |
-| `report` | Export findings to table/JSON/CSV/markdown | `--scan-id`, `--format`, `--output` |
-| `query` | Search findings via vector retrieval (Neo4j required) | `--scan-id`, `--query`, `--format` |
-| `dashboard` | Start the web UI and REST API | `--port`, `--open`, `--output-dir` |
+| `report` | Export findings to table/JSON/CSV/markdown/excel/sarif | `--scan-id`, `--format`, `--output` |
+| `query` | Search findings via vector retrieval (Neo4j required); optional LLM synthesis | `--scan-id`, `--query`, `--format` |
+| `dashboard` | Start the web UI and REST API | `--port`, `--host`, `--open`, `--output-dir` |
 | `version` | Print version string | — |
 
 ---
@@ -177,6 +180,10 @@ cloudrift dashboard --port 8080 --open
 ```
 
 Open `http://127.0.0.1:8080` in your browser (or use `?scan_id=<id>` to load a specific scan).
+
+### Serving and security
+
+The server binds `127.0.0.1` (loopback) by default. Use `--host` to opt into a non-loopback bind (e.g. `--host 0.0.0.0` to expose on the network). When binding to a non-loopback address, set `CLOUDRIFT_API_TOKEN` to gate the whole server (API + UI) behind HTTP Basic auth — the dashboard prints a warning reminding you to do so. With `CLOUDRIFT_API_TOKEN` unset, the server runs without auth (acceptable on loopback only).
 
 | Page | Purpose |
 | --- | --- |
@@ -256,7 +263,7 @@ GET  /api/alerts/rules
 POST /api/alerts/rules/{ruleID}/test
 ```
 
-Full reference: [docs/technical.md](docs/technical.md#api-documentation)
+Full reference: [docs/cloudrift-docs.md → API & Technical Reference](docs/cloudrift-docs.md#api--technical-reference)
 
 ---
 
@@ -272,6 +279,8 @@ cloudrift-output/
         └── *.json
 ```
 
+`scan-metadata.json` also records scan coverage: discovered/scanned account counts, the IDs of accounts that failed to scan, and a `coverage_complete` flag. Incomplete coverage downgrades absence-based verdicts (e.g. "reclaimable" orphaned-edge findings) since a bucket may be owned by an unscanned account.
+
 Latest scan resolves by timestamp in `scan-metadata.json` (newest first); directory name used as tiebreak.
 
 ---
@@ -280,7 +289,7 @@ Latest scan resolves by timestamp in `scan-metadata.json` (newest first); direct
 
 For multi-account scanning, set up an audit role via CloudFormation StackSet:
 
-See [docs/iam-setup.md](docs/iam-setup.md) and `iam/stackset-template.yaml`
+See [docs/cloudrift-docs.md → IAM Setup](docs/cloudrift-docs.md#iam-setup) and `iam/stackset-template.yaml`
 
 ---
 

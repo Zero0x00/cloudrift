@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -15,8 +16,10 @@ import (
 	"github.com/Zero0x00/cloudrift/internal/aws"
 	"github.com/Zero0x00/cloudrift/internal/config"
 	"github.com/Zero0x00/cloudrift/internal/graph"
+	"github.com/Zero0x00/cloudrift/internal/logging"
 	"github.com/Zero0x00/cloudrift/internal/models"
-	"github.com/Zero0x00/cloudrift/internal/scanrun"
+	"github.com/Zero0x00/cloudrift/internal/output"
+	"github.com/Zero0x00/cloudrift/internal/pipeline"
 	"github.com/Zero0x00/cloudrift/internal/scans"
 )
 
@@ -35,6 +38,14 @@ func newRootCommand() *cobra.Command {
 		Short: "Cloudrift discovers orphaned edge assets in AWS orgs",
 	}
 	cfgPath := root.PersistentFlags().String("config", "", "Path to config TOML")
+	logLevel := root.PersistentFlags().String("log-level", "", "Log verbosity: debug|info|warn|error (or env CLOUDRIFT_LOG_LEVEL; default info)")
+	root.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		lvl := strings.TrimSpace(*logLevel)
+		if lvl == "" {
+			lvl = os.Getenv("CLOUDRIFT_LOG_LEVEL")
+		}
+		logging.Configure(lvl)
+	}
 
 	var outputDir string
 	var neo4jEnabled bool
@@ -49,10 +60,14 @@ func newRootCommand() *cobra.Command {
 			if outputDir == "" {
 				outputDir = cfg.Output.OutputDir
 			}
+			noHTTP, _ := cmd.Flags().GetBool("no-http")
+			if c, _ := cmd.Flags().GetInt("concurrency"); c > 0 {
+				cfg.Scan.HTTPProbeConcurrency = c
+			}
 			if err := ensureValidSession(cmd.Context(), cfg.AWS.ManagementProfile, cmd); err != nil {
 				return err
 			}
-			scanID, err := runScan(cmd.Context(), outputDir)
+			scanID, err := runScan(cmd.Context(), cfg, outputDir, pipeline.Options{NoHTTP: noHTTP})
 			if err != nil {
 				return err
 			}
@@ -81,7 +96,7 @@ func newRootCommand() *cobra.Command {
 		},
 	}
 	reportCmd.Flags().StringVar(&reportScanID, "scan-id", "latest", "Scan ID or \"latest\" (newest by scan-metadata timestamp; tie-break directory name ascending)")
-	reportCmd.Flags().StringVar(&format, "format", "table", "table|json|csv|markdown")
+	reportCmd.Flags().StringVar(&format, "format", "table", "table|json|csv|markdown|excel|sarif")
 	reportCmd.Flags().StringVar(&reportOut, "output", "", "Output path")
 	reportCmd.Flags().StringVar(&outputDir, "output-dir", "./cloudrift-output", "Output directory")
 
@@ -125,8 +140,8 @@ func ensureValidSession(ctx context.Context, profile string, cmd *cobra.Command)
 	return nil
 }
 
-func runScan(ctx context.Context, outputDir string) (string, error) {
-	return scanrun.Run(ctx, outputDir, version)
+func runScan(ctx context.Context, cfg *config.Config, outputDir string, opts pipeline.Options) (string, error) {
+	return pipeline.Run(ctx, cfg, outputDir, version, pipeline.NewAWSSource(), opts)
 }
 
 type neo4jConnectorFactory interface {
@@ -183,6 +198,9 @@ func exportScanToNeo4j(ctx context.Context, cfg *config.Config, scanPath string,
 		return err
 	}
 
+	// Generate embeddings (best-effort) so the vector index is populated for RAG / query.
+	graph.AttachEmbeddingsBestEffort(ctx, cfg, &meta, findings)
+
 	for _, ddl := range graph.SchemaStatements() {
 		if err := ex.Run(ctx, ddl, nil); err != nil {
 			return fmt.Errorf("neo4j schema setup failed: %w", err)
@@ -190,6 +208,11 @@ func exportScanToNeo4j(ctx context.Context, cfg *config.Config, scanPath string,
 	}
 	if err := graph.WriteScan(ctx, ex, meta, assets, rels, findings); err != nil {
 		return fmt.Errorf("neo4j export failed: %w", err)
+	}
+	// Best-effort GDS clustering + centrality (writes community/centrality node properties).
+	// Skipped cleanly when the GDS plugin is absent — projection above already succeeded.
+	if gerr := graph.RunGDS(ctx, ex, filepath.Base(scanPath)); gerr != nil {
+		slog.Warn("GDS clustering skipped", "error", gerr)
 	}
 	return nil
 }
@@ -302,39 +325,53 @@ func runReport(outputDir, scanID, format, outPath string) error {
 	if err != nil {
 		return err
 	}
+	// resolveOut returns the explicit --output path, else <scan-dir>/<name>.
+	resolveOut := func(name string) (string, error) {
+		if outPath != "" {
+			return outPath, nil
+		}
+		resolved, err := resolveScanID(outputDir, scanID)
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(outputDir, resolved, name), nil
+	}
 	switch format {
 	case "table":
-		fmt.Print(renderTable(findings))
+		fmt.Print(output.RenderTable(findings))
 		return nil
 	case "json":
-		if outPath == "" {
-			resolved, err := resolveScanID(outputDir, scanID)
-			if err != nil {
-				return err
-			}
-			outPath = filepath.Join(outputDir, resolved, "report.json")
+		p, err := resolveOut("report.json")
+		if err != nil {
+			return err
 		}
-		return writeFindings(outPath, findings)
+		return output.WriteJSON(p, findings)
 	case "csv":
-		if outPath == "" {
-			resolved, err := resolveScanID(outputDir, scanID)
-			if err != nil {
-				return err
-			}
-			outPath = filepath.Join(outputDir, resolved, "report.csv")
+		p, err := resolveOut("report.csv")
+		if err != nil {
+			return err
 		}
-		return writeCSV(outPath, findings)
+		return output.WriteCSV(p, findings)
 	case "markdown":
-		if outPath == "" {
-			resolved, err := resolveScanID(outputDir, scanID)
-			if err != nil {
-				return err
-			}
-			outPath = filepath.Join(outputDir, resolved, "report.md")
+		p, err := resolveOut("report.md")
+		if err != nil {
+			return err
 		}
-		return writeMarkdown(outPath, findings)
+		return output.WriteMarkdown(p, findings)
+	case "excel", "xlsx":
+		p, err := resolveOut("report.xlsx")
+		if err != nil {
+			return err
+		}
+		return output.WriteExcel(p, findings)
+	case "sarif":
+		p, err := resolveOut("report.sarif")
+		if err != nil {
+			return err
+		}
+		return output.WriteSARIF(p, findings)
 	default:
-		return fmt.Errorf("unsupported format: %s", format)
+		return fmt.Errorf("unsupported format: %s (table|json|csv|markdown|excel|sarif)", format)
 	}
 }
 
@@ -358,40 +395,13 @@ func resolveScanID(outputDir, scanID string) (string, error) {
 	return scans.ResolveScanDirectoryName(outputDir, scanID)
 }
 
+// writeFindings persists findings as JSON. Retained as a small helper used by tests to set up
+// scan directories. Report output formats go through internal/output (CSV-injection-safe, plus
+// the Excel writer). See runReport.
 func writeFindings(path string, findings []models.Finding) error {
 	b, err := json.MarshalIndent(findings, "", "  ")
 	if err != nil {
 		return err
 	}
 	return os.WriteFile(path, b, 0o644)
-}
-
-func writeCSV(path string, findings []models.Finding) error {
-	var lines []string
-	lines = append(lines, "id,severity,module,claimability,affected_arn,account_id,hostname,monthly_direct_cost_usd,monthly_risk_cost_usd")
-	for _, f := range findings {
-		lines = append(lines, fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%.2f,%.2f",
-			f.ID, f.Severity, f.Module, f.Claimability, f.AffectedARN, f.AccountID, f.Hostname, f.MonthlyDirectCost, f.MonthlyRiskCost))
-	}
-	return os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0o644)
-}
-
-func writeMarkdown(path string, findings []models.Finding) error {
-	var b strings.Builder
-	b.WriteString("# Cloudrift Findings\n\n")
-	for _, f := range findings {
-		b.WriteString(fmt.Sprintf("## %s\n- Severity: %s\n- Claimability: %s\n- Hostname: `%s`\n- Account: `%s`\n\n",
-			f.Title, f.Severity, f.Claimability, f.Hostname, f.AccountID))
-	}
-	return os.WriteFile(path, []byte(b.String()), 0o644)
-}
-
-func renderTable(findings []models.Finding) string {
-	var b strings.Builder
-	b.WriteString("Hostname\tAccount\tVerdict\tSeverity\tMonthly Waste\n")
-	for _, f := range findings {
-		b.WriteString(fmt.Sprintf("%s\t%s\t%s\t%s\t$%.2f\n",
-			f.Hostname, f.AccountID, f.Claimability, f.Severity, f.MonthlyRiskCost))
-	}
-	return b.String()
 }

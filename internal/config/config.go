@@ -55,6 +55,16 @@ type Config struct {
 		LocalModel      string `toml:"local_model"`        // planned local model name (no runtime yet)
 		OpenaiAPIKeyEnv string `toml:"openai_api_key_env"` // env var holding OpenAI API key (default OPENAI_API_KEY)
 	} `toml:"embeddings"`
+	// Synthesis (RAG answer layer over retrieval). When an API key is present for the
+	// configured provider, `cloudrift query` synthesizes a grounded natural-language
+	// answer from the retrieved findings; otherwise it degrades to retrieval-only.
+	// Pluggable: "anthropic" is the operational provider today; others can be added.
+	Synthesis struct {
+		Provider  string `toml:"provider"`    // default "anthropic"
+		Model     string `toml:"model"`       // default "claude-opus-4-8"
+		APIKeyEnv string `toml:"api_key_env"` // env var holding the provider API key (default ANTHROPIC_API_KEY)
+		MaxTokens int    `toml:"max_tokens"`  // answer length cap (default 2048)
+	} `toml:"synthesis"`
 }
 
 func Default() *Config {
@@ -79,6 +89,12 @@ func Default() *Config {
 	c.Embeddings.Provider = "openai"
 	c.Embeddings.LocalModel = "all-MiniLM-L6-v2"
 	c.Embeddings.OpenaiAPIKeyEnv = "OPENAI_API_KEY"
+	// Synthesis defaults: Anthropic Claude. Only runs when the API key env var is set;
+	// otherwise the query path stays retrieval-only.
+	c.Synthesis.Provider = "anthropic"
+	c.Synthesis.Model = "claude-opus-4-8"
+	c.Synthesis.APIKeyEnv = "ANTHROPIC_API_KEY"
+	c.Synthesis.MaxTokens = 2048
 	return c
 }
 

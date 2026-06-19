@@ -396,13 +396,17 @@ func TestListAccountsAggregation(t *testing.T) {
 
 func TestDiffScans(t *testing.T) {
 	dir := t.TempDir()
+	// Findings are matched across scans by stable ID. id-a's severity changes (high→critical),
+	// id-b is removed, id-c is added, id-d is identical.
 	writeScan(t, dir, "old", time.Now().UTC(), []models.Finding{
-		{ID: "1", Title: "A", AffectedARN: "arn:a"},
-		{ID: "2", Title: "B", AffectedARN: "arn:b"},
+		{ID: "id-a", Title: "A", AffectedARN: "arn:a", Severity: models.SeverityHigh},
+		{ID: "id-b", Title: "B", AffectedARN: "arn:b", Severity: models.SeverityMedium},
+		{ID: "id-d", Title: "D", AffectedARN: "arn:d", Severity: models.SeverityLow},
 	})
 	writeScan(t, dir, "new", time.Now().UTC(), []models.Finding{
-		{ID: "3", Title: "A", AffectedARN: "arn:a"},
-		{ID: "4", Title: "C", AffectedARN: "arn:c"},
+		{ID: "id-a", Title: "A", AffectedARN: "arn:a", Severity: models.SeverityCritical},
+		{ID: "id-c", Title: "C", AffectedARN: "arn:c", Severity: models.SeverityHigh},
+		{ID: "id-d", Title: "D", AffectedARN: "arn:d", Severity: models.SeverityLow},
 	})
 	req := httptest.NewRequest(http.MethodGet, "/api/diff?old=old&new=new", nil)
 	rr := httptest.NewRecorder()
@@ -412,8 +416,20 @@ func TestDiffScans(t *testing.T) {
 	}
 	var resp schema.DiffResponse
 	mustDecode(t, rr, &resp)
-	if resp.UnchangedCount != 1 || len(resp.NewFindings) != 1 || len(resp.ResolvedFindings) != 1 {
-		t.Fatalf("unexpected diff response: %+v", resp)
+	if len(resp.NewFindings) != 1 || resp.NewFindings[0].ID != "id-c" {
+		t.Fatalf("new findings: %+v", resp.NewFindings)
+	}
+	if len(resp.ResolvedFindings) != 1 || resp.ResolvedFindings[0].ID != "id-b" {
+		t.Fatalf("resolved findings: %+v", resp.ResolvedFindings)
+	}
+	if len(resp.ChangedFindings) != 1 || resp.ChangedFindings[0].ID != "id-a" {
+		t.Fatalf("changed findings: %+v", resp.ChangedFindings)
+	}
+	if resp.ChangedFindings[0].OldSeverity != "high" || resp.ChangedFindings[0].NewSeverity != "critical" {
+		t.Fatalf("changed severity transition: %+v", resp.ChangedFindings[0])
+	}
+	if resp.UnchangedCount != 1 {
+		t.Fatalf("expected 1 unchanged (id-d), got %d", resp.UnchangedCount)
 	}
 }
 
@@ -438,6 +454,9 @@ func TestDiffScansStableEmptyArrays(t *testing.T) {
 	}
 	if _, ok := raw["resolved_findings"].([]any); !ok {
 		t.Fatalf("expected resolved_findings to be [] not null, got %#v", raw["resolved_findings"])
+	}
+	if _, ok := raw["changed_findings"].([]any); !ok {
+		t.Fatalf("expected changed_findings to be [] not null, got %#v", raw["changed_findings"])
 	}
 }
 

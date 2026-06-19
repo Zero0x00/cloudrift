@@ -211,6 +211,12 @@ export function useStartScanMutation() {
   });
 }
 
+export function useExportNeo4jMutation() {
+  return useMutation({
+    mutationFn: (scanId: string) => apiClient.exportScanToNeo4j(scanId)
+  });
+}
+
 export function useScanRunStatusQuery(pollMs = 3000) {
   return useQuery({
     queryKey: queryKeys.scanRunStatus(),
