@@ -18,9 +18,12 @@ import (
 	"github.com/Zero0x00/cloudrift/internal/graph"
 	"github.com/Zero0x00/cloudrift/internal/models"
 	"github.com/Zero0x00/cloudrift/internal/queryv2"
+	"github.com/Zero0x00/cloudrift/internal/synth"
 )
 
-// newQueryCommand registers Phase 3 natural-language retrieval over Neo4j (no LLM synthesis).
+// newQueryCommand registers Phase 3 natural-language retrieval over Neo4j, with optional
+// LLM answer synthesis grounded in the retrieved findings (enabled when a synthesis
+// provider API key is configured; retrieval-only otherwise).
 func newQueryCommand(cfgPath *string) *cobra.Command {
 	var (
 		outputDir       string
@@ -34,14 +37,16 @@ func newQueryCommand(cfgPath *string) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "query [flags] [QUERY_TEXT...]",
-		Short: "Vector retrieval over exported graph (Phase 3; no answer synthesis)",
+		Short: "Vector retrieval over exported graph (Phase 3; optional LLM answer synthesis)",
 		Long: strings.TrimSpace(`
 Runs embedding-backed hybrid retrieval against Neo4j for a single scan. Results are grounded
 in graph rows only (no JSON findings substitution). Requires scan output on disk (metadata),
 working Neo4j config, embeddings provider (OpenAI by default), and an exported graph with vectors.
 
-Answer synthesis is not implemented; output is retrieval-only with explicit warnings for legacy
-exports, empty hints, probe limits, and operator notes.`),
+When a synthesis provider API key is configured ([synthesis] in config; ANTHROPIC_API_KEY by
+default), the retrieved findings are passed to an LLM to compose a grounded answer that cites
+finding IDs. Without a key, output is retrieval-only with explicit warnings for legacy exports,
+empty hints, probe limits, and operator notes.`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fromArgs := strings.TrimSpace(strings.Join(args, " "))
 			qf := strings.TrimSpace(queryFlag)
@@ -150,12 +155,49 @@ func runQueryCLI(ctx context.Context, cfg *config.Config, o queryCLIOptions) err
 		return queryRetrievalError(err)
 	}
 
+	// Optional RAG synthesis over the retrieved hits (no-op unless a provider + key configured).
+	answer := synthesizeAnswer(ctx, cfg, o.QueryText, resp, o.Stderr)
+
 	switch f {
 	case "json":
-		return writeQueryJSON(o.Stdout, o.QueryText, meta.ScanID, o.TopK, resp)
+		return writeQueryJSON(o.Stdout, o.QueryText, meta.ScanID, o.TopK, resp, answer)
 	default:
-		return writeQueryHuman(o.Stdout, o.Stderr, o.QueryText, meta.ScanID, o.TopK, resp)
+		return writeQueryHuman(o.Stdout, o.Stderr, o.QueryText, meta.ScanID, o.TopK, resp, answer)
 	}
+}
+
+// synthesizeAnswer composes a grounded natural-language answer from the retrieved hits
+// when a synthesis provider is configured with an API key. Any failure degrades to
+// retrieval-only (empty answer) — synthesis must never fail the query.
+func synthesizeAnswer(ctx context.Context, cfg *config.Config, queryText string, resp *graph.RAGRetrievalResponse, stderr io.Writer) string {
+	if resp == nil || len(resp.Hits) == 0 {
+		return ""
+	}
+	s := synth.New(cfg)
+	if !s.Available() {
+		return ""
+	}
+	items := make([]synth.ContextItem, 0, len(resp.Hits))
+	for _, h := range resp.Hits {
+		items = append(items, synth.ContextItem{
+			ID:             h.FindingID,
+			Title:          h.Title,
+			Severity:       h.Severity,
+			Recommendation: h.Recommendation,
+			Detail:         fmt.Sprintf("claimability=%s account=%s linked_arn=%s", h.Claimability, h.AccountName, h.LinkedARN),
+		})
+	}
+	res, err := s.Synthesize(ctx, queryText, items)
+	if err != nil {
+		if stderr != nil {
+			fmt.Fprintf(stderr, "cloudrift query: synthesis unavailable, returning retrieval-only: %v\n", err)
+		}
+		return ""
+	}
+	if !res.Used {
+		return ""
+	}
+	return res.Answer
 }
 
 func runQueryCLIV2(ctx context.Context, cfg *config.Config, o queryCLIOptions) error {
@@ -300,7 +342,7 @@ type queryJSONResponse struct {
 	AnswerSynthesis           string                  `json:"answer_synthesis"`
 }
 
-func writeQueryJSON(w io.Writer, queryText, scanID string, topKRequested int, resp *graph.RAGRetrievalResponse) error {
+func writeQueryJSON(w io.Writer, queryText, scanID string, topKRequested int, resp *graph.RAGRetrievalResponse, answer string) error {
 	if resp == nil {
 		return fmt.Errorf("cloudrift query: nil response")
 	}
@@ -318,14 +360,14 @@ func writeQueryJSON(w io.Writer, queryText, scanID string, topKRequested int, re
 		ProbeSaturated:            resp.ProbeSaturated,
 		OperatorNotes:             resp.OperatorNotes,
 		Hits:                      resp.Hits,
-		AnswerSynthesis:           "",
+		AnswerSynthesis:           answer,
 	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(out)
 }
 
-func writeQueryHuman(stdout, stderr io.Writer, queryText, scanID string, topKRequested int, resp *graph.RAGRetrievalResponse) error {
+func writeQueryHuman(stdout, stderr io.Writer, queryText, scanID string, topKRequested int, resp *graph.RAGRetrievalResponse, answer string) error {
 	if resp == nil {
 		return fmt.Errorf("cloudrift query: nil response")
 	}
@@ -360,7 +402,11 @@ func writeQueryHuman(stdout, stderr io.Writer, queryText, scanID string, topKReq
 			h.Severity, h.Claimability, h.AccountName, h.AccountOUPath, h.AccountTeam, h.LinkedARN)
 		fmt.Fprintf(&b, "     monthly_direct_cost_usd=%.2f recommendation=%s\n", h.MonthlyDirectCostUSD, h.Recommendation)
 	}
-	fmt.Fprintf(&b, "Answer synthesis: not implemented (retrieval-only).\n")
+	if strings.TrimSpace(answer) != "" {
+		fmt.Fprintf(&b, "\nAnswer (LLM synthesis grounded in the hits above):\n%s\n", strings.TrimSpace(answer))
+	} else {
+		fmt.Fprintf(&b, "Answer synthesis: retrieval-only (set a synthesis provider API key to enable LLM answers).\n")
+	}
 	if _, err := io.WriteString(stdout, b.String()); err != nil {
 		return err
 	}
