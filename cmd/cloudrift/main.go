@@ -16,6 +16,7 @@ import (
 	"github.com/Zero0x00/cloudrift/internal/config"
 	"github.com/Zero0x00/cloudrift/internal/graph"
 	"github.com/Zero0x00/cloudrift/internal/models"
+	"github.com/Zero0x00/cloudrift/internal/output"
 	"github.com/Zero0x00/cloudrift/internal/pipeline"
 	"github.com/Zero0x00/cloudrift/internal/scans"
 )
@@ -85,7 +86,7 @@ func newRootCommand() *cobra.Command {
 		},
 	}
 	reportCmd.Flags().StringVar(&reportScanID, "scan-id", "latest", "Scan ID or \"latest\" (newest by scan-metadata timestamp; tie-break directory name ascending)")
-	reportCmd.Flags().StringVar(&format, "format", "table", "table|json|csv|markdown")
+	reportCmd.Flags().StringVar(&format, "format", "table", "table|json|csv|markdown|excel")
 	reportCmd.Flags().StringVar(&reportOut, "output", "", "Output path")
 	reportCmd.Flags().StringVar(&outputDir, "output-dir", "./cloudrift-output", "Output directory")
 
@@ -309,39 +310,47 @@ func runReport(outputDir, scanID, format, outPath string) error {
 	if err != nil {
 		return err
 	}
+	// resolveOut returns the explicit --output path, else <scan-dir>/<name>.
+	resolveOut := func(name string) (string, error) {
+		if outPath != "" {
+			return outPath, nil
+		}
+		resolved, err := resolveScanID(outputDir, scanID)
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(outputDir, resolved, name), nil
+	}
 	switch format {
 	case "table":
-		fmt.Print(renderTable(findings))
+		fmt.Print(output.RenderTable(findings))
 		return nil
 	case "json":
-		if outPath == "" {
-			resolved, err := resolveScanID(outputDir, scanID)
-			if err != nil {
-				return err
-			}
-			outPath = filepath.Join(outputDir, resolved, "report.json")
+		p, err := resolveOut("report.json")
+		if err != nil {
+			return err
 		}
-		return writeFindings(outPath, findings)
+		return output.WriteJSON(p, findings)
 	case "csv":
-		if outPath == "" {
-			resolved, err := resolveScanID(outputDir, scanID)
-			if err != nil {
-				return err
-			}
-			outPath = filepath.Join(outputDir, resolved, "report.csv")
+		p, err := resolveOut("report.csv")
+		if err != nil {
+			return err
 		}
-		return writeCSV(outPath, findings)
+		return output.WriteCSV(p, findings)
 	case "markdown":
-		if outPath == "" {
-			resolved, err := resolveScanID(outputDir, scanID)
-			if err != nil {
-				return err
-			}
-			outPath = filepath.Join(outputDir, resolved, "report.md")
+		p, err := resolveOut("report.md")
+		if err != nil {
+			return err
 		}
-		return writeMarkdown(outPath, findings)
+		return output.WriteMarkdown(p, findings)
+	case "excel", "xlsx":
+		p, err := resolveOut("report.xlsx")
+		if err != nil {
+			return err
+		}
+		return output.WriteExcel(p, findings)
 	default:
-		return fmt.Errorf("unsupported format: %s", format)
+		return fmt.Errorf("unsupported format: %s (table|json|csv|markdown|excel)", format)
 	}
 }
 
@@ -365,40 +374,13 @@ func resolveScanID(outputDir, scanID string) (string, error) {
 	return scans.ResolveScanDirectoryName(outputDir, scanID)
 }
 
+// writeFindings persists findings as JSON. Retained as a small helper used by tests to set up
+// scan directories. Report output formats go through internal/output (CSV-injection-safe, plus
+// the Excel writer). See runReport.
 func writeFindings(path string, findings []models.Finding) error {
 	b, err := json.MarshalIndent(findings, "", "  ")
 	if err != nil {
 		return err
 	}
 	return os.WriteFile(path, b, 0o644)
-}
-
-func writeCSV(path string, findings []models.Finding) error {
-	var lines []string
-	lines = append(lines, "id,severity,module,claimability,affected_arn,account_id,hostname,monthly_direct_cost_usd,monthly_risk_cost_usd")
-	for _, f := range findings {
-		lines = append(lines, fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%.2f,%.2f",
-			f.ID, f.Severity, f.Module, f.Claimability, f.AffectedARN, f.AccountID, f.Hostname, f.MonthlyDirectCost, f.MonthlyRiskCost))
-	}
-	return os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0o644)
-}
-
-func writeMarkdown(path string, findings []models.Finding) error {
-	var b strings.Builder
-	b.WriteString("# Cloudrift Findings\n\n")
-	for _, f := range findings {
-		b.WriteString(fmt.Sprintf("## %s\n- Severity: %s\n- Claimability: %s\n- Hostname: `%s`\n- Account: `%s`\n\n",
-			f.Title, f.Severity, f.Claimability, f.Hostname, f.AccountID))
-	}
-	return os.WriteFile(path, []byte(b.String()), 0o644)
-}
-
-func renderTable(findings []models.Finding) string {
-	var b strings.Builder
-	b.WriteString("Hostname\tAccount\tVerdict\tSeverity\tMonthly Waste\n")
-	for _, f := range findings {
-		b.WriteString(fmt.Sprintf("%s\t%s\t%s\t%s\t$%.2f\n",
-			f.Hostname, f.AccountID, f.Claimability, f.Severity, f.MonthlyRiskCost))
-	}
-	return b.String()
 }

@@ -32,7 +32,16 @@
   inherits creds, so zero frontend changes). CSP tightened to `script-src 'self'` (kept
   `style-src 'unsafe-inline'` for CSS-in-JS). Removed dead `strconvItoa`. Tests cover the auth gate.
   Caveat: CSP change not yet verified against the running UI (frontend build pending P5).
-- **P5–P6 — pending.** (Frontend not yet locally type-checked — deps install deferred to P5.)
+- **P5 — DONE & verified.** Fresh-clone build fixed: built the frontend (deps installed, tsc +
+  vite + 11 vitest pass — confirms the P2 Diff.tsx/type changes compile), committed the full
+  `dashboard/dist/` and removed `dist/assets/` from `.gitignore`. Runtime smoke test: binary serves
+  the embedded UI (index + 2.2MB JS asset, HTTP 200), hardened CSP header present, loopback bind,
+  API works without auth on loopback. `report` now uses the injection-safe `internal/output`
+  writers and exposes a new `excel` format (verified CSV + .xlsx output) — un-orphaning that
+  package and removing the unsafe inline CSV writer. Remaining cosmetic dead code (blastradius
+  `IsReachable`/`HasExternalRoot`, triplicate `\x1e` separators, orphaned `internal/remediator`)
+  left as-is to avoid DTO/frontend churn — documented, low value.
+- **P6 — pending.**
 
 ### Deliberate scope decisions (not implemented — owner's call)
 - **#2 dangling CDN**: detection stays scoped to the 4 recognized AWS error-body fingerprints.
