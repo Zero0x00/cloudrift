@@ -744,6 +744,28 @@ For Docker setup and example queries, see the Neo4j section under [Overview](#ov
 | `ANTHROPIC_API_KEY` | `query` synthesis | Provider API key for `query` LLM answer synthesis. Enables LLM answers (override via `[synthesis].api_key_env`). Optional. |
 | `CLOUDRIFT_API_TOKEN` | `dashboard` | When set, gates the dashboard/API server (API + UI) behind HTTP Basic auth. Optional. |
 | `CLOUDRIFT_APP_BASE_URL` | alerting | Base URL for alert links in Slack (e.g. `https://your-host:8080`); defaults to `http://127.0.0.1:8080`. |
+| `CLOUDRIFT_LOG_LEVEL` | all commands | Log verbosity: `debug`\|`info`\|`warn`\|`error` (default `info`). Equivalent to the global `--log-level` flag. |
+
+### Logging & observability
+
+Cloudrift logs structured text (Go `log/slog`) to **stderr**. Set the level with the global
+`--log-level` flag or `CLOUDRIFT_LOG_LEVEL` (default `info`).
+
+The dashboard/API server logs **one line per request** with `method`, `path`, `status`,
+`bytes`, `duration_ms`, and a correlation `request_id`. Levels are chosen for a useful audit
+trail without poll/asset noise:
+
+| Outcome | Level |
+| --- | --- |
+| 5xx (server error) | `error` |
+| 4xx (client error) | `warn` |
+| mutations (POST/PUT/DELETE/PATCH — scans started, exports, rule edits) | `info` |
+| safe reads (GET/HEAD — dashboard polls, static assets) | `debug` |
+
+Privacy: only request **metadata** is logged — never request bodies, query strings,
+`Authorization` headers, credentials, or finding contents. Panics are caught (chi `Recoverer`)
+and returned as `500`s. Library-side warnings (collector partial results, embeddings/Cost
+Explorer fallbacks, skipped GDS) also go through `slog`.
 
 ### Serving and security model
 

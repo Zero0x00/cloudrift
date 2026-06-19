@@ -2,8 +2,7 @@ package graph
 
 import (
 	"context"
-	"fmt"
-	"os"
+	"log/slog"
 
 	"github.com/Zero0x00/cloudrift/internal/config"
 	"github.com/Zero0x00/cloudrift/internal/models"
@@ -23,11 +22,11 @@ func AttachEmbeddingsBestEffort(ctx context.Context, cfg *config.Config, meta *m
 	}
 	provider, pm, err := NewEmbeddingProvider(cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "WARN: embeddings disabled (%v); exporting graph without vector search\n", err)
+		slog.Warn("embeddings disabled; exporting graph without vector search", "error", err)
 		return false
 	}
 	if err := AttachFindingsEmbeddings(ctx, provider, findings); err != nil {
-		fmt.Fprintf(os.Stderr, "WARN: embedding generation failed (%v); exporting graph without vector search\n", err)
+		slog.Warn("embedding generation failed; exporting graph without vector search", "error", err)
 		return false
 	}
 	if meta != nil {

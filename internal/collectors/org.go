@@ -3,7 +3,7 @@ package collectors
 import (
 	"context"
 	"fmt"
-	"os"
+	"log/slog"
 	"sort"
 	"sync"
 
@@ -32,7 +32,7 @@ func (c Coverage) Complete() bool { return len(c.Failed) == 0 }
 // permission or throttle must not discard every other account's findings.
 func warnPartial(collector string, err error) {
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "WARN: %s collector: partial results, some accounts/calls failed: %v\n", collector, err)
+		slog.Warn("collector produced partial results", "collector", collector, "error", err)
 	}
 }
 
@@ -115,7 +115,7 @@ func CollectAccounts(ctx context.Context, cfg *config.Config, orgAPI Organizatio
 	sort.Strings(scannedIDs)
 	cov := Coverage{Discovered: len(accounts), Scanned: scannedIDs, Failed: failed}
 	if len(failed) > 0 {
-		fmt.Fprintf(os.Stderr, "WARN: account collection: %d/%d accounts could not be assumed and were skipped\n", len(failed), len(accounts))
+		slog.Warn("account collection skipped accounts that could not be assumed", "failed", len(failed), "discovered", len(accounts))
 	}
 	return scanned, cov, nil
 }

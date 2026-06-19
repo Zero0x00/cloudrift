@@ -3,7 +3,7 @@ package scorers
 import (
 	"context"
 	"fmt"
-	"os"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -218,6 +218,6 @@ func multiplierForFinding(module models.Module, c models.Claimability) float64 {
 
 func warnCE(message string, err error) {
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "WARN: %s: %v\n", message, err)
+		slog.Warn(message, "error", err)
 	}
 }

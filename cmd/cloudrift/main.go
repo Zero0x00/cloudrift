@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -15,6 +16,7 @@ import (
 	"github.com/Zero0x00/cloudrift/internal/aws"
 	"github.com/Zero0x00/cloudrift/internal/config"
 	"github.com/Zero0x00/cloudrift/internal/graph"
+	"github.com/Zero0x00/cloudrift/internal/logging"
 	"github.com/Zero0x00/cloudrift/internal/models"
 	"github.com/Zero0x00/cloudrift/internal/output"
 	"github.com/Zero0x00/cloudrift/internal/pipeline"
@@ -36,6 +38,14 @@ func newRootCommand() *cobra.Command {
 		Short: "Cloudrift discovers orphaned edge assets in AWS orgs",
 	}
 	cfgPath := root.PersistentFlags().String("config", "", "Path to config TOML")
+	logLevel := root.PersistentFlags().String("log-level", "", "Log verbosity: debug|info|warn|error (or env CLOUDRIFT_LOG_LEVEL; default info)")
+	root.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		lvl := strings.TrimSpace(*logLevel)
+		if lvl == "" {
+			lvl = os.Getenv("CLOUDRIFT_LOG_LEVEL")
+		}
+		logging.Configure(lvl)
+	}
 
 	var outputDir string
 	var neo4jEnabled bool
@@ -202,7 +212,7 @@ func exportScanToNeo4j(ctx context.Context, cfg *config.Config, scanPath string,
 	// Best-effort GDS clustering + centrality (writes community/centrality node properties).
 	// Skipped cleanly when the GDS plugin is absent — projection above already succeeded.
 	if gerr := graph.RunGDS(ctx, ex, filepath.Base(scanPath)); gerr != nil {
-		fmt.Fprintf(os.Stderr, "note: %v\n", gerr)
+		slog.Warn("GDS clustering skipped", "error", gerr)
 	}
 	return nil
 }
