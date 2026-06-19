@@ -98,6 +98,12 @@ func StartServer(host string, port int, outputDir, configPath string, staticFS f
 	return http.ListenAndServe(addr, NewRouter(outputDir, configPath, staticFS))
 }
 
+// SetBuildVersion sets the tool version stamped into dashboard-initiated scans so it matches
+// the binary's `cloudrift version`. Call once at startup before serving (empty is ignored).
+func SetBuildVersion(v string) {
+	handlers.SetBuildVersion(v)
+}
+
 func staticRouter(staticFS fs.FS) http.Handler {
 	r := chi.NewRouter()
 	if staticFS == nil {

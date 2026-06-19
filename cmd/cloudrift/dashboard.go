@@ -44,6 +44,8 @@ func newDashboardCommand(cfgPath *string) *cobra.Command {
 				}
 				outputDir = cfg.Output.OutputDir
 			}
+			// Stamp dashboard-initiated scans with the same build version as `cloudrift version`.
+			api.SetBuildVersion(version)
 			staticFS, err := dashboardStaticFS()
 			if err != nil {
 				return err

@@ -31,6 +31,20 @@ import (
 const scanStartVersion = "0.1.0"
 const runHistoryLimit = 10
 
+// buildVersion is the tool version stamped into dashboard-initiated scans' scan-metadata.json.
+// It defaults to scanStartVersion and is overridden once at startup via SetBuildVersion so a
+// scan started from the dashboard records the same version as `cloudrift version` (the
+// git-tag-injected build version) rather than a hardcoded constant.
+var buildVersion = scanStartVersion
+
+// SetBuildVersion sets the version stamped into dashboard-initiated scan metadata. Call once
+// at process startup, before the server begins handling requests. Empty values are ignored.
+func SetBuildVersion(v string) {
+	if strings.TrimSpace(v) != "" {
+		buildVersion = v
+	}
+}
+
 type scanControlCenter struct {
 	outputDir  string
 	configPath string
@@ -214,7 +228,7 @@ func (s *scanControlCenter) runScanAsync(req schema.ScanStartRequest, cfg *confi
 	if req.Module != "" && req.Module != "all" {
 		scanOpts.Modules = []string{req.Module}
 	}
-	scanID, err := pipeline.Run(context.Background(), cfg, s.outputDir, scanStartVersion, pipeline.NewAWSSource(), scanOpts)
+	scanID, err := pipeline.Run(context.Background(), cfg, s.outputDir, buildVersion, pipeline.NewAWSSource(), scanOpts)
 	if err != nil {
 		s.failRun(runID, "scan failed")
 		return

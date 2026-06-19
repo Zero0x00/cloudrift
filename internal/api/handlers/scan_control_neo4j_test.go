@@ -13,6 +13,21 @@ import (
 // not injectable here), so these tests cover the deterministic guards: the endpoint must
 // refuse cleanly when Neo4j is not configured. The projection itself is covered by the
 // graph package's WriteScan tests (fake Execer).
+func TestSetBuildVersion(t *testing.T) {
+	orig := buildVersion
+	t.Cleanup(func() { buildVersion = orig })
+
+	SetBuildVersion("v9.9.9-test")
+	if buildVersion != "v9.9.9-test" {
+		t.Fatalf("SetBuildVersion did not apply: %q", buildVersion)
+	}
+	// Empty values are ignored (keep the previously-set version).
+	SetBuildVersion("   ")
+	if buildVersion != "v9.9.9-test" {
+		t.Fatalf("empty SetBuildVersion should be ignored, got %q", buildVersion)
+	}
+}
+
 func TestExportToNeo4j_NotConfigured(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "cloudrift.toml")
