@@ -321,6 +321,12 @@ export interface ScanStartResponse {
   message: string;
 }
 
+export interface Neo4jExportResponse {
+  scan_id: string;
+  status: string;
+  neo4j: boolean;
+}
+
 export interface ScanRunStatusResponse {
   run_id: string;
   status: string;

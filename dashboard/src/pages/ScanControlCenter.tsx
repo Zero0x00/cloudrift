@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { formatQueryError } from "../api/httpError";
 import { PageHeader } from "../components/PageHeader";
 import { StatePanel } from "../components/StatePanel";
-import { useRuntimeStatusQuery, useScanRunHistoryQuery, useScanRunStatusQuery, useStartScanMutation, useSSOLoginMutation, useValidateProfileMutation } from "../hooks/useDashboardQueries";
+import { useExportNeo4jMutation, useRuntimeStatusQuery, useScanRunHistoryQuery, useScanRunStatusQuery, useStartScanMutation, useSSOLoginMutation, useValidateProfileMutation } from "../hooks/useDashboardQueries";
 import { useScanControlUrlState } from "../hooks/useScanControlUrlState";
 
 const MODULE_OPTIONS = ["all", "orphaned_edge", "external_access"] as const;
@@ -22,6 +22,7 @@ export function ScanControlCenterPage() {
   const validateProfile = useValidateProfileMutation();
   const startScan = useStartScanMutation();
   const ssoLogin = useSSOLoginMutation();
+  const exportNeo4j = useExportNeo4jMutation();
 
   const [progressMessage, setProgressMessage] = useState("");
   const [socketFailed, setSocketFailed] = useState(false);
@@ -250,7 +251,26 @@ export function ScanControlCenterPage() {
               >
                 {isRunning ? "Scan running…" : "Start scan"}
               </button>
+              <button
+                type="button"
+                onClick={() => exportNeo4j.mutate(scanStatus.data?.scan_id || "latest")}
+                disabled={!runtimeData.neo4j_configured || exportNeo4j.isPending}
+                title={
+                  runtimeData.neo4j_configured
+                    ? "Project the latest scan into Neo4j without re-scanning (populates the blast-radius graph)"
+                    : "Configure Neo4j (uri/username/password env) to enable graph export"
+                }
+                className="hs-btn-neutral"
+              >
+                {exportNeo4j.isPending ? "Exporting to Neo4j…" : "Export latest scan to Neo4j"}
+              </button>
             </div>
+            {exportNeo4j.isSuccess ? (
+              <p className="mt-3 text-sm text-emerald-300">
+                Exported scan <code className="cr-mono">{exportNeo4j.data.scan_id}</code> to Neo4j — open the Blast Explorer to view the graph.
+              </p>
+            ) : null}
+            {exportNeo4j.isError ? <p className="mt-3 text-sm text-rose-300">{formatQueryError(exportNeo4j.error)}</p> : null}
             <p className="mt-2 text-[11px] text-slate-500">
               Limitation: this control center currently supports a single active run at a time (latest run state is shared across tabs/users).
             </p>
