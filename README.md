@@ -34,7 +34,7 @@ All guides now live in one place — pick the format you prefer:
 | Dashboard + REST API | Complete | Works from JSON on disk; Neo4j optional |
 | `cloudrift report` | Complete | Export findings as table, JSON, CSV, markdown, Excel, or SARIF |
 | `cloudrift query` | Complete | Vector search over Neo4j; optional LLM answer synthesis when a synthesis provider is configured |
-| Neo4j integration | Optional | Adds blast-radius explorer, graph relationships, vector index |
+| Neo4j integration | Optional | Adds blast-radius explorer, graph relationships, vector index. Populate it on demand from the dashboard ("Export latest scan to Neo4j") or `POST /api/scans/{id}/neo4j-export`. With the Neo4j GDS plugin installed, export also writes Louvain `community` + PageRank `centrality` (auto clustering); degrades cleanly without it |
 | Local embeddings | Stub | `provider=local` will error until implemented |
 
 **Try immediately (no AWS):** `cloudrift demo generate && cloudrift dashboard --open`. A live scan (`cloudrift scan`) runs against a real AWS organization with credentials configured.

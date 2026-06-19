@@ -1083,7 +1083,26 @@ Light and dark themes available; preference stored in browser localStorage.
 
 1. Run Neo4j 5+ with Bolt accessible from your machine
 2. Create a database user and add to `cloudrift.toml` (see the `[neo4j]` settings in [Configuration](#configuration))
-3. Export a scan: `cloudrift scan --neo4j` or `cloudrift demo generate --neo4j --dense`
+3. Export a scan via any of:
+   - **CLI at scan time:** `cloudrift scan --neo4j` or `cloudrift demo generate --neo4j --dense`
+   - **Standalone, from an existing scan:** `POST /api/scans/{id}/neo4j-export` — projects a scan already on disk into Neo4j without re-scanning (works with `latest` and with demo data).
+   - **Dashboard:** the **Scan Control Center** has an **"Export latest scan to Neo4j"** button (enabled when Neo4j is configured) that calls the endpoint above. Use it to populate the graph for the Blast Explorer without running a new scan.
+
+Every export auto-maps the scan JSON into the graph: `:AwsAccount`, `:ScanSnapshot`, `:Asset`, `:Finding` nodes and `OWNED_BY` / `CAPTURED` / `AFFECTS` / `TRUSTS` / `POINTS_TO` / `FRONTS` / `USES_CERT` edges (idempotent `MERGE`, so re-exporting updates in place).
+
+#### Clustering & centrality (GDS)
+
+When the **Neo4j [Graph Data Science (GDS) plugin](https://neo4j.com/docs/graph-data-science/current/installation/)** is installed, each export additionally runs, best-effort:
+
+- **Louvain community detection** → writes a `community` property on every node (auto-clustering of related accounts/assets/findings).
+- **PageRank centrality** → writes a `centrality` property (a proxy for "most central / highest-blast-radius" nodes).
+
+This is **best-effort and non-fatal**: if the GDS plugin is absent (or analytics fail), the export still succeeds — clustering is simply skipped, the export response reports `clustered: false`, and the dashboard tells you to install the GDS plugin. Query the enrichment with, e.g.:
+
+```cypher
+MATCH (n) WHERE n.scan_id = $scan RETURN n.community AS cluster, count(*) ORDER BY cluster;
+MATCH (n) WHERE n.scan_id = $scan RETURN labels(n), n.arn, n.centrality ORDER BY n.centrality DESC LIMIT 20;
+```
 
 #### Local Docker setup
 
@@ -2028,6 +2047,7 @@ These routes power focused blast-radius and attack-path explainability. They are
 | `GET` | `/api/scans/{id}/external-entities/blast-radius/explorer` | Entity-root curated explorer payload |
 | `GET` | `/api/scans/{id}/principals/blast-radius/summary` | Principal-root summary (`principal_id`, optional `mode`) |
 | `GET` | `/api/scans/{id}/principals/blast-radius/explorer` | Principal-root curated explorer payload |
+| `POST` | `/api/scans/{id}/neo4j-export` | Project an existing scan into Neo4j on demand (findings + assets + relationships + best-effort embeddings), then best-effort GDS clustering/centrality. `400 neo4j_not_configured` when Neo4j is off; `502 neo4j_export_failed` on failure. Response: `{scan_id, status, neo4j, clustered}`. |
 
 **Common behavior:**
 
