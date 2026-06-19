@@ -65,6 +65,23 @@ func (awsSource) Collect(ctx context.Context, cfg *config.Config) (Result, error
 		}
 	}
 
+	// Resource-based cross-account exposure (S3 bucket policies), reusing the buckets we
+	// just listed so there is no second ListBuckets pass.
+	bpPrincipals, bpRels, bpFailed, err := collectors.CollectBucketPoliciesWithConfig(ctx, cfg, accounts, storage)
+	if err != nil {
+		return Result{}, fmt.Errorf("collect bucket policies: %w", err)
+	}
+	assets = append(assets, bpPrincipals...)
+	rels = append(rels, bpRels...)
+	if len(bpFailed) > 0 {
+		if coverage.Failed == nil {
+			coverage.Failed = map[string]string{}
+		}
+		for _, id := range bpFailed {
+			coverage.Failed[id] = "s3 bucket policy read denied"
+		}
+	}
+
 	edgeAssets, edgeRels, err := collectors.CollectEdgeWithConfig(ctx, cfg, accounts)
 	if err != nil {
 		return Result{}, fmt.Errorf("collect edge: %w", err)

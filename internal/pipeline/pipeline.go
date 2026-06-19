@@ -108,10 +108,11 @@ func Run(ctx context.Context, cfg *config.Config, outputDir, toolVersion string,
 		}
 	}
 
-	// --- External-trust module: cross-account / federated IAM trust. ---
+	// --- External-trust module: cross-account / federated IAM trust + resource-policy exposure. ---
 	if opts.runsModule(models.ModuleExternalAccess) {
 		activityIdx := collectors.IndexActivityByRoleARN(res.Activity)
 		findings = append(findings, scorers.ScoreTrust(res.Assets, res.Rels, activityIdx, cfg)...)
+		findings = append(findings, scorers.ScoreResourceExposure(res.Assets, res.Rels, cfg)...)
 	}
 
 	// --- Optional Cost Explorer enrichment (no-op unless cfg.Cost.UseCUR). ---
