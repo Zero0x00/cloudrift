@@ -86,7 +86,7 @@ func newRootCommand() *cobra.Command {
 		},
 	}
 	reportCmd.Flags().StringVar(&reportScanID, "scan-id", "latest", "Scan ID or \"latest\" (newest by scan-metadata timestamp; tie-break directory name ascending)")
-	reportCmd.Flags().StringVar(&format, "format", "table", "table|json|csv|markdown|excel")
+	reportCmd.Flags().StringVar(&format, "format", "table", "table|json|csv|markdown|excel|sarif")
 	reportCmd.Flags().StringVar(&reportOut, "output", "", "Output path")
 	reportCmd.Flags().StringVar(&outputDir, "output-dir", "./cloudrift-output", "Output directory")
 
@@ -349,8 +349,14 @@ func runReport(outputDir, scanID, format, outPath string) error {
 			return err
 		}
 		return output.WriteExcel(p, findings)
+	case "sarif":
+		p, err := resolveOut("report.sarif")
+		if err != nil {
+			return err
+		}
+		return output.WriteSARIF(p, findings)
 	default:
-		return fmt.Errorf("unsupported format: %s (table|json|csv|markdown|excel)", format)
+		return fmt.Errorf("unsupported format: %s (table|json|csv|markdown|excel|sarif)", format)
 	}
 }
 
