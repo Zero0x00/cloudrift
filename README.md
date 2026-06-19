@@ -11,18 +11,18 @@ Cloudrift is a CLI and embedded dashboard for discovering orphaned AWS edge asse
 
 ---
 
-## Documentation index
+## Documentation
 
-| Document | Purpose |
+All guides now live in one place — pick the format you prefer:
+
+| Where | What |
 | --- | --- |
-| [starter-doc.html](starter-doc.html) | **Start here** — 20-minute walkthrough with diagrams and status |
-| [docs/cli-commands.md](docs/cli-commands.md) | What each command does and flags available |
-| [docs/getting-started.md](docs/getting-started.md) | Quick-start guide (demo or live AWS scan) |
-| [docs/architecture.md](docs/architecture.md) | System design and where code lives |
-| [docs/technical.md](docs/technical.md) | API reference, debugging, embeddings, security |
-| [docs/iam-setup.md](docs/iam-setup.md) | AWS org setup and audit role deployment |
-| [docs/security-coverage.md](docs/security-coverage.md) | What is and isn't detected; severity caveats |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
+| **[docs.html](docs.html)** | **Start here** — the full interactive docs site (open in a browser). Audience views (Operator / Security reviewer / Developer), grouped sidebar, search, and light/dark theme. Self-contained, works offline. |
+| [docs/cloudrift-docs.md](docs/cloudrift-docs.md) | The same content as a single Markdown file (GitHub-renderable) with a table of contents — Overview, Getting Started, Architecture, CLI, Configuration, Security Coverage, IAM Setup, API & Technical Reference, Contributing. |
+| [starter-doc.html](starter-doc.html) | Reviewer walkthrough hub (narrative + diagrams). |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution quick-reference (full guide is in the docs). |
+
+> The previous per-topic files under `docs/` were consolidated into `docs/cloudrift-docs.md` and rendered into `docs.html`.
 
 ---
 
@@ -98,7 +98,7 @@ cloudrift version
 ### AWS
 
 - **AWS credentials** for the management account (or delegated audit role) that can assume org member roles
-- See [docs/iam-setup.md](docs/iam-setup.md) for org setup and StackSet deployment
+- See [docs/cloudrift-docs.md → IAM Setup](docs/cloudrift-docs.md#iam-setup) for org setup and StackSet deployment
 
 ### Optional
 
@@ -264,7 +264,7 @@ GET  /api/alerts/rules
 POST /api/alerts/rules/{ruleID}/test
 ```
 
-Full reference: [docs/technical.md](docs/technical.md#api-documentation)
+Full reference: [docs/cloudrift-docs.md → API & Technical Reference](docs/cloudrift-docs.md#api--technical-reference)
 
 ---
 
@@ -290,7 +290,7 @@ Latest scan resolves by timestamp in `scan-metadata.json` (newest first); direct
 
 For multi-account scanning, set up an audit role via CloudFormation StackSet:
 
-See [docs/iam-setup.md](docs/iam-setup.md) and `iam/stackset-template.yaml`
+See [docs/cloudrift-docs.md → IAM Setup](docs/cloudrift-docs.md#iam-setup) and `iam/stackset-template.yaml`
 
 ---
 

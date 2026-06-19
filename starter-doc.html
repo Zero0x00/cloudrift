@@ -89,7 +89,7 @@ footer{margin-top:2.5rem;font-size:.8rem;color:var(--dim)}
 <a class="nav-item" href="#arsenal" data-title="black hat reviewer notes">Black Hat reviewer notes</a>
 <a class="nav-item" href="#roadmap" data-title="roadmap">Roadmap</a>
 </div>
-<p style="font-size:.72rem;color:var(--dim);margin-top:1rem;line-height:1.35">Single HTML file · no CDN · no remote fonts · open locally. Also read <code>README.md</code> and <code>docs/getting-started.md</code>.</p>
+<p style="font-size:.72rem;color:var(--dim);margin-top:1rem;line-height:1.35">Single HTML file · no CDN · no remote fonts · open locally. Also read <code>README.md</code> and the consolidated <code>docs/cloudrift-docs.md</code> (or open <code>docs.html</code>).</p>
 </nav>
 <main>
 <div class="topbar">
@@ -127,7 +127,7 @@ footer{margin-top:2.5rem;font-size:.8rem;color:var(--dim)}
 <p><strong>Unapproved vendor account</strong> — Trust exists to an AWS account ID that is not on your allowlist. <em>Why it matters:</em> forgotten SaaS integrations and M&amp;A leftovers are common sources of long-lived access.</p>
 <p><strong>Stale vs active trust</strong> — <code>RoleLastUsed</code> and policy heuristics separate “probably forgotten” from “still exercised.” <em>Why it matters:</em> prioritization — rotate or remove dead trust before it becomes an attacker’s path of least resistance.</p>
 <p><strong>S3 bucket-policy exposure</strong> — A bucket policy grants public or cross-account access (read, or worse, write). Cloudrift reads each bucket policy and flags public/external grants, scoring write access higher than read. <em>Why it matters:</em> public-write and unapproved cross-account grants are direct data-exposure and tampering paths.</p>
-<p>For scoring tables and service coverage detail, see <code>docs/security-coverage.md</code>.</p>
+<p>For scoring tables and service coverage detail, see <code>docs/cloudrift-docs.md</code> → Security Coverage.</p>
 </article>
 <article class="page" id="page-four-questions" data-page="four-questions"><p class="sr-only">Four questions the product is built around.</p><h2 id="t-four-questions">What Cloudrift answers</h2>
 <ol>
@@ -169,7 +169,7 @@ footer{margin-top:2.5rem;font-size:.8rem;color:var(--dim)}
 <p><strong>CLI today:</strong> set <code>[aws].management_profile = "prod"</code> in <code>cloudrift.toml</code>, or leave it empty to use the default chain (including <code>AWS_PROFILE</code>). There is <strong>no</strong> <code>--profile</code> flag on CLI commands.</p>
 <div class="copy-wrap"><button type="button" class="copy-btn" aria-label="Copy command">Copy</button><pre class="cmd"><code>[aws]
 management_profile = &quot;my-readonly-profile&quot;</code></pre></div>
-<p><strong>Multi-account:</strong> your management identity must be allowed to <code>sts:AssumeRole</code> into <code>CloudriftAuditRole</code> in each member account (see IAM page + <code>docs/iam-setup.md</code>). Access keys alone in one account do <strong>not</strong> magically see every account — the role pattern must exist.</p>
+<p><strong>Multi-account:</strong> your management identity must be allowed to <code>sts:AssumeRole</code> into <code>CloudriftAuditRole</code> in each member account (see IAM page + <code>docs/cloudrift-docs.md</code> → IAM Setup). Access keys alone in one account do <strong>not</strong> magically see every account — the role pattern must exist.</p>
 </article>
 <article class="page" id="page-real-scan" data-page="real-scan"><p class="sr-only">What scan does today vs intended.</p><h2 id="t-real-scan">Real scan path</h2>
 <p><strong>What it does:</strong> <code>cloudrift scan</code> runs a real pipeline (<code>internal/pipeline</code>) that calls AWS APIs across org accounts, validates DNS/HTTP, scores risk, and writes real findings.</p>
@@ -241,7 +241,7 @@ management_profile = &quot;my-readonly-profile&quot;</code></pre></div>
 <p>Cloudrift’s org template defines a read role <code>CloudriftAuditRole</code> in member accounts, assumable from a management principal with an external ID condition.</p>
 <div class="fig"><svg viewBox="0 0 720 140" xmlns="http://www.w3.org/2000/svg" aria-label="Multi-account IAM flow" role="img"><rect width="720" height="140" fill="#070b10"/><text x="360" y="22" text-anchor="middle" fill="#9aa8bc" font-size="11" font-family="system-ui">Multi-account read (org pattern)</text><rect x="24" y="48" width="120" height="50" rx="6" fill="#1a2332" stroke="#3dd6c3"/><text x="84" y="80" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Your credentials</text><path d="M144 73h40" stroke="#5c6b82" stroke-width="2"/><rect x="184" y="48" width="140" height="50" rx="6" fill="#1a2332" stroke="#f4a261"/><text x="254" y="80" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Management account</text><path d="M324 73h40" stroke="#5c6b82" stroke-width="2"/><rect x="364" y="40" width="160" height="66" rx="6" fill="#122018" stroke="#3dd6c3"/><text x="444" y="66" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">sts:AssumeRole</text><text x="444" y="84" text-anchor="middle" fill="#9aa8bc" font-size="9" font-family="system-ui">CloudriftAuditRole</text><path d="M524 73h36" stroke="#5c6b82" stroke-width="2"/><rect x="560" y="48" width="136" height="50" rx="6" fill="#1a2332" stroke="#5c6b82"/><text x="628" y="80" text-anchor="middle" fill="#e8edf4" font-size="10" font-family="system-ui">Member accounts</text></svg></div>
 <p>The role is <strong>read-oriented</strong> (list/get across Route53, S3, CloudFront, IAM, Organizations, etc.) — not AdministratorAccess for Cloudrift itself.</p>
-<p>See <code>iam/stackset-template.yaml</code> and <code>docs/iam-setup.md</code> for exact actions.</p>
+<p>See <code>iam/stackset-template.yaml</code> and <code>docs/cloudrift-docs.md</code> → IAM Setup for exact actions.</p>
 </article>
 <article class="page" id="page-sec-eng" data-page="sec-eng"><p class="sr-only">Practical triage loop.</p><h2 id="t-sec-eng">Security engineer workflow</h2>
 <ol>
