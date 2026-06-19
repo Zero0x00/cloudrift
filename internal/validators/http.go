@@ -21,7 +21,11 @@ type ValidationResult struct {
 	CDNDetected      bool   `json:"cdn_detected"`
 	CDNVendor        string `json:"cdn_vendor"`
 	ErrorFingerprint string `json:"error_fingerprint"`
-	BodySnippet      string `json:"body_snippet"`
+	// Claimable is true when the matched fingerprint indicates the backing name is
+	// takeover-able (e.g. a deleted S3 bucket or an unclaimed third-party app/site),
+	// as opposed to a merely misconfigured-but-AWS-controlled endpoint.
+	Claimable   bool   `json:"claimable"`
+	BodySnippet string `json:"body_snippet"`
 }
 
 type DNSResolver interface {
@@ -120,7 +124,10 @@ func validateNode(
 	res.HTTPStatus = resp.StatusCode
 	snippet, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 	res.BodySnippet = string(snippet)
-	res.ErrorFingerprint = fingerprint(resp.StatusCode, resp.Header.Get("Server"), res.BodySnippet)
+	if sig, ok := matchTakeoverSignature(resp.StatusCode, resp.Header.Get("Server"), res.BodySnippet); ok {
+		res.ErrorFingerprint = sig.ID
+		res.Claimable = sig.Claimable
+	}
 	if strings.Contains(strings.ToLower(host), "cloudfront.net") {
 		res.CDNDetected = true
 		res.CDNVendor = "cloudfront"
@@ -150,19 +157,70 @@ func targetForProbe(node models.AssetNode) (host, targetURL, scheme string) {
 	return host, targetURL, scheme
 }
 
-func fingerprint(status int, server, body string) string {
-	switch {
-	case strings.Contains(body, "<Code>NoSuchBucket</Code>"):
-		return "s3_bucket_deleted"
-	case status == 403 && strings.Contains(strings.ToLower(server), "s3"):
-		return "s3_bucket_exists_private"
-	case strings.Contains(body, "The request could not be satisfied"):
-		return "cloudfront_origin_error"
-	case strings.Contains(body, "<Code>InvalidClientTokenId</Code>"):
-		return "aws_endpoint_controlled"
-	default:
-		return ""
+// TakeoverSignature is one entry in the extensible fingerprint catalog. A response
+// matches when every specified condition holds (status, Server substring, and any one
+// of the body substrings). Claimable distinguishes a takeover-able backing name from a
+// merely misconfigured-but-controlled endpoint.
+type TakeoverSignature struct {
+	ID         string
+	Service    string
+	Status     int      // 0 = match any status
+	ServerHas  string   // lowercased substring required in the Server header (empty = ignore)
+	BodyHasAny []string // response matches if the body contains ANY of these (empty = ignore)
+	Claimable  bool
+}
+
+// takeoverSignatures is the ordered fingerprint catalog. First match wins, so place
+// more specific signatures before broader ones. Add new edge/third-party takeover
+// surfaces here — detection coverage scales by extending this table.
+var takeoverSignatures = []TakeoverSignature{
+	// AWS-native
+	{ID: "s3_bucket_deleted", Service: "s3", BodyHasAny: []string{"<Code>NoSuchBucket</Code>"}, Claimable: true},
+	{ID: "s3_bucket_exists_private", Service: "s3", Status: 403, ServerHas: "s3", Claimable: false},
+	{ID: "cloudfront_origin_error", Service: "cloudfront", BodyHasAny: []string{"The request could not be satisfied"}, Claimable: false},
+	{ID: "aws_endpoint_controlled", Service: "aws", BodyHasAny: []string{"<Code>InvalidClientTokenId</Code>"}, Claimable: false},
+	{ID: "apigateway_missing_mapping", Service: "apigateway", Status: 403, BodyHasAny: []string{`{"message":"Forbidden"}`}, Claimable: false},
+	// Third-party CNAME takeover surfaces (org points docs.example.com at a SaaS via Route 53).
+	// NOTE: body-only fingerprints can false-positive; a follow-up should pair these with the
+	// record's CNAME target suffix (github.io, herokuapp.com, myshopify.com) to confirm.
+	{ID: "github_pages_unclaimed", Service: "github_pages", BodyHasAny: []string{"There isn't a GitHub Pages site here"}, Claimable: true},
+	{ID: "heroku_no_such_app", Service: "heroku", BodyHasAny: []string{"No such app", "no-such-app.html"}, Claimable: true},
+	{ID: "shopify_unavailable", Service: "shopify", BodyHasAny: []string{"Sorry, this shop is currently unavailable"}, Claimable: true},
+}
+
+func matchTakeoverSignature(status int, server, body string) (TakeoverSignature, bool) {
+	serverLower := strings.ToLower(server)
+	for _, s := range takeoverSignatures {
+		if s.Status != 0 && status != s.Status {
+			continue
+		}
+		if s.ServerHas != "" && !strings.Contains(serverLower, s.ServerHas) {
+			continue
+		}
+		if len(s.BodyHasAny) > 0 {
+			matched := false
+			for _, sub := range s.BodyHasAny {
+				if strings.Contains(body, sub) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+		return s, true
 	}
+	return TakeoverSignature{}, false
+}
+
+// fingerprint returns the matched signature ID (or "") — retained for the evidence map
+// and for callers that only need the legacy string form.
+func fingerprint(status int, server, body string) string {
+	if s, ok := matchTakeoverSignature(status, server, body); ok {
+		return s.ID
+	}
+	return ""
 }
 
 func dnsTimeoutErr() error {

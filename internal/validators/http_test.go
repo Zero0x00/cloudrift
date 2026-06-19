@@ -44,6 +44,43 @@ func TestFingerprint(t *testing.T) {
 	}
 }
 
+func TestTakeoverSignatureCatalog(t *testing.T) {
+	cases := []struct {
+		name      string
+		status    int
+		server    string
+		body      string
+		wantID    string
+		wantClaim bool
+	}{
+		{"s3 deleted", 404, "AmazonS3", "<Code>NoSuchBucket</Code>", "s3_bucket_deleted", true},
+		{"s3 private exists", 403, "AmazonS3", "<Code>AccessDenied</Code>", "s3_bucket_exists_private", false},
+		{"cloudfront origin error", 403, "CloudFront", "The request could not be satisfied", "cloudfront_origin_error", false},
+		{"apigateway missing mapping", 403, "", `{"message":"Forbidden"}`, "apigateway_missing_mapping", false},
+		{"github pages unclaimed", 404, "GitHub.com", "There isn't a GitHub Pages site here.", "github_pages_unclaimed", true},
+		{"heroku no such app", 404, "Cowboy", "<title>No such app</title>", "heroku_no_such_app", true},
+		{"shopify unavailable", 404, "", "Sorry, this shop is currently unavailable.", "shopify_unavailable", true},
+		{"healthy page no match", 200, "nginx", "<html>hello</html>", "", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sig, ok := matchTakeoverSignature(tc.status, tc.server, tc.body)
+			if tc.wantID == "" {
+				if ok {
+					t.Fatalf("expected no match, got %s", sig.ID)
+				}
+				return
+			}
+			if !ok || sig.ID != tc.wantID {
+				t.Fatalf("expected %s, got id=%q ok=%v", tc.wantID, sig.ID, ok)
+			}
+			if sig.Claimable != tc.wantClaim {
+				t.Fatalf("%s: expected claimable=%v, got %v", tc.wantID, tc.wantClaim, sig.Claimable)
+			}
+		})
+	}
+}
+
 func TestValidateAssets_HTTPFallbackAndFingerprint(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("<Code>NoSuchBucket</Code>"))

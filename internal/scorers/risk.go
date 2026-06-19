@@ -31,10 +31,12 @@ func ScoreRisk(node models.AssetNode, validation validators.ValidationResult, bu
 		Impact:       impactFor(claimability),
 		Recommendation: recommendationFor(claimability),
 		Evidence: map[string]any{
-			"dns_status":  validation.DNSStatus,
-			"http_status": validation.HTTPStatus,
-			"fingerprint": validation.ErrorFingerprint,
-			"bucket_name": bucketNameFromTarget(node),
+			"dns_status":     validation.DNSStatus,
+			"http_status":    validation.HTTPStatus,
+			"fingerprint":    validation.ErrorFingerprint,
+			"claimable":      validation.Claimable,
+			"target_service": targetService(node),
+			"bucket_name":    bucketNameFromTarget(node),
 		},
 	}
 }
@@ -50,6 +52,14 @@ func classifyRisk(node models.AssetNode, validation validators.ValidationResult,
 		}
 		// Deleted fingerprint but bucket exists in scanned accounts means not reclaimable.
 		return models.ClaimDangling, models.SeverityHigh
+	}
+
+	// RECLAIMABLE (high): the backing name is takeover-able but not the verified
+	// cross-account S3-website case above — e.g. a deleted S3 REST target or an
+	// unclaimed third-party site (GitHub Pages, Heroku, Shopify). Lower confidence
+	// than the org-wide-verified S3 critical, so high rather than critical.
+	if validation.DNSStatus == "resolved" && validation.Claimable {
+		return models.ClaimReclaimable, models.SeverityHigh
 	}
 
 	// DANGLING: resolved + AWS controlled error body, not reclaimable.
