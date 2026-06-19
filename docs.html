@@ -35,6 +35,24 @@
   --topbar-h:      60px;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* diagram palette (themeable) */
+  --dg-surface:    #f3f4fb;
+  --dg-node:       #ffffff;
+  --dg-node-2:     #f0f1fb;
+  --dg-stroke:     #c9cbe8;
+  --dg-line:       #9aa0c4;
+  --dg-text:       #2a2f3a;
+  --dg-muted:      #6b7180;
+  --dg-accent:     #5b54e6;
+  --dg-teal:       #0d9488;
+  --dg-amber:      #d97706;
+  --dg-blue:       #2563eb;
+  /* severity */
+  --sev-critical-bg:#fdecec; --sev-critical-fg:#b42318; --sev-critical-bd:#f4b9b3;
+  --sev-high-bg:    #fff1e6; --sev-high-fg:   #b54708; --sev-high-bd:   #f6c79a;
+  --sev-medium-bg:  #fdf6e3; --sev-medium-fg: #a16207; --sev-medium-bd: #f0dca0;
+  --sev-low-bg:     #eef1f6; --sev-low-fg:    #475467; --sev-low-bd:    #d5dbe5;
+  --sev-info-bg:    #eef2f4; --sev-info-fg:   #54606b; --sev-info-bd:   #d3dade;
 }
 html[data-theme="dark"] {
   --bg:            #0f1320;
@@ -60,6 +78,22 @@ html[data-theme="dark"] {
   --callout-border:#5b54e6;
   --shadow:        0 1px 3px rgba(0,0,0,0.4);
   --shadow-lg:     0 8px 24px rgba(0,0,0,0.5);
+  --dg-surface:    #141a28;
+  --dg-node:       #1b2233;
+  --dg-node-2:     #232b40;
+  --dg-stroke:     #38415a;
+  --dg-line:       #566184;
+  --dg-text:       #dfe3ec;
+  --dg-muted:      #9aa3b8;
+  --dg-accent:     #8b85f5;
+  --dg-teal:       #2dd4bf;
+  --dg-amber:      #f5b454;
+  --dg-blue:       #7aa6f5;
+  --sev-critical-bg:#3a1c1c; --sev-critical-fg:#ff9c93; --sev-critical-bd:#5e2b27;
+  --sev-high-bg:    #3a2718; --sev-high-fg:   #ffb877; --sev-high-bd:   #5d3f22;
+  --sev-medium-bg:  #332a13; --sev-medium-fg: #f0cd6b; --sev-medium-bd: #50431d;
+  --sev-low-bg:     #232a36; --sev-low-fg:    #aeb8c8; --sev-low-bd:    #38404f;
+  --sev-info-bg:    #232a30; --sev-info-fg:   #a3b0bb; --sev-info-bd:   #364049;
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -101,6 +135,8 @@ body {
   letter-spacing: -0.01em;
   white-space: nowrap;
   flex-shrink: 0;
+  cursor: pointer;
+  background: none; border: none; color: var(--text); font-family: inherit;
 }
 .brand .logo {
   width: 22px; height: 22px;
@@ -196,6 +232,21 @@ body {
 .filter-note.show { display: block; }
 .filter-note a { color: var(--accent-text); font-weight: 600; cursor: pointer; text-decoration: underline; }
 .nav-group { margin-bottom: 4px; }
+.nav-home-btn {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: none; border: none; cursor: pointer; font-family: inherit;
+  text-align: left; color: var(--text-muted);
+  font-size: 13.5px; font-weight: 600;
+  padding: 8px 10px; border-radius: 6px; margin-bottom: 10px;
+  border-left: 2px solid transparent;
+  transition: background .1s, color .1s;
+}
+.nav-home-btn:hover { background: var(--bg-alt); color: var(--text); }
+.nav-home-btn.active {
+  color: var(--accent-text); background: var(--accent-soft);
+  border-left-color: var(--accent); font-weight: 650;
+}
+.nav-home-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
 .nav-group-label {
   display: flex; align-items: center; gap: 6px;
   width: 100%;
@@ -245,6 +296,8 @@ main {
   max-width: var(--content-max);
   padding: 36px 40px 120px;
 }
+/* right rail layout when reference is shown on wide screens */
+.main-wrap.with-rail { justify-content: center; }
 .content { font-size: 16px; }
 .content h1, .content h2, .content h3, .content h4 {
   scroll-margin-top: calc(var(--topbar-h) + 16px);
@@ -333,9 +386,31 @@ main {
   background: none; border: none; padding: 0;
   white-space: pre;
 }
-.code-card.mermaid-card { border-color: var(--accent); }
-.code-card.mermaid-card .code-head { background: var(--accent-soft); border-bottom-color: var(--border); }
-.code-card.mermaid-card .code-lang { color: var(--accent-text); }
+
+/* diagram card (rendered SVG + mermaid fallback) */
+.diagram {
+  margin: 0 0 1.4em;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--dg-surface);
+  padding: 16px 18px 12px;
+  overflow: hidden;
+}
+.diagram .dg-title {
+  font-size: 12.5px; font-weight: 600; color: var(--text-muted);
+  letter-spacing: .01em; margin: 0 0 10px;
+  display: flex; align-items: center; gap: 7px;
+}
+.diagram .dg-title svg { width: 15px; height: 15px; color: var(--accent); }
+.diagram svg.dg-svg { width: 100%; height: auto; display: block; }
+.diagram-scroll { overflow-x: auto; }
+.diagram.mermaid-fallback { background: var(--code-block-bg); border-color: var(--border-strong); }
+.diagram.mermaid-fallback .dg-title { color: #9aa3b8; }
+.diagram.mermaid-fallback pre {
+  margin: 0; padding: 4px 0 6px; overflow-x: auto;
+  font-family: var(--mono); font-size: 12.5px; line-height: 1.55;
+  color: var(--code-block-text); white-space: pre;
+}
 
 /* tables */
 .table-scroll { overflow-x: auto; margin: 0 0 1.3em; border: 1px solid var(--border); border-radius: var(--radius); }
@@ -361,16 +436,227 @@ main {
 .content table tbody tr:nth-child(even) { background: var(--table-zebra); }
 .content table code { white-space: nowrap; }
 
-/* blockquote callout */
-.content blockquote {
+/* severity badges */
+.sev {
+  display: inline-block;
+  font-size: 11px; font-weight: 700; letter-spacing: .03em;
+  text-transform: uppercase;
+  padding: 2px 8px; border-radius: 20px;
+  border: 1px solid transparent; line-height: 1.5;
+  vertical-align: baseline; white-space: nowrap;
+}
+.sev-critical { background: var(--sev-critical-bg); color: var(--sev-critical-fg); border-color: var(--sev-critical-bd); }
+.sev-high     { background: var(--sev-high-bg);     color: var(--sev-high-fg);     border-color: var(--sev-high-bd); }
+.sev-medium   { background: var(--sev-medium-bg);   color: var(--sev-medium-fg);   border-color: var(--sev-medium-bd); }
+.sev-low      { background: var(--sev-low-bg);      color: var(--sev-low-fg);      border-color: var(--sev-low-bd); }
+.sev-info     { background: var(--sev-info-bg);     color: var(--sev-info-fg);     border-color: var(--sev-info-bd); }
+
+/* blockquote callout cards */
+.content .callout {
   margin: 0 0 1.3em;
-  padding: 12px 16px;
+  padding: 13px 16px 13px 14px;
   background: var(--callout-bg);
+  border: 1px solid var(--border);
   border-left: 3px solid var(--callout-border);
   border-radius: 0 var(--radius) var(--radius) 0;
   color: var(--text);
+  display: flex; gap: 12px; align-items: flex-start;
 }
-.content blockquote p:last-child { margin-bottom: 0; }
+.content .callout .co-icon {
+  flex-shrink: 0; width: 20px; height: 20px; margin-top: 2px;
+}
+.content .callout .co-icon svg { width: 20px; height: 20px; display: block; }
+.content .callout .co-body { flex: 1 1 auto; min-width: 0; }
+.content .callout p:last-child { margin-bottom: 0; }
+.content .callout.callout-warning { border-left-color: var(--sev-high-fg); }
+.content .callout.callout-warning .co-icon svg { color: var(--sev-high-fg); }
+.content .callout.callout-info .co-icon svg { color: var(--accent); }
+
+/* accordion (### subsections) */
+.acc { border: 1px solid var(--border); border-radius: var(--radius); margin: 0 0 14px; background: var(--bg-elev); box-shadow: var(--shadow); overflow: hidden; }
+.acc-head {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: none; border: none; cursor: pointer; font-family: inherit;
+  text-align: left; padding: 13px 16px; color: var(--text);
+}
+.acc-head:hover { background: var(--bg-alt); }
+.acc-head .acc-caret {
+  flex-shrink: 0; color: var(--text-faint); transition: transform .18s;
+  display: inline-flex;
+}
+.acc-head .acc-caret svg { width: 14px; height: 14px; display: block; }
+.acc.open > .acc-head .acc-caret { transform: rotate(90deg); }
+.acc-head .acc-h {
+  flex: 1 1 auto; font-size: 17px; font-weight: 640; letter-spacing: -0.01em;
+  line-height: 1.3; min-width: 0;
+}
+.acc-head .acc-h .anchor-link { display: none; }
+.acc-body { display: none; padding: 2px 18px 6px; }
+.acc.open > .acc-body { display: block; }
+.acc-body > h3:first-child { margin-top: .6em; }
+/* h3 inside accordion head should not carry its own block margins */
+.acc-head h3 { margin: 0; border: none; padding: 0; font-size: inherit; font-weight: inherit; }
+
+/* per-section expand/collapse control */
+.acc-controls {
+  display: flex; gap: 8px; margin: 6px 0 16px; flex-wrap: wrap;
+}
+.acc-ctrl-btn {
+  font-family: inherit; font-size: 12.5px; font-weight: 500;
+  color: var(--text-muted); background: var(--bg-alt);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 5px 11px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: background .12s, color .12s;
+}
+.acc-ctrl-btn:hover { background: var(--border); color: var(--text); }
+.acc-ctrl-btn svg { width: 13px; height: 13px; }
+
+/* ---------- Home view ---------- */
+#home { width: 100%; max-width: 1040px; margin: 0 auto; padding: 8px 4px 40px; }
+#home.hidden { display: none; }
+#reference.hidden { display: none; }
+.hero {
+  text-align: center;
+  padding: 44px 20px 34px;
+}
+.hero .eyebrow {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12.5px; font-weight: 600; color: var(--accent-text);
+  background: var(--accent-soft); border: 1px solid var(--border);
+  padding: 5px 13px; border-radius: 20px; margin-bottom: 22px;
+}
+.hero .eyebrow svg { width: 14px; height: 14px; }
+.hero h1 {
+  font-size: 52px; font-weight: 760; letter-spacing: -0.03em;
+  margin: 0 0 14px; line-height: 1.05;
+}
+.hero .tagline {
+  font-size: 19px; color: var(--text-muted); max-width: 620px;
+  margin: 0 auto 28px; line-height: 1.5;
+}
+.hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px; }
+.btn {
+  font-family: inherit; font-size: 14.5px; font-weight: 600;
+  padding: 11px 22px; border-radius: var(--radius); cursor: pointer;
+  border: 1px solid transparent; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: background .14s, border-color .14s, transform .08s;
+}
+.btn:active { transform: translateY(1px); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-text); }
+.btn-secondary { background: var(--bg-elev); color: var(--text); border-color: var(--border-strong); }
+.btn-secondary:hover { background: var(--bg-alt); }
+.btn svg { width: 16px; height: 16px; }
+
+/* terminal snippet */
+.term {
+  max-width: 460px; margin: 0 auto;
+  background: var(--code-block-bg); border: 1px solid var(--border-strong);
+  border-radius: 10px; overflow: hidden; text-align: left;
+  box-shadow: var(--shadow-lg);
+}
+.term-head {
+  display: flex; align-items: center; gap: 7px;
+  padding: 9px 13px; border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
+}
+.term-dot { width: 11px; height: 11px; border-radius: 50%; }
+.term-dot.r { background: #ff5f57; } .term-dot.y { background: #febc2e; } .term-dot.g { background: #28c840; }
+.term-title { font-family: var(--mono); font-size: 11px; color: #9aa3b8; margin-left: 6px; }
+.term-copy {
+  margin-left: auto; border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.06); color: #cdd3e0;
+  font-size: 11px; font-family: var(--sans); font-weight: 500;
+  padding: 3px 9px; border-radius: 6px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 5px; transition: background .12s, color .12s;
+}
+.term-copy:hover { background: rgba(255,255,255,0.14); color: #fff; }
+.term-copy.copied { color: #6ee7b7; }
+.term-body { padding: 14px 16px; font-family: var(--mono); font-size: 13px; line-height: 1.9; color: var(--code-block-text); }
+.term-body .ln { white-space: pre; }
+.term-body .pr { color: #6ee7b7; user-select: none; }
+.term-body .cm { color: #7c869c; }
+
+/* section heading on home */
+.home-sec { margin-top: 52px; }
+.home-sec > h2 {
+  font-size: 13px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--text-faint); text-align: center; margin: 0 0 6px;
+}
+.home-sec > .home-sub {
+  text-align: center; color: var(--text-muted); font-size: 15px; margin: 0 auto 24px; max-width: 560px;
+}
+
+/* problem cards */
+.prob-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.prob-card {
+  background: var(--bg-elev); border: 1px solid var(--border);
+  border-radius: 12px; padding: 22px 22px 20px; box-shadow: var(--shadow);
+}
+.prob-card .pc-icon {
+  width: 42px; height: 42px; border-radius: 10px;
+  background: var(--accent-soft); color: var(--accent-text);
+  display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;
+}
+.prob-card .pc-icon svg { width: 22px; height: 22px; }
+.prob-card h3 { font-size: 17px; font-weight: 650; margin: 0 0 7px; letter-spacing: -0.01em; }
+.prob-card p { font-size: 14.5px; color: var(--text-muted); margin: 0; line-height: 1.55; }
+
+/* four-questions stat cards */
+.q-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.q-card {
+  background: var(--bg-elev); border: 1px solid var(--border);
+  border-radius: 10px; padding: 18px 16px; text-align: left; box-shadow: var(--shadow);
+}
+.q-card .q-num {
+  font-size: 13px; font-weight: 800; color: var(--accent);
+  display: inline-flex; width: 26px; height: 26px; border-radius: 7px;
+  background: var(--accent-soft); align-items: center; justify-content: center; margin-bottom: 12px;
+}
+.q-card h3 { font-size: 15px; font-weight: 650; margin: 0 0 5px; letter-spacing: -0.01em; }
+.q-card p { font-size: 13px; color: var(--text-muted); margin: 0; line-height: 1.45; }
+
+/* role cards */
+.role-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.role-card {
+  background: var(--bg-elev); border: 1px solid var(--border);
+  border-radius: 12px; padding: 22px 20px; box-shadow: var(--shadow);
+  cursor: pointer; text-align: left; font-family: inherit; color: var(--text);
+  transition: border-color .14s, transform .1s, box-shadow .14s;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.role-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.role-card .rc-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--accent-soft); color: var(--accent-text);
+  display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;
+}
+.role-card .rc-icon svg { width: 21px; height: 21px; }
+.role-card h3 { font-size: 17px; font-weight: 650; margin: 0 0 6px; letter-spacing: -0.01em; }
+.role-card p { font-size: 14px; color: var(--text-muted); margin: 0 0 14px; line-height: 1.5; flex: 1 1 auto; }
+.role-card .rc-go {
+  font-size: 13px; font-weight: 600; color: var(--accent-text);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.role-card .rc-go svg { width: 14px; height: 14px; transition: transform .14s; }
+.role-card:hover .rc-go svg { transform: translateX(3px); }
+
+/* home diagrams */
+.home-diagrams { display: grid; grid-template-columns: 1fr; gap: 20px; }
+.home-fig {
+  background: var(--dg-surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px 22px 14px; box-shadow: var(--shadow); overflow: hidden;
+}
+.home-fig h3 {
+  font-size: 14px; font-weight: 650; margin: 0 0 4px; letter-spacing: -0.01em;
+  display: flex; align-items: center; gap: 8px;
+}
+.home-fig h3 svg { width: 16px; height: 16px; color: var(--accent); }
+.home-fig p { font-size: 13px; color: var(--text-muted); margin: 0 0 14px; }
+.home-fig .fig-scroll { overflow-x: auto; }
+.home-fig svg.dg-svg { width: 100%; min-width: 540px; height: auto; display: block; }
 
 /* sidebar backdrop on mobile */
 .backdrop {
@@ -380,6 +666,10 @@ main {
 }
 .backdrop.show { display: block; }
 
+@media (max-width: 980px) {
+  .q-grid { grid-template-columns: 1fr 1fr; }
+  .role-grid { grid-template-columns: 1fr; }
+}
 @media (max-width: 860px) {
   .hamburger { display: inline-flex; }
   .sidebar {
@@ -395,6 +685,13 @@ main {
   .seg button { padding: 5px 8px; font-size: 12px; }
   .search-wrap { max-width: none; }
   .anchor-link { left: -18px; }
+  .hero h1 { font-size: 38px; }
+  .hero .tagline { font-size: 16.5px; }
+  .prob-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .q-grid { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 32px; }
 }
 @media (max-width: 620px) {
   .seg .seg-long { display: none; }
@@ -404,12 +701,139 @@ main {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
 }
+
+/* ---------- Section lede (first paragraph kept visible) ---------- */
+.acc-lede {
+  font-size: 15.5px; color: var(--text-muted); line-height: 1.6;
+  margin: 0 0 10px;
+}
+.acc-lede strong { color: var(--text); }
+
+/* ---------- Severity heat grid (reference + home figure) ---------- */
+.sev-grid {
+  display: grid; grid-template-columns: 1fr; gap: 10px;
+  margin: 4px 0 2px;
+}
+.sev-row {
+  display: grid; grid-template-columns: 110px 1fr; align-items: start; gap: 14px;
+  padding: 12px 14px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--bg-elev);
+  border-left: 4px solid var(--sv-bd, var(--border));
+}
+.sev-row .sev-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  padding: 4px 0; border-radius: 20px; width: 100%;
+  background: var(--sv-bg); color: var(--sv-fg); border: 1px solid var(--sv-bd);
+}
+.sev-row .sev-what { font-size: 14px; color: var(--text); line-height: 1.5; }
+.sev-row .sev-what .sev-eg { color: var(--text-muted); }
+.sev-row[data-sev="critical"] { --sv-bg: var(--sev-critical-bg); --sv-fg: var(--sev-critical-fg); --sv-bd: var(--sev-critical-bd); }
+.sev-row[data-sev="high"]     { --sv-bg: var(--sev-high-bg);     --sv-fg: var(--sev-high-fg);     --sv-bd: var(--sev-high-bd); }
+.sev-row[data-sev="medium"]   { --sv-bg: var(--sev-medium-bg);   --sv-fg: var(--sev-medium-fg);   --sv-bd: var(--sev-medium-bd); }
+.sev-row[data-sev="low"]      { --sv-bg: var(--sev-low-bg);      --sv-fg: var(--sev-low-fg);      --sv-bd: var(--sev-low-bd); }
+.sev-row[data-sev="info"]     { --sv-bg: var(--sev-info-bg);     --sv-fg: var(--sev-info-fg);     --sv-bd: var(--sev-info-bd); }
+
+/* ---------- Issue-type explorer ---------- */
+#issuetypes { width: 100%; max-width: 1040px; margin: 0 auto; padding: 8px 4px 60px; }
+#issuetypes.hidden { display: none; }
+.it-head { padding: 28px 8px 8px; }
+.it-head h1 { font-size: 34px; font-weight: 740; letter-spacing: -0.025em; margin: 0 0 10px; }
+.it-head p { font-size: 16px; color: var(--text-muted); margin: 0; max-width: 680px; line-height: 1.55; }
+.it-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 8px 22px; align-items: center; }
+.it-filter-label { font-size: 12.5px; font-weight: 600; color: var(--text-faint); margin-right: 2px; }
+.it-filter {
+  font-family: inherit; font-size: 13px; font-weight: 550;
+  color: var(--text-muted); background: var(--bg-alt);
+  border: 1px solid var(--border); border-radius: 20px;
+  padding: 6px 14px; cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.it-filter:hover { color: var(--text); border-color: var(--border-strong); }
+.it-filter.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.it-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; padding: 0 8px; }
+.it-card {
+  background: var(--bg-elev); border: 1px solid var(--border);
+  border-radius: 12px; box-shadow: var(--shadow); overflow: hidden;
+  display: flex; flex-direction: column;
+  transition: border-color .14s, box-shadow .14s, transform .1s;
+}
+.it-card.it-hidden { display: none; }
+.it-card-head {
+  display: flex; align-items: flex-start; gap: 12px; width: 100%;
+  background: none; border: none; cursor: pointer; font-family: inherit;
+  text-align: left; padding: 18px 18px 16px; color: var(--text);
+}
+.it-card:hover { border-color: var(--accent); box-shadow: var(--shadow-lg); }
+.it-card.open { border-color: var(--accent); }
+.it-fam-dot {
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: 9px; margin-top: 1px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--accent-soft); color: var(--accent-text);
+}
+.it-fam-dot svg { width: 18px; height: 18px; }
+.it-card-head .it-titlewrap { flex: 1 1 auto; min-width: 0; }
+.it-card-head .it-name { font-size: 16px; font-weight: 650; letter-spacing: -0.01em; line-height: 1.3; }
+.it-card-head .it-fam { font-size: 11.5px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: .04em; margin-top: 3px; }
+.it-card-head .it-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+.it-card-head .it-toggle { color: var(--text-faint); transition: transform .18s; display: inline-flex; }
+.it-card-head .it-toggle svg { width: 16px; height: 16px; display: block; }
+.it-card.open .it-card-head .it-toggle { transform: rotate(90deg); }
+.it-detail { display: none; padding: 0 18px 18px; }
+.it-card.open .it-detail { display: block; }
+.it-detail hr { border: none; border-top: 1px solid var(--border); margin: 0 0 14px; }
+.it-detail .it-block { margin-bottom: 14px; }
+.it-detail .it-block:last-child { margin-bottom: 0; }
+.it-detail .it-label {
+  font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--text-faint); margin: 0 0 5px; display: flex; align-items: center; gap: 6px;
+}
+.it-detail .it-label svg { width: 13px; height: 13px; }
+.it-detail .it-text { font-size: 14px; color: var(--text); line-height: 1.55; margin: 0; }
+.it-detail .it-text code {
+  font-family: var(--mono); font-size: 0.85em; background: var(--code-bg); color: var(--code-text);
+  padding: 0.12em 0.36em; border-radius: 4px; border: 1px solid var(--border); word-break: break-word;
+}
+.it-detail .it-link {
+  font-size: 13px; font-weight: 600; color: var(--accent-text);
+  display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
+  background: none; border: none; font-family: inherit; padding: 0; margin-top: 4px;
+}
+.it-detail .it-link:hover { text-decoration: underline; }
+.it-detail .it-link svg { width: 13px; height: 13px; transition: transform .14s; }
+.it-detail .it-link:hover svg { transform: translateX(3px); }
+.it-empty { padding: 30px 8px; color: var(--text-muted); font-size: 14.5px; text-align: center; }
+
+/* featured issue-types block on home */
+.it-feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.it-feature {
+  background: var(--bg-elev); border: 1px solid var(--border);
+  border-radius: 12px; padding: 18px 16px; box-shadow: var(--shadow);
+  cursor: pointer; text-align: left; font-family: inherit; color: var(--text);
+  display: flex; flex-direction: column; gap: 8px;
+  transition: border-color .14s, transform .1s, box-shadow .14s;
+}
+.it-feature:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.it-feature .itf-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.it-feature .itf-count { font-size: 24px; font-weight: 760; letter-spacing: -0.02em; color: var(--accent-text); }
+.it-feature h3 { font-size: 15px; font-weight: 650; margin: 0; letter-spacing: -0.01em; }
+.it-feature p { font-size: 13px; color: var(--text-muted); margin: 0; line-height: 1.45; flex: 1 1 auto; }
+.it-feature .itf-go { font-size: 12.5px; font-weight: 600; color: var(--accent-text); display: inline-flex; align-items: center; gap: 5px; }
+.it-feature .itf-go svg { width: 13px; height: 13px; transition: transform .14s; }
+.it-feature:hover .itf-go svg { transform: translateX(3px); }
+
+@media (max-width: 860px) {
+  .it-grid { grid-template-columns: 1fr; }
+  .it-feature-grid { grid-template-columns: 1fr; }
+  .sev-row { grid-template-columns: 92px 1fr; gap: 10px; }
+  .it-head h1 { font-size: 28px; }
+}
 </style>
 </head>
 <body>
 <header class="topbar">
   <button class="hamburger" id="hamburger" aria-label="Toggle navigation">&#9776;</button>
-  <div class="brand"><span class="logo">C</span><span class="full">Cloudrift Docs</span></div>
+  <button class="brand" id="brand-home" aria-label="Cloudrift home"><span class="logo">C</span><span class="full">Cloudrift Docs</span></button>
   <div class="search-wrap">
     <span class="si">&#128269;</span>
     <input id="search" type="text" placeholder="Search docs…" autocomplete="off" aria-label="Search documentation">
@@ -429,13 +853,23 @@ main {
 
 <div class="shell">
   <nav class="sidebar" id="sidebar" aria-label="Documentation navigation">
+    <button class="nav-home-btn" id="nav-home" data-slug="start-here">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9.5 12 3l9 6.5"/><path d="M5 9v11h14V9"/><path d="M9 20v-6h6v6"/></svg>
+      Home
+    </button>
+    <button class="nav-home-btn" id="nav-issuetypes" data-slug="issue-types">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="8" y="8" width="8" height="8" rx="1.5"/></svg>
+      Issue types
+    </button>
     <div class="filter-note" id="filter-note"></div>
     <div id="nav-tree"></div>
   </nav>
-  <div class="main-wrap">
+  <div class="main-wrap" id="main-wrap">
     <main>
       <h1 class="sr-only">Cloudrift documentation</h1>
-      <article class="content" id="content"></article>
+      <div id="home"></div>
+      <div id="issuetypes" class="hidden"></div>
+      <article class="content hidden" id="reference"></article>
     </main>
   </div>
 </div>
@@ -2139,40 +2573,67 @@ var AUDIENCE_LABEL = {
   all: "All", operator: "Operator", security: "Security reviewer", developer: "Developer"
 };
 
+/* All ### accordions collapse by default so each reference section reads as
+   "summary + a tidy list of expandable topics" rather than a wall of text.
+   Nav clicks, search, and deep-links still auto-expand the targeted accordion. */
+
+/* ============================================================
+   Small inline icon set (no external assets)
+   ============================================================ */
+var ICON = {
+  caret: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>',
+  expand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 13l5 5 5-5"/><path d="M7 6l5 5 5-5"/></svg>',
+  collapse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 11l5-5 5 5"/><path d="M7 18l5-5 5 5"/></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>',
+  warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+  diagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><path d="M14 7h4a2 2 0 0 1 2 2v2"/><path d="M10 17H6a2 2 0 0 1-2-2v-2"/></svg>'
+};
+
 /* ============================================================
    Markdown renderer (self-contained)
    ============================================================ */
 function escapeHtml(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
+function escapeHtmlAttr(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
 function slugify(text) {
   return text.toLowerCase().trim()
-    .replace(/[^\w\s-]/g, "")   // drop punctuation (& . etc.) -> empty, keep surrounding spaces
-    .replace(/\s/g, "-");       // each whitespace char -> a hyphen (GitHub keeps "--" from a removed " & ")
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s/g, "-");
+}
+
+/* Severity pill badges: wrap standalone severity words. Applied to already-
+   inline-rendered HTML, only to bare words (not inside tags/attributes). */
+var SEV_RE = /\b(critical|high|medium|low|info)\b/gi;
+function badgeSeverities(html) {
+  // Split on tags so we never touch attribute/tag content; only text nodes.
+  return html.replace(/(<[^>]+>)|([^<]+)/g, function (m, tag, txt) {
+    if (tag) return tag;
+    return txt.replace(SEV_RE, function (w) {
+      var k = w.toLowerCase();
+      return '<span class="sev sev-' + k + '">' + w + "</span>";
+    });
+  });
 }
 
 /* inline-level formatting: code, bold, italic, links. Operates on raw text. */
 function renderInline(text) {
-  // Protect inline code spans first so their content is not further parsed.
   var codeSpans = [];
   text = text.replace(/`([^`]+)`/g, function (_, code) {
     codeSpans.push("<code>" + escapeHtml(code) + "</code>");
-    return " C" + (codeSpans.length - 1) + " ";
+    return " C" + (codeSpans.length - 1) + " ";
   });
-  // Escape remaining HTML-significant chars.
   text = escapeHtml(text);
-  // Links [text](url)
   text = text.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function (_, t, url) {
     var safe = url.replace(/"/g, "&quot;");
     return '<a href="' + safe + '">' + t + "</a>";
   });
-  // Bold **text**
   text = text.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-  // Italic *text* (avoid bold leftovers) and _text_
   text = text.replace(/(^|[^*])\*(?!\s)([^*]+?)\*(?!\*)/g, "$1<em>$2</em>");
   text = text.replace(/(^|[^\w])_(?!\s)([^_]+?)_(?![\w])/g, "$1<em>$2</em>");
-  // Restore code spans.
-  text = text.replace(/ C(\d+) /g, function (_, i) { return codeSpans[+i]; });
+  text = text.replace(/ C(\d+) /g, function (_, i) { return codeSpans[+i]; });
   return text;
 }
 
@@ -2180,7 +2641,6 @@ function parseTableRow(line) {
   var s = line.trim();
   if (s.charAt(0) === "|") s = s.slice(1);
   if (s.charAt(s.length - 1) === "|") s = s.slice(0, -1);
-  // split on unescaped pipes
   var cells = [];
   var cur = "";
   for (var i = 0; i < s.length; i++) {
@@ -2195,7 +2655,6 @@ function parseTableRow(line) {
 function isTableSeparator(line) {
   var s = line.trim();
   if (s.indexOf("|") === -1 && s.indexOf("-") === -1) return false;
-  // every cell looks like :?-+:?
   var cells = parseTableRow(s);
   if (cells.length === 0) return false;
   return cells.every(function (c) { return /^:?-{1,}:?$/.test(c.replace(/\s/g, "")); });
@@ -2214,7 +2673,6 @@ var headingList = []; // {level, id, text}
 
 function renderMarkdown(md) {
   headingList = [];
-  // Normalize newlines, strip the audience-map HTML comment.
   md = md.replace(/\r\n/g, "\n");
   md = md.replace(/<!--\s*audience-map[\s\S]*?-->/i, "");
 
@@ -2233,7 +2691,7 @@ function renderMarkdown(md) {
 
   function flushParagraph(buf) {
     if (buf.length) {
-      out.push("<p>" + renderInline(buf.join(" ")) + "</p>");
+      out.push("<p>" + badgeSeverities(renderInline(buf.join(" "))) + "</p>");
     }
   }
 
@@ -2256,7 +2714,6 @@ function renderMarkdown(md) {
       continue;
     }
 
-    // Blank line
     if (/^\s*$/.test(line)) { i++; continue; }
 
     // Heading
@@ -2278,14 +2735,13 @@ function renderMarkdown(md) {
       continue;
     }
 
-    // Horizontal rule
     if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
       out.push("<hr>");
       i++;
       continue;
     }
 
-    // Table: current line has pipe and next line is a separator
+    // Table
     if (line.indexOf("|") !== -1 && i + 1 < n && isTableSeparator(lines[i + 1]) &&
         lines[i + 1].indexOf("|") !== -1) {
       var header = parseTableRow(line);
@@ -2301,18 +2757,18 @@ function renderMarkdown(md) {
       continue;
     }
 
-    // Blockquote
+    // Blockquote -> callout
     if (/^\s*>/.test(line)) {
       var quote = [];
       while (i < n && /^\s*>/.test(lines[i])) {
         quote.push(lines[i].replace(/^\s*>\s?/, ""));
         i++;
       }
-      out.push("<blockquote>" + renderBlockInner(quote.join("\n")) + "</blockquote>");
+      out.push(renderCallout(quote.join("\n")));
       continue;
     }
 
-    // Lists (unordered or ordered), with one level of nesting
+    // Lists
     if (/^\s*([-*+]|\d+\.)\s+/.test(line)) {
       var listLines = [];
       while (i < n && (/^\s*([-*+]|\d+\.)\s+/.test(lines[i]) || /^\s{2,}\S/.test(lines[i]))) {
@@ -2324,7 +2780,7 @@ function renderMarkdown(md) {
       continue;
     }
 
-    // Paragraph (accumulate until blank / block start)
+    // Paragraph
     var para = [];
     while (i < n && !/^\s*$/.test(lines[i]) &&
            !/^(#{1,6})\s/.test(lines[i]) &&
@@ -2341,7 +2797,21 @@ function renderMarkdown(md) {
   return out.join("\n");
 }
 
-/* Render block content (used inside blockquotes): paragraphs + lists. */
+/* Callout card from blockquote content. info vs warning by leading word. */
+function renderCallout(text) {
+  var inner = renderBlockInner(text);
+  var lead = text.replace(/^\s*\**/, "").trim().toLowerCase();
+  var warn = /^(warn|warning|caution|danger|note:?\s*warn|important|do not|don't|never|avoid)/.test(lead)
+          || /\b(warning|caution|danger)\b/.test(lead.slice(0, 40));
+  var kind = warn ? "warning" : "info";
+  var icon = warn ? ICON.warning : ICON.info;
+  return '<div class="callout callout-' + kind + '">' +
+           '<span class="co-icon">' + icon + "</span>" +
+           '<div class="co-body">' + inner + "</div>" +
+         "</div>";
+}
+
+/* Render block content (paragraphs + lists), with severity badges. */
 function renderBlockInner(text) {
   var lines = text.split("\n");
   var out = [];
@@ -2361,14 +2831,13 @@ function renderBlockInner(text) {
     while (i < lines.length && !/^\s*$/.test(lines[i]) && !/^\s*([-*+]|\d+\.)\s+/.test(lines[i])) {
       p.push(lines[i]); i++;
     }
-    out.push("<p>" + renderInline(p.join(" ")) + "</p>");
+    out.push("<p>" + badgeSeverities(renderInline(p.join(" "))) + "</p>");
   }
   return out.join("\n");
 }
 
 /* List rendering with one level of nesting. */
 function renderList(lines) {
-  // Determine base indent from first item.
   var first = lines[0];
   var baseIndent = first.match(/^(\s*)/)[1].length;
   var topOrdered = /^\s*\d+\./.test(first);
@@ -2376,11 +2845,9 @@ function renderList(lines) {
   var idx = 0;
   while (idx < lines.length) {
     var ln = lines[idx];
-    var indent = ln.match(/^(\s*)/)[1].length;
     var m = ln.match(/^\s*([-*+]|\d+\.)\s+(.*)$/);
     if (!m) { idx++; continue; }
     var itemText = m[2];
-    // collect continuation / nested lines for this item
     var nested = [];
     idx++;
     while (idx < lines.length) {
@@ -2391,18 +2858,15 @@ function renderList(lines) {
       nested.push(nx);
       idx++;
     }
-    var inner = renderInline(itemText);
+    var inner = badgeSeverities(renderInline(itemText));
     if (nested.length) {
-      // Is the nested block a sub-list?
       var hasSubList = nested.some(function (x) { return /^\s*([-*+]|\d+\.)\s+/.test(x); });
       if (hasSubList) {
-        // dedent nested
         var sub = nested.filter(function (x) { return !/^\s*$/.test(x); });
         inner += renderList(sub);
       } else {
-        // continuation text
         var cont = nested.map(function (x) { return x.trim(); }).join(" ").trim();
-        if (cont) inner += " " + renderInline(cont);
+        if (cont) inner += " " + badgeSeverities(renderInline(cont));
       }
     }
     html += "<li>" + inner + "</li>";
@@ -2423,7 +2887,7 @@ function renderTable(header, aligns, rows) {
     for (var idx = 0; idx < header.length; idx++) {
       var cell = r[idx] === undefined ? "" : r[idx];
       var a = aligns[idx] ? ' style="text-align:' + aligns[idx] + '"' : "";
-      thtml += "<td" + a + ">" + renderInline(cell) + "</td>";
+      thtml += "<td" + a + ">" + badgeSeverities(renderInline(cell)) + "</td>";
     }
     thtml += "</tr>";
   });
@@ -2433,12 +2897,13 @@ function renderTable(header, aligns, rows) {
 
 var codeBlockSeq = 0;
 function renderCodeBlock(lang, code) {
-  var isMermaid = lang.toLowerCase() === "mermaid";
+  if (lang.toLowerCase() === "mermaid") {
+    return renderMermaid(code);
+  }
   var id = "code-" + (codeBlockSeq++);
-  var label = isMermaid ? "Diagram (mermaid source)" : (lang ? lang : "text");
-  var cardCls = "code-card" + (isMermaid ? " mermaid-card" : "");
+  var label = lang ? lang : "text";
   return (
-    '<div class="' + cardCls + '">' +
+    '<div class="code-card">' +
       '<div class="code-head">' +
         '<span class="code-lang">' + escapeHtml(label) + "</span>" +
         '<button class="copy-btn" data-code-id="' + id + '" type="button">' +
@@ -2451,33 +2916,842 @@ function renderCodeBlock(lang, code) {
 }
 
 /* ============================================================
+   Mermaid -> hand-authored inline SVG
+   We recognize the specific diagrams embedded in the docs by
+   matching characteristic node tokens, and draw a clean SVG for
+   each. Anything unrecognized falls back to a styled source card.
+   ============================================================ */
+function dgFrame(title, svgInner, vbW, vbH, minW) {
+  return '<div class="diagram"><div class="dg-title">' + ICON.diagram +
+         "<span>" + escapeHtml(title) + "</span></div>" +
+         '<div class="diagram-scroll"><svg class="dg-svg" viewBox="0 0 ' + vbW + " " + vbH +
+         '" style="min-width:' + minW + 'px" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="' +
+         escapeHtmlAttr(title) + '">' + svgInner + "</svg></div></div>";
+}
+/* SVG defs: arrowhead marker using currentColor-ish theme var via fill attr */
+function dgDefs() {
+  return '<defs><marker id="dgarrow" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">' +
+         '<path d="M0,0 L7,3 L0,6 z" fill="var(--dg-line)"/></marker></defs>';
+}
+/* a rounded node box. accent: stroke color var */
+function dgNode(x, y, w, h, lines, accent, fill) {
+  var sw = accent || "var(--dg-stroke)";
+  var bg = fill || "var(--dg-node)";
+  var s = '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h +
+          '" rx="8" fill="' + bg + '" stroke="' + sw + '" stroke-width="1.5"/>';
+  var cx = x + w / 2;
+  var total = lines.length;
+  var lineH = 15;
+  var startY = y + h / 2 - ((total - 1) * lineH) / 2 + 4;
+  lines.forEach(function (ln, k) {
+    var fs = ln.size || (ln.muted ? 10.5 : 11.5);
+    var fill2 = ln.muted ? "var(--dg-muted)" : "var(--dg-text)";
+    var weight = ln.bold ? "650" : "500";
+    s += '<text x="' + cx + '" y="' + (startY + k * lineH) + '" text-anchor="middle" ' +
+         'fill="' + fill2 + '" font-size="' + fs + '" font-weight="' + weight +
+         '" font-family="var(--sans)">' + escapeHtml(ln.t) + "</text>";
+  });
+  return s;
+}
+function dgArrowH(x1, x2, y) {
+  return '<path d="M' + x1 + " " + y + "H" + (x2 - 9) + '" stroke="var(--dg-line)" stroke-width="1.6" fill="none" marker-end="url(#dgarrow)"/>';
+}
+function dgArrow(x1, y1, x2, y2) {
+  return '<path d="M' + x1 + " " + y1 + "L" + x2 + " " + y2 + '" stroke="var(--dg-line)" stroke-width="1.6" fill="none" marker-end="url(#dgarrow)"/>';
+}
+
+function renderMermaid(src) {
+  var s = src.toLowerCase();
+  // 1) Beginner architecture: You -> binary -> AWS / JSON / Dashboard
+  if (s.indexOf("you") !== -1 && s.indexOf("cloudrift binary") !== -1) {
+    return dgFrame("How the pieces connect", svgBeginnerArch(), 720, 200, 600);
+  }
+  // 2) Detection pipeline: Collectors -> Validators -> Scorers -> findings.json -> Report/API / Neo4j
+  if (s.indexOf("collectors") !== -1 && s.indexOf("validators") !== -1 &&
+      s.indexOf("scorers") !== -1 && s.indexOf("findings.json") !== -1 &&
+      s.indexOf("subgraph") === -1) {
+    return dgFrame("Detection pipeline (collect → validate → score → persist)", svgPipeline(), 720, 150, 620);
+  }
+  // 3) Dashboard data path (sequence)
+  if (s.indexOf("sequencediagram") !== -1 || (s.indexOf("browser->>") !== -1)) {
+    return dgFrame("Dashboard data path (request sequence)", svgSequence(), 640, 250, 560);
+  }
+  // 4) Data flow (subgraphs Inputs/Collection/Validation/Scoring/Persistence/Serving)
+  if (s.indexOf("subgraph inputs") !== -1 &&
+      (s.indexOf("subgraph serve") !== -1 || s.indexOf("subgraph serving") !== -1)) {
+    return dgFrame("Data flow across packages", svgDataFlow(), 760, 470, 680);
+  }
+  // 5) Architecture (CLI / internal packages / Process)
+  if (s.indexOf("subgraph cli") !== -1 && s.indexOf("chi router") !== -1) {
+    return dgFrame("Architecture (CLI, internal packages, runtime)", svgArchPackages(), 720, 420, 620);
+  }
+  // Fallback: styled source card
+  var id = "code-" + (codeBlockSeq++);
+  return '<div class="diagram mermaid-fallback"><div class="dg-title">' + ICON.diagram +
+         "<span>Diagram (mermaid source)</span>" +
+         '<button class="copy-btn" data-code-id="' + id + '" type="button" style="margin-left:auto">' +
+         '<span class="ci">&#10697;</span><span class="ct">Copy</span></button></div>' +
+         '<pre><code id="' + id + '">' + escapeHtml(src) + "</code></pre></div>";
+}
+
+/* ---- individual diagram drawings ---- */
+function svgBeginnerArch() {
+  var teal = "var(--dg-teal)", amber = "var(--dg-amber)", blue = "var(--dg-blue)", acc = "var(--dg-accent)";
+  var y = 70, h = 52;
+  var g = dgDefs();
+  g += dgNode(24, y, 86, h, [{t:"You", bold:true}]);
+  g += dgArrowH(110, 168, y + h/2);
+  g += dgNode(168, y - 4, 132, h + 8, [{t:"cloudrift", bold:true}, {t:"CLI + API + UI", muted:true}], acc, "var(--dg-node-2)");
+  // binary -> AWS (up-right) and -> JSON (right)
+  g += dgArrowH(300, 360, y + h/2);
+  g += dgNode(360, y, 116, h, [{t:"AWS APIs", bold:true}, {t:"live inventory", muted:true}], amber);
+  g += dgArrowH(476, 536, y + h/2);
+  g += dgNode(536, y, 110, h, [{t:"JSON folder", bold:true}, {t:"per scan", muted:true}], teal);
+  // Dashboard reads binary (below)
+  g += dgNode(168, 150, 132, 40, [{t:"Dashboard", bold:true}], blue, "var(--dg-node-2)");
+  g += dgArrow(234, 150, 234, 122 + 6); // dashboard up to binary
+  // label
+  g += '<text x="380" y="28" text-anchor="middle" fill="var(--dg-muted)" font-size="11" font-family="var(--sans)">Your machine talks to AWS, writes JSON, and views it in the dashboard</text>';
+  return g;
+}
+function svgPipeline() {
+  var teal="var(--dg-teal)", amber="var(--dg-amber)", blue="var(--dg-blue)";
+  var y=52, h=50;
+  var g = dgDefs();
+  var xs=[16,132,248,356,492];
+  g += dgNode(16, y, 96, h, [{t:"Collectors", bold:true}], teal);
+  g += dgArrowH(112, 132, y+h/2);
+  g += dgNode(132, y, 96, h, [{t:"Validators", bold:true}], teal);
+  g += dgArrowH(228, 248, y+h/2);
+  g += dgNode(248, y, 88, h, [{t:"Scorers", bold:true}], teal);
+  g += dgArrowH(336, 356, y+h/2);
+  g += dgNode(356, y, 116, h, [{t:"findings.json", bold:true}], amber);
+  g += dgArrowH(472, 492, y+h/2);
+  g += dgNode(492, y, 116, h, [{t:"Report / API", bold:true}], teal);
+  // findings.json -> Neo4j (down-right)
+  g += dgNode(492, 4, 116, 38, [{t:"Neo4j (optional)", bold:true}], blue, "var(--dg-node-2)");
+  g += dgArrow(450, y, 492, 30);
+  g += '<text x="360" y="135" text-anchor="middle" fill="var(--dg-muted)" font-size="10.5" font-family="var(--sans)">Wired end-to-end; default scan writes real findings</text>';
+  return g;
+}
+function svgSequence() {
+  // 3 lifelines: Browser, cloudrift dashboard, output_dir JSON
+  var lanes = [
+    {x:90,  t:"Browser"},
+    {x:340, t:"cloudrift dashboard"},
+    {x:560, t:"output_dir JSON"}
+  ];
+  var g = dgDefs();
+  var topY = 18, lifeTop = 56, lifeBot = 232;
+  lanes.forEach(function (l) {
+    g += '<rect x="' + (l.x-70) + '" y="' + topY + '" width="140" height="30" rx="6" fill="var(--dg-node)" stroke="var(--dg-stroke)" stroke-width="1.5"/>';
+    g += '<text x="' + l.x + '" y="' + (topY+19) + '" text-anchor="middle" fill="var(--dg-text)" font-size="11" font-weight="650" font-family="var(--sans)">' + escapeHtml(l.t) + "</text>";
+    g += '<line x1="' + l.x + '" y1="' + lifeTop + '" x2="' + l.x + '" y2="' + lifeBot + '" stroke="var(--dg-stroke)" stroke-width="1.3" stroke-dasharray="4 4"/>';
+  });
+  function msg(yy, x1, x2, label, dashed) {
+    var s = '<path d="M' + x1 + " " + yy + "H" + (x2 - 9) + '" stroke="var(--dg-line)" stroke-width="1.5" fill="none" marker-end="url(#dgarrow)"' + (dashed ? ' stroke-dasharray="5 4"' : "") + "/>";
+    var midx = (x1 + x2) / 2;
+    s += '<text x="' + midx + '" y="' + (yy - 6) + '" text-anchor="middle" fill="var(--dg-muted)" font-size="10" font-family="var(--mono)">' + escapeHtml(label) + "</text>";
+    return s;
+  }
+  g += msg(78,  90, 340, "GET /api/scans");
+  g += msg(108, 340, 560, "list directories");
+  g += msg(138, 340, 90,  "JSON", true);
+  g += msg(170, 90, 340, "GET .../findings");
+  g += msg(200, 340, 560, "read findings.json");
+  g += msg(228, 340, 90,  "JSON", true);
+  return g;
+}
+function svgDataFlow() {
+  var teal="var(--dg-teal)", amber="var(--dg-amber)", blue="var(--dg-blue)", acc="var(--dg-accent)";
+  var g = dgDefs();
+  function band(x,y,w,h,label){
+    return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="10" fill="none" stroke="var(--dg-stroke)" stroke-width="1.2" stroke-dasharray="3 4"/>'+
+           '<text x="'+(x+12)+'" y="'+(y+18)+'" fill="var(--dg-muted)" font-size="10.5" font-weight="700" font-family="var(--sans)" letter-spacing="0.04em">'+escapeHtml(label.toUpperCase())+'</text>';
+  }
+  // columns
+  var colW=130;
+  // Inputs column
+  g += band(12, 30, colW+8, 200, "Inputs");
+  g += dgNode(24, 56, colW, 38, [{t:"AWS APIs", bold:true}], amber);
+  g += dgNode(24, 104, colW, 38, [{t:"config.toml"}]);
+  g += dgNode(24, 152, colW, 38, [{t:"Scan dir JSON"}]);
+  // Collection
+  g += band(168, 30, colW+10, 260, "Collection");
+  var coll=["collectors/org","collectors/dns","collectors/edge","collectors/trust","collectors/activity"];
+  coll.forEach(function(c,k){ g += dgNode(180, 56+k*44, colW, 34, [{t:c}], teal); });
+  // Validation
+  g += band(326, 30, colW-6, 110, "Validation");
+  g += dgNode(336, 70, colW-26, 40, [{t:"validators/http", bold:true}], teal);
+  // Scoring
+  g += band(326, 156, colW-6, 134, "Scoring");
+  g += dgNode(336, 182, colW-26, 32, [{t:"scorers/risk"}], teal);
+  g += dgNode(336, 220, colW-26, 32, [{t:"scorers/trust"}], teal);
+  g += dgNode(336, 258, colW-26, 28, [{t:"scorers/cost"}], teal);
+  // Persistence
+  g += band(470, 30, colW-6, 130, "Persistence");
+  g += dgNode(480, 64, colW-26, 38, [{t:"output/json", bold:true}], amber);
+  g += dgNode(480, 110, colW-26, 38, [{t:"scan_id dir"}], amber);
+  // Serving
+  g += band(470, 176, colW-6, 114, "Serving");
+  g += dgNode(480, 204, colW-26, 36, [{t:"api handlers", bold:true}], blue, "var(--dg-node-2)");
+  g += dgNode(480, 246, colW-26, 36, [{t:"dashboard UI", bold:true}], blue, "var(--dg-node-2)");
+  // arrows (representative)
+  g += dgArrowH(154, 180, 75);   // AWS -> org
+  g += dgArrowH(310, 336, 90);   // collection -> validation
+  g += dgArrowH(310, 336, 198);  // collection -> scoring
+  g += dgArrow(420, 90, 470, 83);   // validation -> persistence
+  g += dgArrow(420, 215, 470, 130);  // scoring -> persistence
+  g += dgArrow(540, 148, 540, 204);  // persistence -> serving
+  g += dgArrow(545, 222, 565, 246);  // api -> ui
+  return g;
+}
+function svgArchPackages() {
+  var teal="var(--dg-teal)", blue="var(--dg-blue)", acc="var(--dg-accent)";
+  var g = dgDefs();
+  function band(x,y,w,h,label){
+    return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="10" fill="none" stroke="var(--dg-stroke)" stroke-width="1.2" stroke-dasharray="3 4"/>'+
+           '<text x="'+(x+12)+'" y="'+(y+18)+'" fill="var(--dg-muted)" font-size="10.5" font-weight="700" font-family="var(--sans)" letter-spacing="0.04em">'+escapeHtml(label.toUpperCase())+'</text>';
+  }
+  // CLI band (top)
+  g += band(40, 24, 280, 78, "cloudrift CLI");
+  g += dgNode(56, 52, 76, 36, [{t:"scan", bold:true}], acc, "var(--dg-node-2)");
+  g += dgNode(146, 52, 76, 36, [{t:"report", bold:true}], acc, "var(--dg-node-2)");
+  g += dgNode(236, 52, 76, 36, [{t:"dashboard", bold:true}], acc, "var(--dg-node-2)");
+  // internal packages band (middle)
+  g += band(40, 150, 420, 150, "internal packages");
+  var pk=[["collectors",56],["validators",196],["scorers",336]];
+  pk.forEach(function(p){ g += dgNode(p[1], 178, 110, 36, [{t:p[0]}], teal); });
+  g += dgNode(56, 234, 110, 36, [{t:"models", bold:true}], teal);
+  g += dgNode(196, 234, 110, 36, [{t:"output"}], teal);
+  g += dgNode(336, 234, 110, 36, [{t:"api"}], teal);
+  // runtime band (right)
+  g += band(500, 150, 180, 150, "Process");
+  g += dgNode(520, 184, 140, 38, [{t:"chi router", bold:true}], blue, "var(--dg-node-2)");
+  g += dgNode(520, 240, 140, 38, [{t:"embed.FS static"}], blue, "var(--dg-node-2)");
+  // arrows
+  g += dgArrow(94, 88, 110, 178);   // scan -> models area
+  g += dgArrow(184, 88, 240, 234);  // report -> output
+  g += dgArrow(274, 88, 391, 234);  // dashboard -> api
+  g += dgArrow(300, 70, 520, 184);  // dashboard -> chi
+  g += dgArrow(590, 222, 446, 250); // chi -> api/static (representative)
+  return g;
+}
+
+/* ============================================================
+   Home view (presentation chrome, hand-authored)
+   ============================================================ */
+function homeSVG_dataflow() {
+  var teal="var(--dg-teal)", amber="var(--dg-amber)", blue="var(--dg-blue)", acc="var(--dg-accent)";
+  var y=58, h=52;
+  var g = dgDefs();
+  g += dgNode(16, y, 86, h, [{t:"You", bold:true}]);
+  g += dgArrowH(102, 150, y+h/2);
+  g += dgNode(150, y-6, 138, h+12, [{t:"Cloudrift", bold:true}, {t:"CLI + API + UI", muted:true}], acc, "var(--dg-node-2)");
+  g += dgArrowH(288, 336, y+h/2);
+  g += dgNode(336, y, 116, h, [{t:"AWS APIs", bold:true}, {t:"live inventory", muted:true}], amber);
+  g += dgArrowH(452, 500, y+h/2);
+  g += dgNode(500, y, 116, h, [{t:"JSON / scan", bold:true}, {t:"on disk", muted:true}], teal);
+  g += dgArrowH(616, 660, y+h/2);
+  g += dgNode(660, y, 86, h, [{t:"Dashboard", bold:true}]);
+  // optional Neo4j below JSON
+  g += dgNode(500, 142, 116, 38, [{t:"Neo4j (optional)", bold:true}], blue, "var(--dg-node-2)");
+  g += dgArrow(558, 142, 558, 110+4);
+  g += '<text x="380" y="26" text-anchor="middle" fill="var(--dg-muted)" font-size="11" font-family="var(--sans)">You run Cloudrift → it reads AWS → writes JSON per scan → you explore it in the dashboard</text>';
+  return '<svg class="dg-svg" viewBox="0 0 760 196" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How Cloudrift connects: you, the CLI, AWS APIs, JSON scans, and the dashboard">' + g + "</svg>";
+}
+function homeSVG_pipeline() {
+  var teal="var(--dg-teal)", amber="var(--dg-amber)", blue="var(--dg-blue)";
+  var y=46, h=50;
+  var g = dgDefs();
+  g += dgNode(16, y, 100, h, [{t:"Collectors", bold:true}, {t:"AWS inventory", muted:true}], teal);
+  g += dgArrowH(116, 140, y+h/2);
+  g += dgNode(140, y, 100, h, [{t:"Validators", bold:true}, {t:"DNS / HTTP", muted:true}], teal);
+  g += dgArrowH(240, 264, y+h/2);
+  g += dgNode(264, y, 100, h, [{t:"Scorers", bold:true}, {t:"risk / cost", muted:true}], teal);
+  g += dgArrowH(364, 388, y+h/2);
+  g += dgNode(388, y, 124, h, [{t:"findings.json", bold:true}], amber);
+  g += dgArrowH(512, 536, y+h/2);
+  g += dgNode(536, y, 130, h, [{t:"Reports / API", bold:true}], teal);
+  g += dgNode(536, 4, 130, 34, [{t:"Neo4j (optional)", bold:true}], blue, "var(--dg-node-2)");
+  g += dgArrow(488, y, 536, 26);
+  return '<svg class="dg-svg" viewBox="0 0 700 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scan pipeline: collectors, validators, scorers, findings.json, then reports, API, and optional Neo4j">' + g + "</svg>";
+}
+
+/* ============================================================
+   NEW diagram 1: Issue-type taxonomy (branching tree).
+   Leaf nodes colored by typical severity using the --sev-* vars.
+   ============================================================ */
+function sevLeaf(x, y, w, h, label, sev) {
+  // colored leaf node using severity palette vars
+  var bg = "var(--sev-" + sev + "-bg)";
+  var fg = "var(--sev-" + sev + "-fg)";
+  var bd = "var(--sev-" + sev + "-bd)";
+  var s = '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h +
+          '" rx="7" fill="' + bg + '" stroke="' + bd + '" stroke-width="1.4"/>';
+  s += '<text x="' + (x + 11) + '" y="' + (y + h / 2 + 4) + '" text-anchor="start" fill="' + fg +
+       '" font-size="11" font-weight="600" font-family="var(--sans)">' + escapeHtml(label) + "</text>";
+  return s;
+}
+/* elbow connector: from right edge of parent to left edge of child */
+function dgElbow(x1, y1, x2, y2) {
+  var midx = x1 + (x2 - x1) / 2;
+  return '<path d="M' + x1 + " " + y1 + "H" + midx + "V" + y2 + "H" + (x2 - 2) +
+         '" stroke="var(--dg-line)" stroke-width="1.5" fill="none"/>';
+}
+function svgTaxonomy() {
+  var acc = "var(--dg-accent)";
+  var g = dgDefs();
+  // root
+  var rootX = 14, rootY = 246, rootW = 104, rootH = 46;
+  g += dgNode(rootX, rootY, rootW, rootH, [{t:"Findings", bold:true}], acc, "var(--dg-node-2)");
+  // two families
+  var famX = 168, famW = 134, famH = 44;
+  var oeY = 92, eaY = 410;
+  g += dgNode(famX, oeY, famW, famH, [{t:"Orphaned edge", bold:true}], "var(--dg-teal)", "var(--dg-node-2)");
+  g += dgNode(famX, eaY, famW, famH, [{t:"External access", bold:true}], "var(--dg-amber)", "var(--dg-node-2)");
+  // connectors root -> families
+  g += dgElbow(rootX + rootW, rootY + rootH / 2, famX, oeY + famH / 2);
+  g += dgElbow(rootX + rootW, rootY + rootH / 2, famX, eaY + famH / 2);
+  // leaves
+  var leafX = 372, leafW = 304, leafH = 34, gap = 12;
+  var oeLeaves = [
+    ["S3 website takeover", "critical"],
+    ["Dangling CloudFront / CDN", "high"],
+    ["Third-party CNAME takeover", "high"],
+    ["CDN hostname mismatch", "medium"],
+    ["Broken DNS", "low"]
+  ];
+  var eaLeaves = [
+    ["Ghost / admin external trust", "critical"],
+    ["Unapproved vendor", "high"],
+    ["Stale vs active trust", "high"],
+    ["S3 bucket-policy exposure", "high"]
+  ];
+  function column(leaves, startY, parentY) {
+    var n = leaves.length;
+    var blockH = n * leafH + (n - 1) * gap;
+    var y0 = startY;
+    leaves.forEach(function (lf, k) {
+      var ly = y0 + k * (leafH + gap);
+      g += dgElbow(famX + famW, parentY, leafX, ly + leafH / 2);
+      g += sevLeaf(leafX, ly, leafW, leafH, lf[0], lf[1]);
+    });
+    return blockH;
+  }
+  column(oeLeaves, 14, oeY + famH / 2);
+  column(eaLeaves, 328, eaY + famH / 2);
+  return '<svg class="dg-svg" viewBox="0 0 700 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Issue-type taxonomy: Findings branch into Orphaned edge and External access families, each with subtypes colored by typical severity">' + g + "</svg>";
+}
+
+/* ============================================================
+   NEW diagram 2: Finding-severity matrix (colored heat grid).
+   Returns an HTML grid (themeable via --sev-* vars).
+   ============================================================ */
+var SEVERITY_MATRIX = [
+  ["critical", "Critical", "Verified cross-account S3 website takeover, or a public-write bucket policy.", "reclaimable / public_write"],
+  ["high", "High", "Dangling or claimable edge; admin / unapproved / stale external trust; public-read or external-write exposure.", "dangling / ghost / external_write"],
+  ["medium", "Medium", "CDN hostname mismatch; external-read bucket exposure.", "edge_obscured / external_read"],
+  ["low", "Low", "Broken DNS (NXDOMAIN / timeout); active or approved-vendor grant.", "broken / approved_vendor"],
+  ["info", "Info", "Indeterminate — probe inconclusive, insufficient evidence to classify.", "unknown"]
+];
+function severityMatrixHTML() {
+  var rows = SEVERITY_MATRIX.map(function (r) {
+    return '<div class="sev-row" data-sev="' + r[0] + '">' +
+             '<span class="sev-chip">' + escapeHtml(r[1]) + "</span>" +
+             '<span class="sev-what">' + escapeHtml(r[2]) +
+               ' <span class="sev-eg">(' + escapeHtml(r[3]) + ")</span></span>" +
+           "</div>";
+  }).join("");
+  return '<div class="sev-grid">' + rows + "</div>";
+}
+
+/* ============================================================
+   NEW diagram 3: Trust / blast-radius concept graph.
+   External principal -> trusted role -> cross-account reach.
+   Shows the org boundary visually.
+   ============================================================ */
+function svgBlastRadius() {
+  var amber = "var(--dg-amber)", teal = "var(--dg-teal)", blue = "var(--dg-blue)", acc = "var(--dg-accent)";
+  var g = dgDefs();
+  // org boundary box (dashed) on the right
+  g += '<rect x="232" y="20" width="436" height="232" rx="14" fill="none" stroke="var(--dg-stroke)" stroke-width="1.4" stroke-dasharray="5 5"/>';
+  g += '<text x="248" y="40" fill="var(--dg-muted)" font-size="11" font-weight="700" font-family="var(--sans)" letter-spacing="0.04em">YOUR ORG BOUNDARY</text>';
+  // external principal (outside the boundary)
+  g += dgNode(16, 110, 150, 54, [{t:"External principal", bold:true}, {t:"another account / SAML / OIDC", muted:true, size:9.5}], amber);
+  g += '<text x="91" y="98" text-anchor="middle" fill="var(--dg-muted)" font-size="10" font-family="var(--sans)">outside your control</text>';
+  // assumes -> trusted role
+  g += dgArrowH(166, 270, 137);
+  g += '<text x="218" y="129" text-anchor="middle" fill="var(--dg-muted)" font-size="10" font-family="var(--mono)">assumes</text>';
+  // trusted role (account A)
+  g += '<rect x="252" y="60" width="170" height="150" rx="12" fill="none" stroke="var(--dg-stroke)" stroke-width="1.1" stroke-dasharray="2 4"/>';
+  g += '<text x="266" y="78" fill="var(--dg-muted)" font-size="9.5" font-weight="700" font-family="var(--sans)">ACCOUNT A</text>';
+  g += dgNode(270, 110, 134, 54, [{t:"Trusted IAM role", bold:true}, {t:"cross-account trust", muted:true, size:9.5}], acc, "var(--dg-node-2)");
+  // role reaches resources / roles across accounts
+  g += dgArrowH(404, 470, 100);
+  g += dgArrowH(404, 470, 174);
+  g += '<text x="445" y="92" text-anchor="middle" fill="var(--dg-muted)" font-size="9.5" font-family="var(--mono)">reaches</text>';
+  // account B + C resources
+  g += '<rect x="452" y="56" width="200" height="78" rx="12" fill="none" stroke="var(--dg-stroke)" stroke-width="1.1" stroke-dasharray="2 4"/>';
+  g += '<text x="466" y="74" fill="var(--dg-muted)" font-size="9.5" font-weight="700" font-family="var(--sans)">ACCOUNT B</text>';
+  g += dgNode(470, 84, 166, 38, [{t:"Roles & resources", bold:true}], teal);
+  g += '<rect x="452" y="146" width="200" height="78" rx="12" fill="none" stroke="var(--dg-stroke)" stroke-width="1.1" stroke-dasharray="2 4"/>';
+  g += '<text x="466" y="164" fill="var(--dg-muted)" font-size="9.5" font-weight="700" font-family="var(--sans)">ACCOUNT C</text>';
+  g += dgNode(470, 174, 166, 38, [{t:"S3 / data / roles", bold:true}], blue, "var(--dg-node-2)");
+  // blast-radius caption
+  g += '<text x="450" y="244" text-anchor="middle" fill="var(--dg-accent)" font-size="10.5" font-weight="650" font-family="var(--sans)">blast radius — what the optional Neo4j explorer traverses</text>';
+  return '<svg class="dg-svg" viewBox="0 0 684 264" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Trust and blast radius: an external principal outside the org boundary assumes a trusted cross-account IAM role that can reach roles and resources across other accounts">' + g + "</svg>";
+}
+
+/* ============================================================
+   Issue-type explorer data (verbatim facts) + view builder
+   ============================================================ */
+var ISSUE_FAMILIES = {
+  orphaned: { label: "Orphaned edge", anchor: "subdomain-takeover--orphaned-edge-assets" },
+  external: { label: "External access", anchor: "external-access-iam-trust--resource-based-policy-exposure" }
+};
+var ISSUE_TYPES = [
+  {
+    fam: "orphaned", name: "S3 website takeover", sev: "critical", sevLabel: "Critical",
+    why: "DNS still points at an S3 website endpoint but the bucket is gone or not in your org; an attacker who creates a bucket with the matching global name serves content under your trusted hostname (phishing, malware, brand damage).",
+    how: "DNS resolves + HTTP body returns `NoSuchBucket` + target is an S3 website + the bucket name is absent from ALL scanned org accounts (cross-account check). Critical is downgraded to High if scan coverage was incomplete.",
+    anchor: "how-criticality-is-determined"
+  },
+  {
+    fam: "orphaned", name: "Dangling CloudFront / CDN", sev: "high", sevLabel: "High",
+    why: "The name resolves to AWS infra but the distribution/origin/mapping is wrong; users still trust the URL and attackers probe these at scale.",
+    how: "DNS resolves + a recognized AWS error-body fingerprint (e.g. CloudFront \"The request could not be satisfied\").",
+    anchor: "how-criticality-is-determined"
+  },
+  {
+    fam: "orphaned", name: "CDN hostname mismatch", sev: "medium", sevLabel: "Medium",
+    why: "Traffic hits CloudFront but the requested Host isn't on the distribution's alias allowlist; subtle outages and possible routing confusion.",
+    how: "Resolves + CloudFront signal + the hostname is not in the distribution's alternate-domain list (alias join in the pipeline).",
+    anchor: "how-criticality-is-determined"
+  },
+  {
+    fam: "orphaned", name: "Broken DNS (NXDOMAIN/timeout)", sev: "low", sevLabel: "Low",
+    why: "Stale or misconfigured record; lower takeover pressure but hides drift and adds noise.",
+    how: "The name does not resolve (NXDOMAIN / timeout / servfail).",
+    anchor: "how-criticality-is-determined"
+  },
+  {
+    fam: "orphaned", name: "Third-party CNAME takeover", sev: "high", sevLabel: "High",
+    why: "A DNS record points at an unclaimed third-party site (GitHub Pages, Heroku, Shopify) that an attacker can register under your hostname.",
+    how: "HTTP body fingerprint matches a known \"no site here\" page for that provider (claimable). Note: body-fingerprint only; can false-positive — CNAME-target pairing is a planned refinement.",
+    anchor: "how-criticality-is-determined"
+  },
+  {
+    fam: "external", name: "Ghost / admin-equivalent external trust", sev: "critical", sevLabel: "Critical / High",
+    why: "A role trusts an external account/SAML/OIDC principal and carries broad permissions or has never been used — durable lateral entry into your estate.",
+    how: "IAM role trust policy grants an external principal; admin-equivalent policy analysis is bridged into severity; never-used (`RoleLastUsed`) escalates as stale.",
+    anchor: "how-criticality-is-determined"
+  },
+  {
+    fam: "external", name: "Unapproved vendor account", sev: "high", sevLabel: "High",
+    why: "Trust to an AWS account ID not on your allowlist; forgotten SaaS integrations and M&A leftovers are common long-lived access.",
+    how: "An `aws_account` external principal whose account ID is not in the approved-external-accounts list.",
+    anchor: "how-criticality-is-determined"
+  },
+  {
+    fam: "external", name: "Stale vs active trust", sev: "high", sevLabel: "High / Medium / Low",
+    why: "Separates \"probably forgotten\" from \"still exercised\" so you rotate/remove dead trust first.",
+    how: "`RoleLastUsed` age vs configurable stale (90d) and ghost (365d) thresholds.",
+    anchor: "how-criticality-is-determined"
+  },
+  {
+    fam: "external", name: "S3 bucket-policy exposure", sev: "critical", sevLabel: "Critical / High / Medium",
+    why: "A bucket policy grants public or cross-account access; public-write and unapproved cross-account grants are direct data-exposure/tampering paths.",
+    how: "The bucket policy grants to `*` (public) or an external account; write actions score higher than read (public+write=Critical, public-read or external-write=High, external-read=Medium, approved-vendor=Low).",
+    anchor: "how-criticality-is-determined"
+  }
+];
+var oeCount = ISSUE_TYPES.filter(function (t) { return t.fam === "orphaned"; }).length;
+var eaCount = ISSUE_TYPES.filter(function (t) { return t.fam === "external"; }).length;
+var itCount = ISSUE_TYPES.length;
+
+var ICON_BOLT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg>';
+var ICON_SHIELD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>';
+var ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>';
+var ICON_WHY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4"/><path d="M12 17h.01"/></svg>';
+var ICON_LINK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>';
+
+function itCardHTML(t, idx) {
+  var famIcon = t.fam === "orphaned" ? ICON_BOLT : ICON_SHIELD;
+  return '<div class="it-card" data-it-fam="' + t.fam + '" data-it-idx="' + idx + '">' +
+    '<button class="it-card-head" type="button" aria-expanded="false">' +
+      '<span class="it-fam-dot">' + famIcon + "</span>" +
+      '<span class="it-titlewrap">' +
+        '<span class="it-name">' + escapeHtml(t.name) + "</span>" +
+        '<span class="it-fam">' + escapeHtml(ISSUE_FAMILIES[t.fam].label) + "</span>" +
+      "</span>" +
+      '<span class="it-right">' +
+        '<span class="sev sev-' + t.sev + '">' + escapeHtml(t.sevLabel) + "</span>" +
+        '<span class="it-toggle">' + ICON.caret + "</span>" +
+      "</span>" +
+    "</button>" +
+    '<div class="it-detail">' +
+      "<hr>" +
+      '<div class="it-block"><div class="it-label">' + ICON_WHY + "Why it matters</div>" +
+        '<p class="it-text">' + renderInline(t.why) + "</p></div>" +
+      '<div class="it-block"><div class="it-label">' + ICON_SEARCH + "How it's detected</div>" +
+        '<p class="it-text">' + renderInline(t.how) + "</p></div>" +
+      '<button class="it-link" type="button" data-it-anchor="' + t.anchor + '">Full details ' + ICON_LINK + "</button>" +
+    "</div>" +
+  "</div>";
+}
+
+function buildIssueTypes() {
+  var html = "";
+  html += '<div class="it-head">' +
+    "<h1>Issue types</h1>" +
+    "<p>The complete catalog of what Cloudrift flags, grouped into two families. Click any card to see why it matters and how it's detected, then jump to the full reference.</p>" +
+    "</div>";
+  html += '<div class="it-filters" id="it-filters">' +
+    '<span class="it-filter-label">Filter:</span>' +
+    '<button class="it-filter active" data-it-filter="all">All (' + itCount + ")</button>" +
+    '<button class="it-filter" data-it-filter="orphaned">Orphaned edge (' + oeCount + ")</button>" +
+    '<button class="it-filter" data-it-filter="external">External access (' + eaCount + ")</button>" +
+    "</div>";
+  html += '<div class="it-grid" id="it-grid">';
+  ISSUE_TYPES.forEach(function (t, i) { html += itCardHTML(t, i); });
+  html += "</div>";
+  html += '<div class="it-empty hidden" id="it-empty">No issue types match this filter.</div>';
+  document.getElementById("issuetypes").innerHTML = html;
+}
+
+function buildHome() {
+  var hp = ICON; // alias
+  var html = "";
+  // hero
+  html += '<section class="hero">';
+  html += '<span class="eyebrow">' +
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>' +
+    'AWS attack-surface discovery</span>';
+  html += '<h1>Cloudrift</h1>';
+  html += '<p class="tagline">Find orphaned AWS edge assets and risky external trust before attackers do.</p>';
+  html += '<div class="hero-btns">' +
+    '<button class="btn btn-primary" id="cta-getstarted">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>' +
+      'Get started</button>' +
+    '<button class="btn btn-secondary" id="cta-browse">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>' +
+      'Browse docs</button>' +
+    "</div>";
+  // terminal
+  html += '<div class="term">' +
+    '<div class="term-head">' +
+      '<span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span>' +
+      '<span class="term-title">try it — no AWS needed</span>' +
+      '<button class="term-copy" id="term-copy" type="button"><span class="ci">&#10697;</span><span class="ct">Copy</span></button>' +
+    "</div>" +
+    '<div class="term-body" id="term-body">' +
+      '<div class="ln"><span class="pr">$ </span>cloudrift demo generate</div>' +
+      '<div class="ln"><span class="pr">$ </span>cloudrift dashboard --open</div>' +
+      '<div class="ln cm"># opens the dashboard with sample findings</div>' +
+    "</div>" +
+  "</div>";
+  html += "</section>";
+
+  // problem cards
+  html += '<section class="home-sec"><h2>What it catches</h2>' +
+    '<p class="home-sub">Two classes of quietly dangerous AWS exposure that are easy to lose track of.</p>' +
+    '<div class="prob-grid">' +
+      '<div class="prob-card"><span class="pc-icon">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>' +
+        '</span><h3>Orphaned edge assets</h3>' +
+        '<p>A DNS name still points at AWS but the bucket or distribution behind it is gone — so a stranger can recreate it and serve content under your trusted hostname (subdomain takeover).</p></div>' +
+      '<div class="prob-card"><span class="pc-icon">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>' +
+        '</span><h3>Stale external IAM trust</h3>' +
+        '<p>An IAM role or bucket policy still grants access to an outside account, SAML IdP, or OIDC app nobody reviews anymore — durable lateral access into your estate.</p></div>' +
+    "</div></section>";
+
+  // four questions
+  html += '<section class="home-sec"><h2>The four questions it answers</h2>' +
+    '<p class="home-sub">Every finding is framed so you can route it and act on it.</p>' +
+    '<div class="q-grid">' +
+      '<div class="q-card"><span class="q-num">1</span><h3>What exists?</h3><p>Hostnames, buckets, distributions, and roles — tied to accounts.</p></div>' +
+      '<div class="q-card"><span class="q-num">2</span><h3>Who owns it?</h3><p>Account IDs, tags, and OU paths route work to the right team.</p></div>' +
+      '<div class="q-card"><span class="q-num">3</span><h3>Is it claimable?</h3><p>A claimability verdict says whether a stranger could take control.</p></div>' +
+      '<div class="q-card"><span class="q-num">4</span><h3>What’s it costing?</h3><p>Static estimates plus optional Cost Explorer give FinOps signal.</p></div>' +
+    "</div></section>";
+
+  // role cards
+  html += '<section class="home-sec"><h2>Pick your path</h2>' +
+    '<p class="home-sub">Choose a role to filter the docs to what matters for you and jump in.</p>' +
+    '<div class="role-grid">' +
+      roleCard("operator", "Operator",
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 6 4-4 4 4"/><path d="M12 2v10.3"/><path d="M4 11a8 8 0 1 0 16 0"/></svg>',
+        "Run scans and live in the dashboard. Get set up, learn the CLI, and configure access.",
+        "getting-started") +
+      roleCard("security", "Security reviewer",
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>',
+        "Interpret findings and severity. Understand coverage, scoring, and the threat model.",
+        "security-coverage") +
+      roleCard("developer", "Developer",
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg>',
+        "Contribute and integrate. Architecture, the REST API, data flow, and contributor setup.",
+        "architecture") +
+    "</div></section>";
+
+  // featured: issue types explorer
+  html += '<section class="home-sec"><h2>What it finds</h2>' +
+    '<p class="home-sub">Nine finding types in two families. Open the explorer to see why each matters and how it\'s detected.</p>' +
+    '<div class="it-feature-grid">' +
+      itFeature("orphaned", "Orphaned edge", oeCount,
+        "DNS still points at AWS but the resource behind it is gone or claimable — subdomain takeover and friends.") +
+      itFeature("external", "External access", eaCount,
+        "IAM roles and bucket policies that grant outside accounts, the public, or stale principals durable access.") +
+      itFeatureAll(itCount) +
+    "</div></section>";
+
+  // diagrams
+  html += '<section class="home-sec"><h2>How it works</h2>' +
+    '<p class="home-sub">No database required — Cloudrift writes JSON per scan and serves it locally.</p>' +
+    '<div class="home-diagrams">' +
+      '<div class="home-fig"><h3>' + ICON.diagram + 'How it connects</h3>' +
+        '<p>From your machine to AWS, to JSON on disk, to the dashboard (and optional Neo4j graph tier).</p>' +
+        '<div class="fig-scroll">' + homeSVG_dataflow() + "</div></div>" +
+      '<div class="home-fig"><h3>' + ICON.diagram + 'The scan pipeline</h3>' +
+        '<p>Collectors gather, validators probe, scorers grade — then findings.json feeds reports, the API, and Neo4j.</p>' +
+        '<div class="fig-scroll">' + homeSVG_pipeline() + "</div></div>" +
+      '<div class="home-fig"><h3>' + ICON.diagram + 'Issue-type taxonomy</h3>' +
+        '<p>Every finding rolls up to one of two families. Leaf colors show the typical severity.</p>' +
+        '<div class="fig-scroll" style="min-width:0">' + svgTaxonomy().replace("min-width:540px", "min-width:600px") + "</div></div>" +
+      '<div class="home-fig"><h3>' + ICON.diagram + 'Trust & blast radius</h3>' +
+        '<p>An external principal that assumes a trusted role can reach resources across accounts — the blast radius the optional Neo4j explorer traverses.</p>' +
+        '<div class="fig-scroll">' + svgBlastRadius() + "</div></div>" +
+    "</div></section>";
+
+  // severity reference matrix
+  html += '<section class="home-sec"><h2>Severity at a glance</h2>' +
+    '<p class="home-sub">What lands in each level. The same scale is used across every finding type.</p>' +
+    severityMatrixHTML() +
+    "</section>";
+
+  document.getElementById("home").innerHTML = html;
+}
+function itFeature(fam, title, count, blurb) {
+  return '<button class="it-feature" data-it-fam="' + fam + '">' +
+    '<div class="itf-top"><h3>' + escapeHtml(title) + '</h3>' +
+      '<span class="itf-count">' + count + "</span></div>" +
+    "<p>" + escapeHtml(blurb) + "</p>" +
+    '<span class="itf-go">Explore types ' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>' +
+    "</span></button>";
+}
+function itFeatureAll(count) {
+  return '<button class="it-feature" data-it-fam="all">' +
+    '<div class="itf-top"><h3>All finding types</h3>' +
+      '<span class="itf-count">' + count + "</span></div>" +
+    "<p>Browse the full, interactive catalog — click any type for severity, why it matters, and how it’s detected.</p>" +
+    '<span class="itf-go">Open explorer ' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>' +
+    "</span></button>";
+}
+function roleCard(aud, title, icon, blurb, target) {
+  return '<button class="role-card" data-role-aud="' + aud + '" data-role-target="' + target + '">' +
+    '<span class="rc-icon">' + icon + "</span>" +
+    "<h3>" + escapeHtml(title) + "</h3>" +
+    "<p>" + escapeHtml(blurb) + "</p>" +
+    '<span class="rc-go">Open ' + escapeHtml(title) + ' docs ' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>' +
+    "</span></button>";
+}
+
+/* ============================================================
    Bootstrap
    ============================================================ */
 var rawMarkdown = document.getElementById("doc-source").textContent;
-var contentEl = document.getElementById("content");
+var contentEl = document.getElementById("reference");
+var homeEl = document.getElementById("home");
+var issueTypesEl = document.getElementById("issuetypes");
 contentEl.innerHTML = renderMarkdown(rawMarkdown);
+buildHome();
+buildIssueTypes();
+
+/* ============================================================
+   Accordion: wrap each ### subsection (and its content up to the
+   next ### / ## ) in a collapsible block.
+   ============================================================ */
+function buildAccordions() {
+  var children = Array.prototype.slice.call(contentEl.children);
+  var sectionSlug = null;
+  var ledeTaken = false; // first paragraph of the current section -> lede
+  // Walk and group. We rebuild contentEl in place.
+  var frag = document.createDocumentFragment();
+  var i = 0;
+  while (i < children.length) {
+    var el = children[i];
+    if (el.tagName === "H1") { frag.appendChild(el); sectionSlug = null; ledeTaken = false; i++; continue; }
+    if (el.tagName === "H2") {
+      sectionSlug = el.id;
+      ledeTaken = false;
+      frag.appendChild(el);
+      // add per-section expand/collapse controls right after the H2
+      var ctrl = document.createElement("div");
+      ctrl.className = "acc-controls";
+      ctrl.setAttribute("data-section", sectionSlug);
+      ctrl.innerHTML =
+        '<button class="acc-ctrl-btn" data-acc-action="expand">' + ICON.expand + "Expand all</button>" +
+        '<button class="acc-ctrl-btn" data-acc-action="collapse">' + ICON.collapse + "Collapse all</button>";
+      frag.appendChild(ctrl);
+      i++;
+      continue;
+    }
+    if (el.tagName === "H3") {
+      // build an accordion: head = this H3, body = siblings until next H3/H2/H1
+      var acc = document.createElement("div");
+      acc.className = "acc";
+      acc.setAttribute("data-section", sectionSlug || "");
+      var headBtn = document.createElement("button");
+      headBtn.type = "button";
+      headBtn.className = "acc-head";
+      headBtn.setAttribute("aria-expanded", "false");
+      var caret = '<span class="acc-caret">' + ICON.caret + "</span>";
+      // keep the h3 (with its id + anchor) inside the head so scrollspy/anchors work
+      headBtn.innerHTML = caret + '<span class="acc-h"></span>';
+      headBtn.querySelector(".acc-h").appendChild(el); // move the H3 node in
+      acc.appendChild(headBtn);
+      var body = document.createElement("div");
+      body.className = "acc-body";
+      i++;
+      while (i < children.length &&
+             children[i].tagName !== "H3" &&
+             children[i].tagName !== "H2" &&
+             children[i].tagName !== "H1") {
+        body.appendChild(children[i]);
+        i++;
+      }
+      acc.appendChild(body);
+      // All ### accordions collapse by default (low-text landing).
+      frag.appendChild(acc);
+      continue;
+    }
+    // content before the first H3 in a section (intro) stays inline.
+    // The first paragraph of each ## section becomes a visible lede/summary.
+    if (sectionSlug && !ledeTaken && el.tagName === "P") {
+      el.classList.add("acc-lede");
+      ledeTaken = true;
+    }
+    frag.appendChild(el);
+    i++;
+  }
+  contentEl.innerHTML = "";
+  contentEl.appendChild(frag);
+}
+buildAccordions();
+
+/* accordion toggles */
+contentEl.addEventListener("click", function (e) {
+  // ignore clicks on the anchor link / inside links
+  var ctrlBtn = e.target.closest(".acc-ctrl-btn");
+  if (ctrlBtn) {
+    var section = ctrlBtn.closest(".acc-controls").getAttribute("data-section");
+    var action = ctrlBtn.getAttribute("data-acc-action");
+    var accs = contentEl.querySelectorAll('.acc[data-section="' + section + '"]');
+    accs.forEach(function (a) {
+      var open = action === "expand";
+      a.classList.toggle("open", open);
+      var hb = a.querySelector(".acc-head");
+      if (hb) hb.setAttribute("aria-expanded", String(open));
+    });
+    return;
+  }
+  var head = e.target.closest(".acc-head");
+  if (head) {
+    if (e.target.closest("a")) return; // let anchor link behave
+    var acc = head.closest(".acc");
+    var open = acc.classList.toggle("open");
+    head.setAttribute("aria-expanded", String(open));
+  }
+});
+
+function expandAccordionFor(id) {
+  var target = document.getElementById(id);
+  if (!target) return;
+  var acc = target.closest(".acc");
+  if (acc && !acc.classList.contains("open")) {
+    acc.classList.add("open");
+    var hb = acc.querySelector(".acc-head");
+    if (hb) hb.setAttribute("aria-expanded", "true");
+  }
+}
+
+/* ============================================================
+   Home <-> Reference view switching
+   ============================================================ */
+var navHomeBtn = document.getElementById("nav-home");
+var navIssueBtn = document.getElementById("nav-issuetypes");
+function showHome() {
+  homeEl.classList.remove("hidden");
+  issueTypesEl.classList.add("hidden");
+  contentEl.classList.add("hidden");
+  navHomeBtn.classList.add("active");
+  navIssueBtn.classList.remove("active");
+  // clear active reference nav links
+  navTree.querySelectorAll(".nav-items li a.active").forEach(function (a) { a.classList.remove("active"); });
+  document.querySelector("main").scrollIntoView({ block: "start" });
+  window.scrollTo(0, 0);
+}
+function showIssueTypes() {
+  homeEl.classList.add("hidden");
+  issueTypesEl.classList.remove("hidden");
+  contentEl.classList.add("hidden");
+  navHomeBtn.classList.remove("active");
+  navIssueBtn.classList.add("active");
+  navTree.querySelectorAll(".nav-items li a.active").forEach(function (a) { a.classList.remove("active"); });
+  window.scrollTo(0, 0);
+}
+function showReference() {
+  homeEl.classList.add("hidden");
+  issueTypesEl.classList.add("hidden");
+  contentEl.classList.remove("hidden");
+  navHomeBtn.classList.remove("active");
+  navIssueBtn.classList.remove("active");
+}
+function goToReference(id) {
+  showReference();
+  if (id) {
+    expandAccordionFor(id);
+    var el = document.getElementById(id);
+    if (el) {
+      history.replaceState(null, "", "#" + id);
+      setTimeout(function () { el.scrollIntoView(); }, 20);
+    }
+  }
+}
+/* If a deep-link target lives in a section the current audience hides,
+   relax the audience filter to "all" so the target is reachable. */
+function ensureTargetVisible(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var owner = null;
+  Object.keys(sectionElsMap).forEach(function (slug) {
+    if (owner) return;
+    if (sectionElsMap[slug].some(function (s) { return s === el || s.contains(el); })) owner = slug;
+  });
+  if (owner) {
+    var cur = localStorage.getItem("cloudrift-docs-audience") || "all";
+    if (cur !== "all" && !audienceVisible(owner, cur)) applyAudience("all");
+  }
+}
 
 /* ---------- Build sidebar tree from headings ---------- */
 var navTree = document.getElementById("nav-tree");
-var currentSlug = null; // slug of the current ## group context
 function buildNav() {
-  // Group by ## (level 2). Each ### / #### under it becomes an item.
-  // Skip the H1 (handled by sr-only title) and the "Table of Contents" group.
   var groups = [];
   var cur = null;
   headingList.forEach(function (h) {
     if (h.level === 1) return;
     if (h.level === 2) {
-      var slug = h.id; // already unique slug = base
-      cur = { id: h.id, slug: slug, text: h.text, items: [] };
+      cur = { id: h.id, slug: h.id, text: h.text, items: [] };
       groups.push(cur);
     } else if (h.level === 3 && cur) {
       cur.items.push({ id: h.id, text: h.text });
     }
-    // level 4 intentionally omitted from nav to keep it tidy
   });
-
-  // Drop "Table of Contents" group (it only contains links, no audience value).
   groups = groups.filter(function (g) { return g.slug !== "table-of-contents"; });
 
   var html = "";
@@ -2485,7 +3759,7 @@ function buildNav() {
     var aud = AUDIENCE_MAP[g.slug] ? AUDIENCE_MAP[g.slug].join(" ") : "";
     html += '<div class="nav-group" data-slug="' + g.slug + '" data-aud="' + aud + '">';
     html += '<button class="nav-group-label" data-toggle="' + gi + '">' +
-              '<a style="all:unset;cursor:pointer;flex:1" href="#' + g.id + '">' + escapeHtmlAttr(g.text) + "</a>" +
+              '<a class="nav-group-link" href="#' + g.id + '" data-target="' + g.id + '" style="all:unset;cursor:pointer;flex:1">' + escapeHtmlAttr(g.text) + "</a>" +
               '<span class="caret">&#9660;</span>' +
             "</button>";
     html += '<ul class="nav-items">';
@@ -2496,27 +3770,118 @@ function buildNav() {
   });
   navTree.innerHTML = html;
 }
-function escapeHtmlAttr(s) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
 buildNav();
 
-/* ---------- Collapsible groups ---------- */
+/* ---------- Collapsible sidebar groups (caret only) ---------- */
 navTree.addEventListener("click", function (e) {
   var caretBtn = e.target.closest(".nav-group-label");
-  // Only toggle when clicking the caret area, not the group link.
   if (caretBtn && (e.target.classList.contains("caret") || e.target === caretBtn)) {
     var grp = caretBtn.closest(".nav-group");
     grp.classList.toggle("collapsed");
   }
 });
 
-/* ---------- Smooth scroll + close mobile sidebar on nav click ---------- */
+/* ---------- Nav link clicks -> reference view, expand accordion ---------- */
 navTree.addEventListener("click", function (e) {
   var a = e.target.closest("a[href^='#']");
-  if (a) {
-    closeSidebar();
+  if (!a) return;
+  e.preventDefault();
+  var id = a.getAttribute("data-target") || a.getAttribute("href").slice(1);
+  goToReference(id);
+  closeSidebar();
+});
+
+navHomeBtn.addEventListener("click", function () {
+  showHome();
+  closeSidebar();
+});
+
+/* ============================================================
+   Issue-type explorer interactivity
+   ============================================================ */
+function filterIssueTypes(fam) {
+  var grid = document.getElementById("it-grid");
+  if (!grid) return;
+  var cards = grid.querySelectorAll(".it-card");
+  var shown = 0;
+  cards.forEach(function (c) {
+    var match = fam === "all" || c.getAttribute("data-it-fam") === fam;
+    c.classList.toggle("it-hidden", !match);
+    if (match) shown++;
+  });
+  var filters = document.querySelectorAll("#it-filters .it-filter");
+  filters.forEach(function (b) {
+    b.classList.toggle("active", b.getAttribute("data-it-filter") === fam);
+  });
+  var empty = document.getElementById("it-empty");
+  if (empty) empty.classList.toggle("hidden", shown !== 0);
+}
+function goToIssueTypes(fam) {
+  showIssueTypes();
+  closeSidebar();
+  filterIssueTypes(fam || "all");
+}
+navIssueBtn.addEventListener("click", function () { goToIssueTypes("all"); });
+
+issueTypesEl.addEventListener("click", function (e) {
+  // filter chip
+  var fbtn = e.target.closest(".it-filter");
+  if (fbtn) { filterIssueTypes(fbtn.getAttribute("data-it-filter")); return; }
+  // deep-link to reference
+  var link = e.target.closest(".it-link");
+  if (link) {
+    e.stopPropagation();
+    var anchor = link.getAttribute("data-it-anchor");
+    ensureTargetVisible(anchor);
+    goToReference(anchor);
+    return;
   }
+  // card expand/collapse
+  var head = e.target.closest(".it-card-head");
+  if (head) {
+    var card = head.closest(".it-card");
+    var open = card.classList.toggle("open");
+    head.setAttribute("aria-expanded", String(open));
+  }
+});
+
+/* featured issue-type blocks on home route into the explorer */
+homeEl.addEventListener("click", function (e) {
+  var f = e.target.closest(".it-feature");
+  if (f) { goToIssueTypes(f.getAttribute("data-it-fam")); }
+});
+
+/* ============================================================
+   Home CTAs + role routing
+   ============================================================ */
+document.getElementById("cta-getstarted").addEventListener("click", function () {
+  goToReference("getting-started");
+});
+document.getElementById("cta-browse").addEventListener("click", function () {
+  goToReference("overview");
+});
+homeEl.addEventListener("click", function (e) {
+  var rc = e.target.closest(".role-card");
+  if (rc) {
+    var aud = rc.getAttribute("data-role-aud");
+    var target = rc.getAttribute("data-role-target");
+    applyAudience(aud);
+    goToReference(target);
+  }
+});
+/* terminal copy */
+document.getElementById("term-copy").addEventListener("click", function () {
+  var btn = this;
+  var text = "cloudrift demo generate\ncloudrift dashboard --open";
+  var done = function () {
+    btn.classList.add("copied");
+    var ct = btn.querySelector(".ct"); var prev = ct.textContent;
+    ct.textContent = "Copied";
+    setTimeout(function () { btn.classList.remove("copied"); ct.textContent = prev; }, 1400);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text, done); });
+  } else { fallbackCopy(text, done); }
 });
 
 /* ============================================================
@@ -2524,10 +3889,8 @@ navTree.addEventListener("click", function (e) {
    ============================================================ */
 var audienceEl = document.getElementById("audience");
 var filterNote = document.getElementById("filter-note");
-var sectionSlugs = Object.keys(AUDIENCE_MAP);
 
 function getContentSectionEls() {
-  // Map each ## section slug -> its H2 element and following siblings until next H2.
   var map = {};
   var children = Array.prototype.slice.call(contentEl.children);
   var curSlug = null;
@@ -2546,21 +3909,18 @@ function getContentSectionEls() {
 var sectionElsMap = getContentSectionEls();
 
 function applyAudience(aud) {
-  // Sidebar groups
   var groups = navTree.querySelectorAll(".nav-group");
   groups.forEach(function (g) {
     var slug = g.getAttribute("data-slug");
     var visible = audienceVisible(slug, aud);
     g.classList.toggle("hidden", !visible);
   });
-  // Content sections
   Object.keys(sectionElsMap).forEach(function (slug) {
     var visible = audienceVisible(slug, aud);
     sectionElsMap[slug].forEach(function (el) {
       el.style.display = visible ? "" : "none";
     });
   });
-  // Note
   if (aud === "all") {
     filterNote.classList.remove("show");
     filterNote.innerHTML = "";
@@ -2569,7 +3929,6 @@ function applyAudience(aud) {
     filterNote.innerHTML = "Showing " + AUDIENCE_LABEL[aud] + " docs — " +
       '<a id="show-all-link">Show all</a>';
   }
-  // active button
   audienceEl.querySelectorAll("button").forEach(function (b) {
     b.classList.toggle("active", b.getAttribute("data-aud") === aud);
   });
@@ -2577,7 +3936,6 @@ function applyAudience(aud) {
 }
 function audienceVisible(slug, aud) {
   if (aud === "all") return true;
-  // Sections not in the map (e.g. table-of-contents) are hidden when filtering.
   var auds = AUDIENCE_MAP[slug];
   if (!auds) return false;
   return auds.indexOf(aud) !== -1;
@@ -2598,14 +3956,14 @@ var savedAud = localStorage.getItem("cloudrift-docs-audience") || "all";
 applyAudience(savedAud);
 
 /* ============================================================
-   Search (filter sidebar items live)
+   Search (filter sidebar items live) -> jumps into reference
    ============================================================ */
 var searchEl = document.getElementById("search");
 function runSearch(q) {
   q = q.trim().toLowerCase();
   var groups = navTree.querySelectorAll(".nav-group");
   groups.forEach(function (g) {
-    if (g.classList.contains("hidden")) return; // respect audience filter
+    if (g.classList.contains("hidden")) return;
     var items = g.querySelectorAll(".nav-items li");
     var anyVisible = false;
     var labelText = g.querySelector(".nav-group-label").textContent.toLowerCase();
@@ -2616,7 +3974,6 @@ function runSearch(q) {
       li.classList.toggle("hidden", !match);
       if (match) anyVisible = true;
     });
-    // Hide a group entirely if no items match and the label doesn't match
     if (q) {
       g.style.display = (anyVisible || groupMatches) ? "" : "none";
       if (anyVisible || groupMatches) g.classList.remove("collapsed");
@@ -2632,12 +3989,8 @@ searchEl.addEventListener("keydown", function (e) {
     var firstVisible = navTree.querySelector(".nav-group:not(.hidden) .nav-items li:not(.hidden) a");
     if (firstVisible) {
       var id = firstVisible.getAttribute("data-target");
-      var el = document.getElementById(id);
-      if (el) {
-        history.replaceState(null, "", "#" + id);
-        el.scrollIntoView();
-        closeSidebar();
-      }
+      goToReference(id);
+      closeSidebar();
     }
   } else if (e.key === "Escape") {
     this.value = "";
@@ -2646,7 +3999,7 @@ searchEl.addEventListener("keydown", function (e) {
 });
 
 /* ============================================================
-   Copy buttons
+   Copy buttons (code cards + mermaid fallback)
    ============================================================ */
 contentEl.addEventListener("click", function (e) {
   var btn = e.target.closest(".copy-btn");
@@ -2679,14 +4032,9 @@ function fallbackCopy(text, cb) {
 }
 
 /* ============================================================
-   Anchor links update hash on click (native behavior already does;
-   this ensures hash even for the heading-embedded # link).
+   Scrollspy (only meaningful in reference view)
    ============================================================ */
-
-/* ============================================================
-   Scrollspy
-   ============================================================ */
-var navLinks = Array.prototype.slice.call(navTree.querySelectorAll(".nav-items li a"));
+var navLinks = Array.prototype.slice.call(navTree.querySelectorAll(".nav-items li a, .nav-group-link"));
 var spyTargets = navLinks.map(function (a) {
   return { link: a, el: document.getElementById(a.getAttribute("data-target")) };
 }).filter(function (t) { return t.el; });
@@ -2695,39 +4043,26 @@ function setActiveLink(id) {
   navLinks.forEach(function (a) {
     a.classList.toggle("active", a.getAttribute("data-target") === id);
   });
-  // ensure parent group expanded
-  var active = navTree.querySelector(".nav-items li a.active");
+  var active = navTree.querySelector(".nav-items li a.active, .nav-group-link.active");
   if (active) {
     var grp = active.closest(".nav-group");
     if (grp && grp.classList.contains("collapsed")) grp.classList.remove("collapsed");
   }
 }
 
-var spyObserver;
 function initScrollspy() {
   if (!("IntersectionObserver" in window)) { initScrollFallback(); return; }
-  var visible = {};
-  spyObserver = new IntersectionObserver(function (entries) {
-    entries.forEach(function (en) {
-      visible[en.target.id] = en.isIntersecting ? en.boundingClientRect.top : null;
-    });
-    // pick topmost visible heading
-    var best = null, bestTop = Infinity;
-    spyTargets.forEach(function (t) {
-      var r = t.el.getBoundingClientRect();
-      if (r.top <= 140 && r.top > -10000) {
-        if (r.top > bestTop) return;
-      }
-    });
-    // simpler: find the last heading whose top <= threshold
+  var spyObserver = new IntersectionObserver(function () {
+    if (contentEl.classList.contains("hidden")) return;
     var chosen = null;
     spyTargets.forEach(function (t) {
+      if (t.el.offsetParent === null) return; // hidden by audience / collapsed
       var r = t.el.getBoundingClientRect();
       if (r.top - (60 + 30) <= 0) chosen = t.el.id;
     });
-    if (!chosen && spyTargets.length) {
-      // none scrolled past -> first visible
+    if (!chosen) {
       for (var k = 0; k < spyTargets.length; k++) {
+        if (spyTargets[k].el.offsetParent === null) continue;
         var rr = spyTargets[k].el.getBoundingClientRect();
         if (rr.bottom > 0) { chosen = spyTargets[k].el.id; break; }
       }
@@ -2738,8 +4073,10 @@ function initScrollspy() {
 }
 function initScrollFallback() {
   window.addEventListener("scroll", function () {
+    if (contentEl.classList.contains("hidden")) return;
     var chosen = null;
     spyTargets.forEach(function (t) {
+      if (t.el.offsetParent === null) return;
       if (t.el.getBoundingClientRect().top - 90 <= 0) chosen = t.el.id;
     });
     if (chosen) setActiveLink(chosen);
@@ -2747,10 +4084,42 @@ function initScrollFallback() {
 }
 initScrollspy();
 
-// On load, honor an existing hash.
+/* ============================================================
+   In-content links (e.g. [Getting Started](#getting-started))
+   should switch to reference view + expand target accordion.
+   ============================================================ */
+contentEl.addEventListener("click", function (e) {
+  var a = e.target.closest("a[href^='#']");
+  if (!a) return;
+  if (a.classList.contains("anchor-link")) {
+    // heading anchor: just expand its accordion if needed
+    var hid = a.getAttribute("href").slice(1);
+    expandAccordionFor(hid);
+    return;
+  }
+  var href = a.getAttribute("href");
+  var id = href.slice(1);
+  if (id && document.getElementById(id)) {
+    e.preventDefault();
+    goToReference(id);
+  }
+});
+
+/* On load, honor an existing hash by opening the reference view. */
 if (location.hash) {
-  var initEl = document.getElementById(location.hash.slice(1));
-  if (initEl) setTimeout(function () { initEl.scrollIntoView(); }, 30);
+  var initId = location.hash.slice(1);
+  if (document.getElementById(initId)) {
+    showReference();
+    expandAccordionFor(initId);
+    setTimeout(function () {
+      var initEl = document.getElementById(initId);
+      if (initEl) initEl.scrollIntoView();
+    }, 30);
+  } else {
+    showHome();
+  }
+} else {
+  showHome();
 }
 
 /* ============================================================
@@ -2759,7 +4128,7 @@ if (location.hash) {
 var themeToggle = document.getElementById("theme-toggle");
 function applyTheme(t) {
   document.documentElement.setAttribute("data-theme", t);
-  themeToggle.innerHTML = t === "dark" ? "&#9728;" : "&#9789;"; // sun / moon
+  themeToggle.innerHTML = t === "dark" ? "&#9728;" : "&#9789;";
   localStorage.setItem("cloudrift-docs-theme", t);
 }
 var storedTheme = localStorage.getItem("cloudrift-docs-theme");
@@ -2770,6 +4139,14 @@ applyTheme(storedTheme);
 themeToggle.addEventListener("click", function () {
   var cur = document.documentElement.getAttribute("data-theme");
   applyTheme(cur === "dark" ? "light" : "dark");
+});
+
+/* ============================================================
+   Brand -> home
+   ============================================================ */
+document.getElementById("brand-home").addEventListener("click", function () {
+  showHome();
+  closeSidebar();
 });
 
 /* ============================================================
