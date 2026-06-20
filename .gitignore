@@ -7,3 +7,5 @@ venv-graphify/
 .cursor/
 graphify-out/
 CLAUDE.md
+gapplan.md 
+codereview.md
