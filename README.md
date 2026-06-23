@@ -4,7 +4,7 @@ Cloudrift is a CLI and embedded dashboard for discovering orphaned AWS edge asse
 
 **Key points:**
 - Calls AWS APIs to inventory edge, IAM-trust, and S3 resource-policy exposure across your org
-- Writes findings to local JSON per scan — read via dashboard, CLI reports, or your own tooling
+- Writes findings to local JSON per scan - read via dashboard, CLI reports, or your own tooling
 - Dashboard provides interactive exploration and a scan control center
 - `cloudrift demo generate` populates the UI with sample data (no AWS needed)
 - Neo4j is optional for advanced graph features (blast-radius, vector search, `cloudrift query`)
@@ -13,12 +13,12 @@ Cloudrift is a CLI and embedded dashboard for discovering orphaned AWS edge asse
 
 ## Documentation
 
-All guides now live in one place — pick the format you prefer:
+All guides now live in one place - pick the format you prefer:
 
 | Where | What |
 | --- | --- |
-| **[docs.html](docs.html)** | **Start here** — the full interactive docs site (open in a browser). Audience views (Operator / Security reviewer / Developer), grouped sidebar, search, and light/dark theme. Self-contained, works offline. |
-| [docs/cloudrift-docs.md](docs/cloudrift-docs.md) | The same content as a single Markdown file (GitHub-renderable) with a table of contents — Overview, Getting Started, Architecture, CLI, Configuration, Security Coverage, IAM Setup, API & Technical Reference, Contributing. |
+| **[docs.html](docs.html)** | **Start here** - the full interactive docs site (open in a browser). Audience views (Operator / Security reviewer / Developer), grouped sidebar, search, and light/dark theme. Self-contained, works offline. |
+| [docs/cloudrift-docs.md](docs/cloudrift-docs.md) | The same content as a single Markdown file (GitHub-renderable) with a table of contents - Overview, Getting Started, Architecture, CLI, Configuration, Security Coverage, IAM Setup, API & Technical Reference, Contributing. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution quick-reference (full guide is in the docs). |
 
 > The previous per-topic files under `docs/` were consolidated into `docs/cloudrift-docs.md` and rendered into `docs.html`.
@@ -85,10 +85,10 @@ cloudrift version
 
 ## What it solves
 
-- **Orphaned edge:** DNS hostnames that resolve but point to deleted/misconfigured S3 buckets, CloudFront origins, or ELBs — with a verdict (reclaimable, dangling, etc.)
+- **Orphaned edge:** DNS hostnames that resolve but point to deleted/misconfigured S3 buckets, CloudFront origins, or ELBs - with a verdict (reclaimable, dangling, etc.)
 - **External trust:** IAM roles trusting external AWS accounts or principals, scored by last-used date, admin privileges, and risk profile
-- **Resource-policy exposure:** S3 bucket policies granting cross-account or public access — exposure that IAM role-trust scanning misses
-- **Visibility:** Self-hosted dashboard and CLI reports over the same HTTP server — no cloud dependency
+- **Resource-policy exposure:** S3 bucket policies granting cross-account or public access - exposure that IAM role-trust scanning misses
+- **Visibility:** Self-hosted dashboard and CLI reports over the same HTTP server - no cloud dependency
 
 ---
 
@@ -101,7 +101,7 @@ cloudrift version
 
 ### Optional
 
-- **Neo4j 5+** — for blast-radius exploration, relationship graphs, and vector search (`cloudrift query`). The dashboard and core workflows degrade cleanly without it (JSON-only mode).
+- **Neo4j 5+** - for blast-radius exploration, relationship graphs, and vector search (`cloudrift query`). The dashboard and core workflows degrade cleanly without it (JSON-only mode).
 
 ### Build-time only
 
@@ -139,20 +139,20 @@ Optional TOML file (defaults work without it). Search order: `CLOUDRIFT_CONFIG` 
 
 Key sections:
 
-- `[aws]` — org role name, management profile, regions to scan
-- `[scan]` — HTTP concurrency, role-assumption concurrency, timeouts
-- `[cost]` — `use_cur` flag for Cost Explorer enrichment
-- `[trust]` — approved external accounts, thresholds for stale/ghost roles
-- `[output]` — scan output directory (default: `./cloudrift-output`)
-- `[neo4j]` — `uri`, `username`, `password_env` (optional)
-- `[embeddings]` — embedding provider (default: `openai`, local stub)
-- `[synthesis]` — optional LLM answer synthesis for `query` (`provider` default `anthropic`, `model` default `claude-opus-4-8`, `api_key_env` default `ANTHROPIC_API_KEY`). Synthesis only runs when the API key env var is set; otherwise `query` is retrieval-only.
+- `[aws]` - org role name, management profile, regions to scan
+- `[scan]` - HTTP concurrency, role-assumption concurrency, timeouts
+- `[cost]` - `use_cur` flag for Cost Explorer enrichment
+- `[trust]` - approved external accounts, thresholds for stale/ghost roles
+- `[output]` - scan output directory (default: `./cloudrift-output`)
+- `[neo4j]` - `uri`, `username`, `password_env` (optional)
+- `[embeddings]` - embedding provider (default: `openai`, local stub)
+- `[synthesis]` - optional LLM answer synthesis for `query` (`provider` default `anthropic`, `model` default `claude-opus-4-8`, `api_key_env` default `ANTHROPIC_API_KEY`). Synthesis only runs when the API key env var is set; otherwise `query` is retrieval-only.
 
 Environment:
 
-- `CLOUDRIFT_APP_BASE_URL` — base URL for alert links in Slack (e.g. `https://your-host:8080`); defaults to `http://127.0.0.1:8080`
-- `CLOUDRIFT_API_TOKEN` — when set, gates the dashboard/API server (API + UI) behind HTTP Basic auth
-- `ANTHROPIC_API_KEY` — provider API key for `query` LLM synthesis (env var name configurable via `[synthesis].api_key_env`)
+- `CLOUDRIFT_APP_BASE_URL` - base URL for alert links in Slack (e.g. `https://your-host:8080`); defaults to `http://127.0.0.1:8080`
+- `CLOUDRIFT_API_TOKEN` - when set, gates the dashboard/API server (API + UI) behind HTTP Basic auth
+- `ANTHROPIC_API_KEY` - provider API key for `query` LLM synthesis (env var name configurable via `[synthesis].api_key_env`)
 
 ---
 
@@ -167,7 +167,7 @@ Global option: `--config <path>` to specify a TOML config file.
 | `report` | Export findings to table/JSON/CSV/markdown/excel/sarif | `--scan-id`, `--format`, `--output` |
 | `query` | Search findings via vector retrieval (Neo4j required); optional LLM synthesis | `--scan-id`, `--query`, `--format` |
 | `dashboard` | Start the web UI and REST API | `--port`, `--host`, `--open`, `--output-dir` |
-| `version` | Print version string | — |
+| `version` | Print version string | - |
 
 ---
 
@@ -183,7 +183,7 @@ Open `http://127.0.0.1:8080` in your browser (or use `?scan_id=<id>` to load a s
 
 ### Serving and security
 
-The server binds `127.0.0.1` (loopback) by default. Use `--host` to opt into a non-loopback bind (e.g. `--host 0.0.0.0` to expose on the network). When binding to a non-loopback address, set `CLOUDRIFT_API_TOKEN` to gate the whole server (API + UI) behind HTTP Basic auth — the dashboard prints a warning reminding you to do so. With `CLOUDRIFT_API_TOKEN` unset, the server runs without auth (acceptable on loopback only).
+The server binds `127.0.0.1` (loopback) by default. Use `--host` to opt into a non-loopback bind (e.g. `--host 0.0.0.0` to expose on the network). When binding to a non-loopback address, set `CLOUDRIFT_API_TOKEN` to gate the whole server (API + UI) behind HTTP Basic auth - the dashboard prints a warning reminding you to do so. With `CLOUDRIFT_API_TOKEN` unset, the server runs without auth (acceptable on loopback only).
 
 | Page | Purpose |
 | --- | --- |
