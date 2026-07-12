@@ -1,6 +1,6 @@
 # Cloudrift
 
-Cloudrift is a CLI and embedded dashboard for discovering orphaned AWS edge assets (DNS, S3 websites, CloudFront) and risky cross-account IAM trust relationships. It scans your AWS organization, writes findings as local JSON (no database required), and provides evidence-backed severity scoring.
+Cloudrift is a CLI and embedded dashboard for discovering orphaned AWS edge assets (DNS, S3 websites, CloudFront) and risky cross-account IAM trust relationships. It scans your AWS accounts - org-wide via a shared audit role, or a single account directly with your own credentials - writes findings as local JSON (no database required), and provides evidence-backed severity scoring.
 
 **Key points:**
 - Calls AWS APIs to inventory edge, IAM-trust, and S3 resource-policy exposure across your org
@@ -109,15 +109,24 @@ cloudrift version
 
 ---
 
-## AWS credential selection
+## AWS access and scan modes
 
-**Dashboard:** Exposes a profile picker on the Scan Control page.
+Cloudrift can scan in one of two modes, chosen by `[aws].org_role_name` in `cloudrift.toml`:
+
+- **Org-wide (default):** `org_role_name = "CloudriftAuditRole"` (or your role name). Cloudrift lists the organization's accounts and assumes that role in each member account. This is the classic pattern for scanning a whole org from a management/security account, and requires the audit role deployed to each account (see [IAM Setup](docs/cloudrift-docs.md#iam-setup)).
+- **No-assume (single account):** `org_role_name = ""`. Cloudrift scans only the caller's own account using the selected credentials directly - no cross-account role to deploy and no `Organizations:ListAccounts` call. Use this when your identity already has read access to the account you care about.
+
+### Credential selection
+
+**Dashboard:** Exposes a profile picker on the Scan Control page; the selected profile drives credential loading for that scan.
 
 **CLI:** Does not have a `--profile` flag. Credentials come from (in order):
 
 1. `[aws].management_profile` in `cloudrift.toml` (default: `"default"`)
 2. `AWS_PROFILE` environment variable (if `management_profile` is empty)
 3. AWS default profile chain (env vars, SSO, instance role, etc.)
+
+Expired AWS SSO sessions are detected automatically: the CLI reopens `aws sso login` inline, and the dashboard surfaces a re-authentication prompt.
 
 ---
 
@@ -139,12 +148,12 @@ Optional TOML file (defaults work without it). Search order: `CLOUDRIFT_CONFIG` 
 
 Key sections:
 
-- `[aws]` - org role name, management profile, regions to scan
+- `[aws]` - `org_role_name` (empty string = no-assume single-account mode), `management_profile`, regions to scan
 - `[scan]` - HTTP concurrency, role-assumption concurrency, timeouts
 - `[cost]` - `use_cur` flag for Cost Explorer enrichment
 - `[trust]` - approved external accounts, thresholds for stale/ghost roles
 - `[output]` - scan output directory (default: `./cloudrift-output`)
-- `[neo4j]` - `uri`, `username`, `password_env` (optional)
+- `[neo4j]` - `uri`, `username`, and one of `password_env` / `password` / `password_file` (optional)
 - `[embeddings]` - embedding provider (default: `openai`, local stub)
 - `[synthesis]` - optional LLM answer synthesis for `query` (`provider` default `anthropic`, `model` default `claude-opus-4-8`, `api_key_env` default `ANTHROPIC_API_KEY`). Synthesis only runs when the API key env var is set; otherwise `query` is retrieval-only.
 
@@ -188,7 +197,7 @@ The server binds `127.0.0.1` (loopback) by default. Use `--host` to opt into a n
 | Page | Purpose |
 | --- | --- |
 | Overview | Summary, high-signal findings, operations view |
-| Scan Control | Start scans, validate AWS profile, runtime status |
+| Scan Control | Start scans, validate AWS profile, runtime status, and a live per-run scan log (stage progress + collector warnings) so failures are diagnosable in the browser |
 | Findings | Paginated findings table with filters and sorting |
 | Triage | Findings in triage/review mode |
 | Accounts | Per-account risk breakdown |
@@ -213,8 +222,13 @@ Light and dark themes available; preference stored in browser localStorage.
 [neo4j]
 uri = "bolt://127.0.0.1:7687"
 username = "neo4j"
-password_env = "CLOUDRIFT_NEO4J_PASSWORD"
+# Password resolution order (first non-empty wins):
+password_env = "CLOUDRIFT_NEO4J_PASSWORD"   # 1. name of an env var holding the password (preferred)
+# password = "your-neo4j-password"          # 2. inline value (persists across restarts; protect this file)
+# password_file = "/path/to/neo4j-password" # 3. path to a file containing the password
 ```
+
+The password no longer has to be re-exported every session: set it once via `password` or `password_file` and the Neo4j badge stays configured across restarts.
 
 3. Export a scan: `cloudrift scan --neo4j` or `cloudrift demo generate --neo4j --dense`
 
