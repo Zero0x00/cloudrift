@@ -22,10 +22,19 @@ func CollectStorage(ctx context.Context, accounts []Account) ([]models.AssetNode
 	return CollectStorageWithConfig(ctx, config.Default(), accounts)
 }
 
+// bucketMetaConcurrency bounds parallel per-bucket metadata calls (GetBucketLocation /
+// GetBucketWebsite). Accounts can hold thousands of buckets; processing them sequentially
+// made a single large account dominate scan time. This keeps S3 request bursts reasonable
+// while collapsing per-bucket latency.
+const bucketMetaConcurrency = 32
+
 func CollectStorageWithConfig(ctx context.Context, cfg *config.Config, accounts []Account) ([]models.AssetNode, []string, error) {
 	var out []models.AssetNode
 	var failed []string
-	sem := make(chan struct{}, max(1, cfg.Scan.RoleAssumptionConcurrency))
+	accountSem := make(chan struct{}, max(1, cfg.Scan.RoleAssumptionConcurrency))
+	// Shared across all accounts so total per-bucket S3 parallelism stays bounded even
+	// when many accounts are scanned concurrently.
+	bucketSem := make(chan struct{}, bucketMetaConcurrency)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var firstErr error
@@ -37,8 +46,8 @@ func CollectStorageWithConfig(ctx context.Context, cfg *config.Config, accounts 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
+			accountSem <- struct{}{}
+			defer func() { <-accountSem }()
 			c := s3.NewFromConfig(*account.Session)
 			list, err := c.ListBuckets(ctx, &s3.ListBucketsInput{})
 			if err != nil {
@@ -50,36 +59,46 @@ func CollectStorageWithConfig(ctx context.Context, cfg *config.Config, accounts 
 				mu.Unlock()
 				return
 			}
-			var local []models.AssetNode
+			// Fan out per-bucket metadata calls; a single account with thousands of
+			// buckets must not be processed one bucket at a time.
+			var bwg sync.WaitGroup
 			for _, b := range list.Buckets {
-				name := awsv2.ToString(b.Name)
-				regionOut, err := c.GetBucketLocation(ctx, &s3.GetBucketLocationInput{Bucket: b.Name})
-				if err != nil {
-					continue
-				}
-				region := normalizeBucketRegion(regionOut.LocationConstraint)
-				websiteEnabled := false
-				websiteEndpoint := ""
-				if _, err = c.GetBucketWebsite(ctx, &s3.GetBucketWebsiteInput{Bucket: b.Name}); err == nil {
-					websiteEnabled = true
-					websiteEndpoint = websiteEndpointFor(name, region)
-				}
-				local = append(local, models.AssetNode{
-					ARN:       fmt.Sprintf("arn:aws:s3:::%s", name),
-					AssetType: models.AssetS3Bucket,
-					Name:      name,
-					AccountID: account.ID,
-					Region:    region,
-					Properties: map[string]any{
-						"website_enabled":  websiteEnabled,
-						"website_endpoint": websiteEndpoint,
-						"bucket_region":    region,
-					},
-				})
+				b := b
+				bwg.Add(1)
+				go func() {
+					defer bwg.Done()
+					bucketSem <- struct{}{}
+					defer func() { <-bucketSem }()
+					name := awsv2.ToString(b.Name)
+					regionOut, err := c.GetBucketLocation(ctx, &s3.GetBucketLocationInput{Bucket: b.Name})
+					if err != nil {
+						return
+					}
+					region := normalizeBucketRegion(regionOut.LocationConstraint)
+					websiteEnabled := false
+					websiteEndpoint := ""
+					if _, err = c.GetBucketWebsite(ctx, &s3.GetBucketWebsiteInput{Bucket: b.Name}); err == nil {
+						websiteEnabled = true
+						websiteEndpoint = websiteEndpointFor(name, region)
+					}
+					node := models.AssetNode{
+						ARN:       fmt.Sprintf("arn:aws:s3:::%s", name),
+						AssetType: models.AssetS3Bucket,
+						Name:      name,
+						AccountID: account.ID,
+						Region:    region,
+						Properties: map[string]any{
+							"website_enabled":  websiteEnabled,
+							"website_endpoint": websiteEndpoint,
+							"bucket_region":    region,
+						},
+					}
+					mu.Lock()
+					out = append(out, node)
+					mu.Unlock()
+				}()
 			}
-			mu.Lock()
-			out = append(out, local...)
-			mu.Unlock()
+			bwg.Wait()
 		}()
 	}
 	wg.Wait()

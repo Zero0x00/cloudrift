@@ -12,12 +12,18 @@ import (
 
 	awsv2 "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
+	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 
 	"github.com/Zero0x00/cloudrift/internal/config"
 	"github.com/Zero0x00/cloudrift/internal/models"
 )
 
 var accountIDInIAMArn = regexp.MustCompile(`^arn:aws:iam::([0-9]{12}):`)
+
+// roleTrustConcurrency bounds parallel per-role policy fetches (ListAttachedRolePolicies /
+// ListRolePolicies / GetRolePolicy). Each external-trusting role needs several sequential
+// IAM calls; processing roles one at a time made trust the slowest stage on large accounts.
+const roleTrustConcurrency = 32
 
 type IAMAPI interface {
 	ListRoles(ctx context.Context, params *iam.ListRolesInput, optFns ...func(*iam.Options)) (*iam.ListRolesOutput, error)
@@ -36,6 +42,8 @@ func CollectTrust(ctx context.Context, accounts []Account) ([]models.AssetNode, 
 
 func CollectTrustWithConfig(ctx context.Context, cfg *config.Config, accounts []Account) ([]models.AssetNode, []models.Relationship, error) {
 	sem := make(chan struct{}, max(1, cfg.Scan.RoleAssumptionConcurrency))
+	// Shared across accounts so total parallel per-role policy fetches stay bounded.
+	roleSem := make(chan struct{}, roleTrustConcurrency)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var firstErr error
@@ -54,7 +62,7 @@ func CollectTrustWithConfig(ctx context.Context, cfg *config.Config, accounts []
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
-			localNodes, localRels, err := collectTrustFromClient(ctx, account.ID, newIAMClient(*account.Session))
+			localNodes, localRels, err := collectTrustFromClient(ctx, account.ID, newIAMClient(*account.Session), roleSem)
 			if err != nil {
 				mu.Lock()
 				if firstErr == nil {
@@ -104,23 +112,41 @@ func CollectTrustWithConfig(ctx context.Context, cfg *config.Config, accounts []
 	return nodes, rels, nil
 }
 
-func collectTrustFromClient(ctx context.Context, accountID string, client IAMAPI) ([]models.AssetNode, []models.Relationship, error) {
-	var roleNodes []models.AssetNode
-	var principalNodes []models.AssetNode
-	var rels []models.Relationship
-
+func collectTrustFromClient(ctx context.Context, accountID string, client IAMAPI, roleSem chan struct{}) ([]models.AssetNode, []models.Relationship, error) {
+	// Paginate the (cheap) role listing first; listing failure is fatal for the account.
+	var roles []iamtypes.Role
 	var marker *string
 	for {
 		out, err := client.ListRoles(ctx, &iam.ListRolesInput{Marker: marker})
 		if err != nil {
 			return nil, nil, err
 		}
+		roles = append(roles, out.Roles...)
+		if !out.IsTruncated || out.Marker == nil {
+			break
+		}
+		marker = out.Marker
+	}
 
-		for _, role := range out.Roles {
-			principals := extractExternalPrincipals(accountID, awsv2.ToString(role.AssumeRolePolicyDocument))
-			if len(principals) == 0 {
-				continue
-			}
+	// Fan out per-role: extracting principals and fetching each role's attached/inline
+	// policies is several IAM calls per role, so run them concurrently. Output ordering is
+	// irrelevant here — the caller dedups by ARN and sorts.
+	var roleNodes []models.AssetNode
+	var principalNodes []models.AssetNode
+	var rels []models.Relationship
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for _, role := range roles {
+		role := role
+		principals := extractExternalPrincipals(accountID, awsv2.ToString(role.AssumeRolePolicyDocument))
+		if len(principals) == 0 {
+			continue
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			roleSem <- struct{}{}
+			defer func() { <-roleSem }()
 
 			roleNode := models.AssetNode{
 				ARN:       awsv2.ToString(role.Arn),
@@ -136,8 +162,9 @@ func collectTrustFromClient(ctx context.Context, accountID string, client IAMAPI
 			roleNode.Properties["attached_policy_names"] = attachedPolicyNames
 			roleNode.Properties["inline_policy_documents"] = inlinePolicyDocuments
 			roleNode.Properties["policy_parse_ok"] = parseOK
-			roleNodes = append(roleNodes, roleNode)
 
+			localPrincipals := make([]models.AssetNode, 0, len(principals))
+			localRels := make([]models.Relationship, 0, len(principals))
 			for _, p := range principals {
 				extNode := models.AssetNode{
 					ARN:       externalPrincipalARN(p.PrincipalType, p.Value),
@@ -146,28 +173,30 @@ func collectTrustFromClient(ctx context.Context, accountID string, client IAMAPI
 					AccountID: accountID,
 					Region:    "global",
 					Properties: map[string]any{
-						"principal_type": p.PrincipalType,
+						"principal_type":  p.PrincipalType,
 						"principal_value": p.Value,
 					},
 				}
-				principalNodes = append(principalNodes, extNode)
-				rels = append(rels, models.Relationship{
+				localPrincipals = append(localPrincipals, extNode)
+				localRels = append(localRels, models.Relationship{
 					SourceARN: roleNode.ARN,
 					TargetARN: extNode.ARN,
 					RelType:   models.RelTrusts,
 					Properties: map[string]any{
-						"principal_type": p.PrincipalType,
+						"principal_type":  p.PrincipalType,
 						"principal_value": p.Value,
 					},
 				})
 			}
-		}
 
-		if !out.IsTruncated || out.Marker == nil {
-			break
-		}
-		marker = out.Marker
+			mu.Lock()
+			roleNodes = append(roleNodes, roleNode)
+			principalNodes = append(principalNodes, localPrincipals...)
+			rels = append(rels, localRels...)
+			mu.Unlock()
+		}()
 	}
+	wg.Wait()
 
 	nodes := append(roleNodes, principalNodes...)
 	return nodes, rels, nil

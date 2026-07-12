@@ -33,7 +33,7 @@ func TestCollectActivity_RecentlyUsedRole(t *testing.T) {
 		},
 	}
 
-	results, err := collectActivityFromClient(context.Background(), "111111111111", &c)
+	results, err := collectActivityFromClient(context.Background(), "111111111111", &c, make(chan struct{}, 4))
 	if err != nil {
 		t.Fatalf("collectActivityFromClient error: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestCollectActivity_AgingRole(t *testing.T) {
 		},
 	}
 
-	results, err := collectActivityFromClient(context.Background(), "111111111111", &c)
+	results, err := collectActivityFromClient(context.Background(), "111111111111", &c, make(chan struct{}, 4))
 	if err != nil {
 		t.Fatalf("collectActivityFromClient error: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestCollectActivity_StaleRole(t *testing.T) {
 		},
 	}
 
-	results, err := collectActivityFromClient(context.Background(), "111111111111", &c)
+	results, err := collectActivityFromClient(context.Background(), "111111111111", &c, make(chan struct{}, 4))
 	if err != nil {
 		t.Fatalf("collectActivityFromClient error: %v", err)
 	}
@@ -117,7 +117,7 @@ func TestCollectActivity_NeverUsedRole(t *testing.T) {
 		},
 	}
 
-	results, err := collectActivityFromClient(context.Background(), "111111111111", &c)
+	results, err := collectActivityFromClient(context.Background(), "111111111111", &c, make(chan struct{}, 4))
 	if err != nil {
 		t.Fatalf("collectActivityFromClient error: %v", err)
 	}
@@ -142,7 +142,7 @@ func TestCollectActivity_NilLastUsedDateHandledSafely(t *testing.T) {
 		},
 	}
 
-	results, err := collectActivityFromClient(context.Background(), "111111111111", &c)
+	results, err := collectActivityFromClient(context.Background(), "111111111111", &c, make(chan struct{}, 4))
 	if err != nil {
 		t.Fatalf("collectActivityFromClient error: %v", err)
 	}

@@ -26,7 +26,7 @@ func TestCollectTrust_ExternalAWSAccountPrincipal(t *testing.T) {
 		inlinePolicyDocsByName: map[string]string{
 			"InlineRead": `{"Statement":[{"Effect":"Allow","Action":["s3:GetObject"],"Resource":"*"}]}`,
 		},
-	})
+	}, make(chan struct{}, 4))
 	if err != nil {
 		t.Fatalf("collectTrustFromClient error: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestCollectTrust_SAMLPrincipal(t *testing.T) {
 		AssumeRolePolicyDocument: awsv2.String(encodedPolicy(singleStatement(`{"Federated":"arn:aws:iam::999999999999:saml-provider/Okta"}`))),
 	}
 
-	nodes, _, err := collectTrustFromClient(context.Background(), "111111111111", &fakeIAMAPI{roles: []iamtypes.Role{role}})
+	nodes, _, err := collectTrustFromClient(context.Background(), "111111111111", &fakeIAMAPI{roles: []iamtypes.Role{role}}, make(chan struct{}, 4))
 	if err != nil {
 		t.Fatalf("collectTrustFromClient error: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestCollectTrust_OIDCPrincipal(t *testing.T) {
 		AssumeRolePolicyDocument: awsv2.String(encodedPolicy(singleStatement(`{"Federated":"accounts.google.com"}`))),
 	}
 
-	nodes, _, err := collectTrustFromClient(context.Background(), "111111111111", &fakeIAMAPI{roles: []iamtypes.Role{role}})
+	nodes, _, err := collectTrustFromClient(context.Background(), "111111111111", &fakeIAMAPI{roles: []iamtypes.Role{role}}, make(chan struct{}, 4))
 	if err != nil {
 		t.Fatalf("collectTrustFromClient error: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestCollectTrust_AWSServicePrincipalSkipped(t *testing.T) {
 		))),
 	}
 
-	nodes, rels, err := collectTrustFromClient(context.Background(), "111111111111", &fakeIAMAPI{roles: []iamtypes.Role{role}})
+	nodes, rels, err := collectTrustFromClient(context.Background(), "111111111111", &fakeIAMAPI{roles: []iamtypes.Role{role}}, make(chan struct{}, 4))
 	if err != nil {
 		t.Fatalf("collectTrustFromClient error: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestCollectTrust_MixedStringAndArrayPrincipalForms(t *testing.T) {
 		))),
 	}
 
-	nodes, rels, err := collectTrustFromClient(context.Background(), "111111111111", &fakeIAMAPI{roles: []iamtypes.Role{role}})
+	nodes, rels, err := collectTrustFromClient(context.Background(), "111111111111", &fakeIAMAPI{roles: []iamtypes.Role{role}}, make(chan struct{}, 4))
 	if err != nil {
 		t.Fatalf("collectTrustFromClient error: %v", err)
 	}
@@ -129,7 +129,7 @@ func TestCollectTrust_MalformedPrincipalHandledSafely(t *testing.T) {
 		AssumeRolePolicyDocument: awsv2.String(encodedPolicy(singleStatement(`{"AWS":{"bad":"shape"}}`))),
 	}
 
-	nodes, rels, err := collectTrustFromClient(context.Background(), "111111111111", &fakeIAMAPI{roles: []iamtypes.Role{role}})
+	nodes, rels, err := collectTrustFromClient(context.Background(), "111111111111", &fakeIAMAPI{roles: []iamtypes.Role{role}}, make(chan struct{}, 4))
 	if err != nil {
 		t.Fatalf("expected safe handling without error, got %v", err)
 	}

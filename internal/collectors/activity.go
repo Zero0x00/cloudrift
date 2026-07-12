@@ -8,9 +8,15 @@ import (
 
 	awsv2 "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
+	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 
 	"github.com/Zero0x00/cloudrift/internal/config"
 )
+
+// roleActivityConcurrency bounds parallel per-role GetRole calls. An account can hold
+// thousands of IAM roles; fetching RoleLastUsed one role at a time made activity the
+// slowest stage on large accounts.
+const roleActivityConcurrency = 32
 
 type RoleActivity struct {
 	RoleARN       string     `json:"role_arn"`
@@ -39,6 +45,8 @@ func CollectActivity(ctx context.Context, accounts []Account) ([]RoleActivity, e
 
 func CollectActivityWithConfig(ctx context.Context, cfg *config.Config, accounts []Account) ([]RoleActivity, error) {
 	sem := make(chan struct{}, max(1, cfg.Scan.RoleAssumptionConcurrency))
+	// Shared across accounts so total parallel GetRole calls stay bounded.
+	roleSem := make(chan struct{}, roleActivityConcurrency)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var firstErr error
@@ -55,7 +63,7 @@ func CollectActivityWithConfig(ctx context.Context, cfg *config.Config, accounts
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
-			local, err := collectActivityFromClient(ctx, account.ID, newIAMActivityClient(*account.Session))
+			local, err := collectActivityFromClient(ctx, account.ID, newIAMActivityClient(*account.Session), roleSem)
 			if err != nil {
 				mu.Lock()
 				if firstErr == nil {
@@ -80,22 +88,42 @@ func CollectActivityWithConfig(ctx context.Context, cfg *config.Config, accounts
 	return all, nil
 }
 
-func collectActivityFromClient(ctx context.Context, accountID string, client IAMActivityAPI) ([]RoleActivity, error) {
+func collectActivityFromClient(ctx context.Context, accountID string, client IAMActivityAPI, roleSem chan struct{}) ([]RoleActivity, error) {
 	now := activityNowUTC().Truncate(24 * time.Hour)
-	var out []RoleActivity
-	var marker *string
 
+	// Paginate the (cheap) role listing first, then fan out the expensive per-role
+	// GetRole calls concurrently. Listing errors are fatal for the account (nothing to
+	// work with); a single role's GetRole failure is skipped, not fatal, so one throttled
+	// or access-denied role does not discard the whole account's activity.
+	var roles []iamtypes.Role
+	var marker *string
 	for {
 		listOut, err := client.ListRoles(ctx, &iam.ListRolesInput{Marker: marker})
 		if err != nil {
 			return nil, err
 		}
+		roles = append(roles, listOut.Roles...)
+		if !listOut.IsTruncated || listOut.Marker == nil {
+			break
+		}
+		marker = listOut.Marker
+	}
 
-		for _, role := range listOut.Roles {
+	var out []RoleActivity
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for _, role := range roles {
+		role := role
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			roleSem <- struct{}{}
+			defer func() { <-roleSem }()
+
 			roleName := awsv2.ToString(role.RoleName)
 			getOut, err := client.GetRole(ctx, &iam.GetRoleInput{RoleName: awsv2.String(roleName)})
 			if err != nil {
-				return nil, err
+				return
 			}
 
 			roleARN := awsv2.ToString(role.Arn)
@@ -121,14 +149,12 @@ func collectActivityFromClient(ctx context.Context, accountID string, client IAM
 				activity.DaysSinceUsed = days
 			}
 
+			mu.Lock()
 			out = append(out, activity)
-		}
-
-		if !listOut.IsTruncated || listOut.Marker == nil {
-			break
-		}
-		marker = listOut.Marker
+			mu.Unlock()
+		}()
 	}
+	wg.Wait()
 
 	sort.Slice(out, func(i, j int) bool {
 		return out[i].RoleARN < out[j].RoleARN
