@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 )
@@ -35,9 +36,15 @@ type Config struct {
 		OutputDir     string `toml:"output_dir"`
 	} `toml:"output"`
 	Neo4j struct {
-		URI         string `toml:"uri"`
-		Username    string `toml:"username"`
-		PasswordEnv string `toml:"password_env"`
+		URI      string `toml:"uri"`
+		Username string `toml:"username"`
+		// Password resolution order (first non-empty wins): the env var named by
+		// PasswordEnv, then the inline Password, then the contents of PasswordFile.
+		// PasswordEnv is preferred; Password/PasswordFile let credentials persist across
+		// restarts without re-exporting an env var each session.
+		PasswordEnv  string `toml:"password_env"`
+		Password     string `toml:"password"`
+		PasswordFile string `toml:"password_file"`
 	} `toml:"neo4j"`
 	// Embeddings (Phase 3) — IMPORTANT:
 	//
@@ -96,6 +103,26 @@ func Default() *Config {
 	c.Synthesis.APIKeyEnv = "ANTHROPIC_API_KEY"
 	c.Synthesis.MaxTokens = 2048
 	return c
+}
+
+// Neo4jPassword resolves the Neo4j password from the first available source: the env var
+// named by PasswordEnv, then the inline Password, then the contents of PasswordFile.
+// Returns "" when none are set/readable.
+func (c *Config) Neo4jPassword() string {
+	if envName := strings.TrimSpace(c.Neo4j.PasswordEnv); envName != "" {
+		if v := strings.TrimSpace(os.Getenv(envName)); v != "" {
+			return v
+		}
+	}
+	if p := strings.TrimSpace(c.Neo4j.Password); p != "" {
+		return p
+	}
+	if f := strings.TrimSpace(c.Neo4j.PasswordFile); f != "" {
+		if b, err := os.ReadFile(f); err == nil {
+			return strings.TrimSpace(string(b))
+		}
+	}
+	return ""
 }
 
 func Load(path string) (*Config, error) {

@@ -2,7 +2,6 @@ package blastradius
 
 import (
 	"context"
-	"os"
 	"strings"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
@@ -21,11 +20,7 @@ func TryConnect(ctx context.Context, cfg *config.Config) neo4j.DriverWithContext
 	if uri == "" {
 		return nil
 	}
-	pwName := strings.TrimSpace(cfg.Neo4j.PasswordEnv)
-	if pwName == "" {
-		return nil
-	}
-	pw := strings.TrimSpace(os.Getenv(pwName))
+	pw := cfg.Neo4jPassword()
 	if pw == "" {
 		return nil
 	}

@@ -176,19 +176,15 @@ func (defaultNeo4jConnector) Connect(ctx context.Context, uri, username, passwor
 func exportScanToNeo4j(ctx context.Context, cfg *config.Config, scanPath string, c neo4jConnectorFactory) error {
 	uri := strings.TrimSpace(cfg.Neo4j.URI)
 	user := strings.TrimSpace(cfg.Neo4j.Username)
-	passEnv := strings.TrimSpace(cfg.Neo4j.PasswordEnv)
 	if uri == "" {
 		return errors.New("neo4j export enabled but config neo4j.uri is empty")
 	}
 	if user == "" {
 		return errors.New("neo4j export enabled but config neo4j.username is empty")
 	}
-	if passEnv == "" {
-		return errors.New("neo4j export enabled but config neo4j.password_env is empty")
-	}
-	pass := os.Getenv(passEnv)
-	if strings.TrimSpace(pass) == "" {
-		return fmt.Errorf("neo4j export enabled but env var %s is empty or unset", passEnv)
+	pass := cfg.Neo4jPassword()
+	if pass == "" {
+		return errors.New("neo4j export enabled but no password set (configure password_env, password, or password_file)")
 	}
 
 	ex, closeFn, err := c.Connect(ctx, uri, user, pass)

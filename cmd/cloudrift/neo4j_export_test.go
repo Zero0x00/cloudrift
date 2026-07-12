@@ -197,8 +197,8 @@ func TestExportScanToNeo4j_EmptyPasswordEnvValue(t *testing.T) {
 	t.Cleanup(func() { os.Unsetenv(cfg.Neo4j.PasswordEnv) })
 
 	err := exportScanToNeo4j(context.Background(), cfg, t.TempDir(), fakeConnector{})
-	if err == nil || !strings.Contains(err.Error(), cfg.Neo4j.PasswordEnv) {
-		t.Fatalf("expected empty password env error, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "no password set") {
+		t.Fatalf("expected missing password error, got %v", err)
 	}
 }
 
@@ -224,8 +224,8 @@ func TestExportScanToNeo4j_MissingPasswordEnvVar(t *testing.T) {
 	os.Unsetenv(cfg.Neo4j.PasswordEnv)
 
 	err := exportScanToNeo4j(context.Background(), cfg, t.TempDir(), fakeConnector{})
-	if err == nil || !strings.Contains(err.Error(), cfg.Neo4j.PasswordEnv) {
-		t.Fatalf("expected missing password env error, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "no password set") {
+		t.Fatalf("expected missing password error, got %v", err)
 	}
 }
 

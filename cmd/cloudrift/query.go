@@ -298,18 +298,14 @@ func validateNeo4jConfigForQuery(cfg *config.Config) error {
 	}
 	uri := strings.TrimSpace(cfg.Neo4j.URI)
 	user := strings.TrimSpace(cfg.Neo4j.Username)
-	passEnv := strings.TrimSpace(cfg.Neo4j.PasswordEnv)
 	if uri == "" {
 		return errors.New("neo4j.uri is empty (configure Neo4j in config TOML for query)")
 	}
 	if user == "" {
 		return errors.New("neo4j.username is empty")
 	}
-	if passEnv == "" {
-		return errors.New("neo4j.password_env is empty")
-	}
-	if strings.TrimSpace(os.Getenv(passEnv)) == "" {
-		return fmt.Errorf("env %s is unset or empty (Neo4j password)", passEnv)
+	if cfg.Neo4jPassword() == "" {
+		return errors.New("neo4j password is not set (configure password_env, password, or password_file)")
 	}
 	return nil
 }
@@ -317,7 +313,7 @@ func validateNeo4jConfigForQuery(cfg *config.Config) error {
 func openNeo4jDriverForQuery(ctx context.Context, cfg *config.Config) (neo4j.DriverWithContext, func(context.Context) error, error) {
 	uri := strings.TrimSpace(cfg.Neo4j.URI)
 	user := strings.TrimSpace(cfg.Neo4j.Username)
-	pass := strings.TrimSpace(os.Getenv(strings.TrimSpace(cfg.Neo4j.PasswordEnv)))
+	pass := cfg.Neo4jPassword()
 	d, err := newNeo4jDriver(ctx, uri, user, pass)
 	if err != nil {
 		return nil, nil, fmt.Errorf("neo4j connect: %w", err)

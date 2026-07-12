@@ -470,11 +470,11 @@ func defaultProfile(cfg *config.Config) string {
 }
 
 func neo4jConfigured(cfg *config.Config) bool {
-	envName := strings.TrimSpace(cfg.Neo4j.PasswordEnv)
-	if strings.TrimSpace(cfg.Neo4j.URI) == "" || strings.TrimSpace(cfg.Neo4j.Username) == "" || envName == "" {
+	if strings.TrimSpace(cfg.Neo4j.URI) == "" || strings.TrimSpace(cfg.Neo4j.Username) == "" {
 		return false
 	}
-	return strings.TrimSpace(os.Getenv(envName)) != ""
+	// Password may come from an env var, an inline value, or a file (see Neo4jPassword).
+	return cfg.Neo4jPassword() != ""
 }
 
 func discoverAWSProfiles() []string {
@@ -596,13 +596,12 @@ func (s *scanControlCenter) ExportToNeo4j() http.HandlerFunc {
 func exportScanToNeo4j(ctx context.Context, cfg *config.Config, scanPath string) (clustered bool, err error) {
 	uri := strings.TrimSpace(cfg.Neo4j.URI)
 	user := strings.TrimSpace(cfg.Neo4j.Username)
-	passEnv := strings.TrimSpace(cfg.Neo4j.PasswordEnv)
-	if uri == "" || user == "" || passEnv == "" {
+	if uri == "" || user == "" {
 		return false, errors.New("neo4j configuration is incomplete")
 	}
-	pass := strings.TrimSpace(os.Getenv(passEnv))
+	pass := cfg.Neo4jPassword()
 	if pass == "" {
-		return false, fmt.Errorf("neo4j password env %s is empty", passEnv)
+		return false, errors.New("neo4j password is not set (configure password_env, password, or password_file)")
 	}
 	driver, err := neo4j.NewDriverWithContext(uri, neo4j.BasicAuth(user, pass, ""))
 	if err != nil {
