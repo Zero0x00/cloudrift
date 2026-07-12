@@ -9,6 +9,12 @@ password_env = "CLOUDRIFT_NEO4J_PASSWORD"
 # Optional sections below. This file is optional and the built-in defaults work
 # without it; uncomment and edit only what you need to override.
 
+# [aws]
+# org_role_name = "CloudriftAuditRole"  # role assumed in each member account for org-wide scans.
+#                                        # Set to "" for no-assume mode: scan only the caller's own
+#                                        # account using your current credentials (no role to deploy).
+# management_profile = "default"         # AWS profile/credentials used to start the scan
+
 # [synthesis]
 # provider = "anthropic"             # LLM provider for `cloudrift query` answer synthesis
 # model = "claude-opus-4-8"

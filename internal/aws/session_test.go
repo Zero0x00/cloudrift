@@ -26,3 +26,21 @@ func TestAssumeAccountCachesByAccountID(t *testing.T) {
 		t.Fatalf("expected one cached entry, got %d", len(manager.cache))
 	}
 }
+
+func TestAssumeAccountNoAssumeModeReturnsBaseConfig(t *testing.T) {
+	// Empty role name = no-assume mode: return base credentials directly, never assume
+	// a role and never populate the cache.
+	base := awsv2.Config{Region: "eu-west-1"}
+	manager := NewSessionManagerFromConfig(base, "")
+
+	got, err := manager.AssumeAccount(context.Background(), "123456789012")
+	if err != nil {
+		t.Fatalf("no-assume AssumeAccount failed: %v", err)
+	}
+	if got.Region != base.Region {
+		t.Fatalf("expected base config region %q, got %q", base.Region, got.Region)
+	}
+	if len(manager.cache) != 0 {
+		t.Fatalf("no-assume mode must not cache assume-role sessions, got %d entries", len(manager.cache))
+	}
+}

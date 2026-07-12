@@ -3,16 +3,35 @@ package pipeline
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 
+	awsv2 "github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/organizations"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	cloudaws "github.com/Zero0x00/cloudrift/internal/aws"
 	"github.com/Zero0x00/cloudrift/internal/collectors"
 	"github.com/Zero0x00/cloudrift/internal/config"
 	"github.com/Zero0x00/cloudrift/internal/models"
 )
+
+// currentAccountOnly builds a single-account scan target from the base credentials, used
+// in no-assume mode (empty org_role_name). It resolves the caller's account via STS and
+// scans it directly, with no role assumption and no Organizations API call.
+func currentAccountOnly(ctx context.Context, baseCfg awsv2.Config) ([]collectors.Account, collectors.Coverage, error) {
+	ident, err := sts.NewFromConfig(baseCfg).GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
+	if err != nil {
+		return nil, collectors.Coverage{}, fmt.Errorf("get caller identity: %w", err)
+	}
+	acctID := awsv2.ToString(ident.Account)
+	slog.Info("no-assume mode: scanning caller's account only with base credentials", "account", acctID)
+	sess := baseCfg
+	accounts := []collectors.Account{{ID: acctID, Session: &sess}}
+	cov := collectors.Coverage{Discovered: 1, Scanned: []string{acctID}}
+	return accounts, cov, nil
+}
 
 // awsSource is the production Source: it bootstraps AWS clients and runs every collector.
 type awsSource struct{}
@@ -32,10 +51,18 @@ func (awsSource) Collect(ctx context.Context, cfg *config.Config) (Result, error
 		return Result{}, fmt.Errorf("load aws config: %w", err)
 	}
 
-	orgClient := organizations.NewFromConfig(baseCfg)
-	sm := cloudaws.NewSessionManagerFromConfig(baseCfg, cfg.AWS.OrgRoleName)
-
-	accounts, coverage, err := collectors.CollectAccounts(ctx, cfg, orgClient, sm)
+	var accounts []collectors.Account
+	var coverage collectors.Coverage
+	if strings.TrimSpace(cfg.AWS.OrgRoleName) == "" {
+		// No-assume mode: scan only the caller's own account using the base credentials.
+		// No cross-account role assumption, and no Organizations:ListAccounts call (so it
+		// works for identities that only have read access to a single account).
+		accounts, coverage, err = currentAccountOnly(ctx, baseCfg)
+	} else {
+		orgClient := organizations.NewFromConfig(baseCfg)
+		sm := cloudaws.NewSessionManagerFromConfig(baseCfg, cfg.AWS.OrgRoleName)
+		accounts, coverage, err = collectors.CollectAccounts(ctx, cfg, orgClient, sm)
+	}
 	if err != nil {
 		return Result{}, fmt.Errorf("collect accounts: %w", err)
 	}

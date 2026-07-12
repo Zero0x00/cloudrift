@@ -36,6 +36,14 @@ func NewSessionManagerFromConfig(cfg awsv2.Config, roleName string) *SessionMana
 }
 
 func (m *SessionManager) AssumeAccount(ctx context.Context, accountID string) (awsv2.Config, error) {
+	// No-assume mode: an empty role name means "use the base credentials directly"
+	// instead of assuming a per-account audit role. This supports single-account scans
+	// where the caller already holds the needed read permissions, so no CloudriftAuditRole
+	// (or any cross-account role) needs to be deployed.
+	if m.roleName == "" {
+		return m.baseConfig, nil
+	}
+
 	m.mu.RLock()
 	if cfg, ok := m.cache[accountID]; ok {
 		m.mu.RUnlock()
