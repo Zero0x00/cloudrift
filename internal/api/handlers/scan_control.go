@@ -224,7 +224,19 @@ func (s *scanControlCenter) runScanAsync(req schema.ScanStartRequest, cfg *confi
 	if req.Profile != "" {
 		cfg.AWS.ManagementProfile = req.Profile
 	}
-	scanOpts := pipeline.Options{NoHTTP: req.NoHTTP}
+	// Capture the coverage warning (if any) streamed by the pipeline so the final
+	// completion message reflects partial coverage instead of a misleading "scan completed".
+	var coverageWarning string
+	scanOpts := pipeline.Options{
+		NoHTTP: req.NoHTTP,
+		Progress: func(stage, message string) {
+			if stage == "coverage" {
+				coverageWarning = message
+			}
+			// Stream each stage live to the WS progress channel and /api/scan/status.
+			s.updateRun(runID, "running", stage, message)
+		},
+	}
 	if req.Module != "" && req.Module != "all" {
 		scanOpts.Modules = []string{req.Module}
 	}
@@ -251,7 +263,11 @@ func (s *scanControlCenter) runScanAsync(req schema.ScanStartRequest, cfg *confi
 		_, _ = alertSvc.EvaluateEnabledRulesForScan(scanID)
 	}
 
-	s.finishRun(runID, scanID, "scan completed")
+	completionMsg := "scan completed"
+	if coverageWarning != "" {
+		completionMsg = "scan completed - " + coverageWarning
+	}
+	s.finishRun(runID, scanID, completionMsg)
 }
 
 func (s *scanControlCenter) updateRun(runID, status, stage, message string) {

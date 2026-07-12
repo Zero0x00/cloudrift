@@ -33,9 +33,16 @@ type Result struct {
 	Coverage collectors.Coverage
 }
 
+// Progress reports scan stage transitions. stage is a short machine key (e.g. "collecting",
+// "validating", "scoring", "persisting", "coverage", "done"); message is human-readable.
+// It lets the CLI log progress and the dashboard stream it live instead of the scan being
+// an opaque black box between start and finish.
+type Progress func(stage, message string)
+
 // Source produces the raw inventory. Production uses NewAWSSource; tests inject fakes.
+// progress is always non-nil (Run installs a no-op when Options.Progress is unset).
 type Source interface {
-	Collect(ctx context.Context, cfg *config.Config) (Result, error)
+	Collect(ctx context.Context, cfg *config.Config, progress Progress) (Result, error)
 }
 
 // Options carries scan-time toggles threaded from the CLI/dashboard.
@@ -45,6 +52,9 @@ type Options struct {
 	// Modules limits which detection modules run. Empty (or containing "all")
 	// runs both orphaned_edge and external_access.
 	Modules []string
+	// Progress, if set, receives stage transitions during the scan. Optional; Run
+	// substitutes a no-op when nil so callers and the source can always invoke it.
+	Progress Progress
 }
 
 // validateAssetsFn is the validation entry point, indirected for testing (real network
@@ -74,10 +84,22 @@ func Run(ctx context.Context, cfg *config.Config, outputDir, toolVersion string,
 	if src == nil {
 		return "", fmt.Errorf("pipeline: nil source")
 	}
+	progress := opts.Progress
+	if progress == nil {
+		progress = func(string, string) {}
+	}
 
-	res, err := src.Collect(ctx, cfg)
+	progress("collecting", "collecting AWS inventory")
+	res, err := src.Collect(ctx, cfg, progress)
 	if err != nil {
 		return "", fmt.Errorf("collect: %w", err)
+	}
+	// Surface coverage immediately: a scan that reached no accounts still "succeeds"
+	// with zero findings, which is misleading unless the gap is reported.
+	if cov := res.Coverage; !cov.Complete() {
+		progress("coverage", fmt.Sprintf(
+			"partial coverage: %d of %d accounts scanned, %d failed - findings may be incomplete",
+			len(cov.Scanned), cov.Discovered, len(cov.Failed)))
 	}
 
 	var findings []models.Finding
@@ -90,6 +112,11 @@ func Run(ctx context.Context, cfg *config.Config, outputDir, toolVersion string,
 		annotateAlternateDomains(res.Assets)
 		bucketNames := buildBucketNameSet(res.Assets)
 		edgeCandidates := filterByType(res.Assets, models.AssetDNSRecord)
+		if opts.NoHTTP {
+			progress("validating", fmt.Sprintf("validating %d edge assets (DNS only, HTTP probing skipped)", len(edgeCandidates)))
+		} else {
+			progress("validating", fmt.Sprintf("validating %d edge assets (DNS + HTTP probing)", len(edgeCandidates)))
+		}
 		validations := validateAssetsFn(
 			ctx, edgeCandidates,
 			cfg.Scan.HTTPProbeConcurrency, opts.NoHTTP,
@@ -110,6 +137,7 @@ func Run(ctx context.Context, cfg *config.Config, outputDir, toolVersion string,
 
 	// --- External-trust module: cross-account / federated IAM trust + resource-policy exposure. ---
 	if opts.runsModule(models.ModuleExternalAccess) {
+		progress("scoring", "evaluating IAM trust and resource-policy exposure")
 		activityIdx := collectors.IndexActivityByRoleARN(res.Activity)
 		findings = append(findings, scorers.ScoreTrust(res.Assets, res.Rels, activityIdx, cfg)...)
 		findings = append(findings, scorers.ScoreResourceExposure(res.Assets, res.Rels, cfg)...)
@@ -127,9 +155,11 @@ func Run(ctx context.Context, cfg *config.Config, outputDir, toolVersion string,
 	stampScanID(scanID, findings, res.Assets, res.Rels)
 	sortFindings(findings)
 
+	progress("persisting", fmt.Sprintf("writing scan artifacts (%d findings)", len(findings)))
 	if err := persist(outputDir, scanID, toolVersion, res, findings); err != nil {
 		return "", err
 	}
+	progress("done", fmt.Sprintf("scan complete: %d findings across %d accounts", len(findings), len(res.Coverage.Scanned)))
 	return scanID, nil
 }
 

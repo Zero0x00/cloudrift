@@ -141,6 +141,12 @@ func ensureValidSession(ctx context.Context, profile string, cmd *cobra.Command)
 }
 
 func runScan(ctx context.Context, cfg *config.Config, outputDir string, opts pipeline.Options) (string, error) {
+	// Log each stage so a CLI scan reports progress instead of appearing to hang.
+	if opts.Progress == nil {
+		opts.Progress = func(stage, message string) {
+			slog.Info("scan progress", "stage", stage, "message", message)
+		}
+	}
 	return pipeline.Run(ctx, cfg, outputDir, version, pipeline.NewAWSSource(), opts)
 }
 

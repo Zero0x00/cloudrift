@@ -23,7 +23,7 @@ type fakeScanSource struct {
 	err    error
 }
 
-func (f fakeScanSource) Collect(_ context.Context, _ *config.Config) (pipeline.Result, error) {
+func (f fakeScanSource) Collect(_ context.Context, _ *config.Config, _ pipeline.Progress) (pipeline.Result, error) {
 	return f.result, f.err
 }
 

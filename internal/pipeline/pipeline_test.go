@@ -19,8 +19,52 @@ type fakeSource struct {
 	err    error
 }
 
-func (f fakeSource) Collect(_ context.Context, _ *config.Config) (Result, error) {
+func (f fakeSource) Collect(_ context.Context, _ *config.Config, _ Progress) (Result, error) {
 	return f.result, f.err
+}
+
+func TestRunReportsProgressAndCoverageWarning(t *testing.T) {
+	dir := t.TempDir()
+	res := sampleResult()
+	// Incomplete coverage: one account discovered but not scanned, so Run must emit a
+	// "coverage" progress event warning the scan is partial.
+	res.Coverage = collectors.Coverage{
+		Discovered: 2,
+		Scanned:    []string{"111111111111"},
+		Failed:     map[string]string{"222222222222": "assume role denied"},
+	}
+
+	var stages []string
+	coverageSeen := ""
+	opts := Options{
+		Progress: func(stage, message string) {
+			stages = append(stages, stage)
+			if stage == "coverage" {
+				coverageSeen = message
+			}
+		},
+	}
+	if _, err := Run(context.Background(), config.Default(), dir, "test", fakeSource{result: res}, opts); err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	for _, want := range []string{"collecting", "coverage", "persisting", "done"} {
+		if !containsStr(stages, want) {
+			t.Errorf("expected progress stage %q, got %v", want, stages)
+		}
+	}
+	if coverageSeen == "" {
+		t.Errorf("expected a coverage warning message for incomplete coverage")
+	}
+}
+
+func containsStr(xs []string, want string) bool {
+	for _, x := range xs {
+		if x == want {
+			return true
+		}
+	}
+	return false
 }
 
 // sampleResult builds a deterministic inventory exercising both modules:

@@ -39,7 +39,7 @@ type awsSource struct{}
 // NewAWSSource returns the production collection source.
 func NewAWSSource() Source { return awsSource{} }
 
-func (awsSource) Collect(ctx context.Context, cfg *config.Config) (Result, error) {
+func (awsSource) Collect(ctx context.Context, cfg *config.Config, progress Progress) (Result, error) {
 	// Credential selection: explicit management_profile wins; otherwise fall back to the
 	// AWS default chain (env/AWS_PROFILE/SSO/instance role).
 	var loadOpts []func(*awsconfig.LoadOptions) error
@@ -53,6 +53,7 @@ func (awsSource) Collect(ctx context.Context, cfg *config.Config) (Result, error
 
 	var accounts []collectors.Account
 	var coverage collectors.Coverage
+	progress("collecting", "enumerating accounts")
 	if strings.TrimSpace(cfg.AWS.OrgRoleName) == "" {
 		// No-assume mode: scan only the caller's own account using the base credentials.
 		// No cross-account role assumption, and no Organizations:ListAccounts call (so it
@@ -66,21 +67,26 @@ func (awsSource) Collect(ctx context.Context, cfg *config.Config) (Result, error
 	if err != nil {
 		return Result{}, fmt.Errorf("collect accounts: %w", err)
 	}
+	progress("collecting", fmt.Sprintf("scanning %d account(s)", len(accounts)))
 
 	var assets []models.AssetNode
 	var rels []models.Relationship
 
+	progress("collecting", "collecting DNS records (Route 53)")
 	dns, err := collectors.CollectDNSWithConfig(ctx, cfg, accounts)
 	if err != nil {
 		return Result{}, fmt.Errorf("collect dns: %w", err)
 	}
 	assets = append(assets, dns...)
+	slog.Info("collector finished", "collector", "dns", "records", len(dns))
 
+	progress("collecting", "collecting S3 buckets")
 	storage, storageFailed, err := collectors.CollectStorageWithConfig(ctx, cfg, accounts)
 	if err != nil {
 		return Result{}, fmt.Errorf("collect storage: %w", err)
 	}
 	assets = append(assets, storage...)
+	slog.Info("collector finished", "collector", "storage", "buckets", len(storage), "failed_accounts", len(storageFailed))
 	// Bucket-enumeration gaps directly weaken the reclaimable verdict, so fold them into
 	// coverage (Complete() becomes false, triggering the pipeline's reclaimable guard).
 	if len(storageFailed) > 0 {
@@ -94,6 +100,7 @@ func (awsSource) Collect(ctx context.Context, cfg *config.Config) (Result, error
 
 	// Resource-based cross-account exposure (S3 bucket policies), reusing the buckets we
 	// just listed so there is no second ListBuckets pass.
+	progress("collecting", "reading S3 bucket policies")
 	bpPrincipals, bpRels, bpFailed, err := collectors.CollectBucketPoliciesWithConfig(ctx, cfg, accounts, storage)
 	if err != nil {
 		return Result{}, fmt.Errorf("collect bucket policies: %w", err)
@@ -108,25 +115,32 @@ func (awsSource) Collect(ctx context.Context, cfg *config.Config) (Result, error
 			coverage.Failed[id] = "s3 bucket policy read denied"
 		}
 	}
+	slog.Info("collector finished", "collector", "bucket_policy", "principals", len(bpPrincipals), "failed_accounts", len(bpFailed))
 
+	progress("collecting", "collecting CloudFront distributions")
 	edgeAssets, edgeRels, err := collectors.CollectEdgeWithConfig(ctx, cfg, accounts)
 	if err != nil {
 		return Result{}, fmt.Errorf("collect edge: %w", err)
 	}
 	assets = append(assets, edgeAssets...)
 	rels = append(rels, edgeRels...)
+	slog.Info("collector finished", "collector", "edge", "assets", len(edgeAssets))
 
+	progress("collecting", "collecting IAM roles and trust policies")
 	trustAssets, trustRels, err := collectors.CollectTrustWithConfig(ctx, cfg, accounts)
 	if err != nil {
 		return Result{}, fmt.Errorf("collect trust: %w", err)
 	}
 	assets = append(assets, trustAssets...)
 	rels = append(rels, trustRels...)
+	slog.Info("collector finished", "collector", "trust", "roles", len(trustAssets))
 
+	progress("collecting", "collecting IAM role activity")
 	activity, err := collectors.CollectActivityWithConfig(ctx, cfg, accounts)
 	if err != nil {
 		return Result{}, fmt.Errorf("collect activity: %w", err)
 	}
+	slog.Info("collector finished", "collector", "activity", "records", len(activity))
 
 	return Result{Accounts: accounts, Assets: assets, Rels: rels, Activity: activity, Coverage: coverage}, nil
 }
