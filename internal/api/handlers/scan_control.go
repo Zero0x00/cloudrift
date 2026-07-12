@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -242,7 +243,7 @@ func (s *scanControlCenter) runScanAsync(req schema.ScanStartRequest, cfg *confi
 	}
 	scanID, err := pipeline.Run(context.Background(), cfg, s.outputDir, buildVersion, pipeline.NewAWSSource(), scanOpts)
 	if err != nil {
-		s.failRun(runID, "scan failed")
+		s.failRun(runID, fmt.Sprintf("scan failed: %v", err))
 		return
 	}
 	s.updateRunWithScanID(runID, "running", "scan_complete", "scan artifacts created", scanID)
@@ -250,7 +251,7 @@ func (s *scanControlCenter) runScanAsync(req schema.ScanStartRequest, cfg *confi
 	if req.Neo4j {
 		s.updateRun(runID, "running", "neo4j_export", "exporting scan to Neo4j")
 		if _, err := exportScanToNeo4j(context.Background(), cfg, filepath.Join(s.outputDir, scanID)); err != nil {
-			s.failRun(runID, "scan completed, but Neo4j export failed")
+			s.failRun(runID, fmt.Sprintf("scan completed, but Neo4j export failed: %v", err))
 			return
 		}
 	}
@@ -296,6 +297,9 @@ func (s *scanControlCenter) updateRunWithScanID(runID, status, stage, message, s
 }
 
 func (s *scanControlCenter) failRun(runID, message string) {
+	// Log every scan failure so the reason is visible in the server logs, not only in the
+	// /api/scan/status response. Without this, a failed dashboard scan produced no log line.
+	slog.Error("scan run failed", "run_id", runID, "reason", message)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.current.RunID != runID {
@@ -321,6 +325,7 @@ func (s *scanControlCenter) failRun(runID, message string) {
 }
 
 func (s *scanControlCenter) finishRun(runID, scanID, message string) {
+	slog.Info("scan run completed", "run_id", runID, "scan_id", scanID, "message", message)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.current.RunID != runID {
