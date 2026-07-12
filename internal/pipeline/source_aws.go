@@ -51,6 +51,12 @@ func (awsSource) Collect(ctx context.Context, cfg *config.Config, progress Progr
 		return Result{}, fmt.Errorf("load aws config: %w", err)
 	}
 
+	// Route collector partial-failure diagnostics (e.g. AccessDenied on a role/bucket) into
+	// the progress stream so operators see the real cause in the dashboard, not just logs.
+	ctx = collectors.WithDiagnostics(ctx, func(collector, message string) {
+		progress("warning", fmt.Sprintf("%s: %s", collector, message))
+	})
+
 	var accounts []collectors.Account
 	var coverage collectors.Coverage
 	progress("collecting", "enumerating accounts")

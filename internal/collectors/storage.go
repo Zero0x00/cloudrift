@@ -102,7 +102,7 @@ func CollectStorageWithConfig(ctx context.Context, cfg *config.Config, accounts 
 		}()
 	}
 	wg.Wait()
-	warnPartial("storage", firstErr)
+	warnPartial(ctx, "storage", firstErr)
 	return out, failed, nil
 }
 

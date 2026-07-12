@@ -337,6 +337,12 @@ export function ScanControlCenterPage() {
 
           <div className="hs-card p-4">
             <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Run status</h3>
+            {scanStatus.data?.status === "failed" ? (
+              <div className="mt-3 rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-900 dark:border-rose-700/60 dark:bg-rose-950/30 dark:text-rose-200">
+                <p className="font-semibold">Scan failed</p>
+                <p className="mt-0.5 break-words">{scanStatus.data?.message}</p>
+              </div>
+            ) : null}
             <dl className="mt-3 grid gap-2 text-sm md:grid-cols-2">
               <Stat label="State" value={scanStatus.data?.status || "idle"} />
               <Stat label="Stage" value={scanStatus.data?.stage || "idle"} />
@@ -345,6 +351,27 @@ export function ScanControlCenterPage() {
               <Stat label="Scan ID" value={scanStatus.data?.scan_id || "—"} />
               <Stat label="Message" value={effectiveStatus || "—"} />
             </dl>
+            {scanStatus.data?.log && scanStatus.data.log.length > 0 ? (
+              <div className="mt-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Scan log</p>
+                <pre className="mt-2 max-h-64 overflow-auto rounded bg-slate-950/90 p-3 text-[11px] leading-relaxed text-slate-200">
+                  {scanStatus.data.log.map((line, i) => (
+                    <div
+                      key={i}
+                      className={
+                        line.includes("FAILED:") || line.includes("warning:")
+                          ? "text-amber-300"
+                          : line.includes("DONE:")
+                          ? "text-emerald-300"
+                          : undefined
+                      }
+                    >
+                      {line}
+                    </div>
+                  ))}
+                </pre>
+              </div>
+            ) : null}
           </div>
 
           <div className="hs-card p-4">

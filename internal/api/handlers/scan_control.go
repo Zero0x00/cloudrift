@@ -234,6 +234,12 @@ func (s *scanControlCenter) runScanAsync(req schema.ScanStartRequest, cfg *confi
 			if stage == "coverage" {
 				coverageWarning = message
 			}
+			// Warnings advance the run log but must not overwrite the active stage/message.
+			if stage == "warning" {
+				s.appendLog(runID, "warning: "+message)
+				return
+			}
+			s.appendLog(runID, stage+": "+message)
 			// Stream each stage live to the WS progress channel and /api/scan/status.
 			s.updateRun(runID, "running", stage, message)
 		},
@@ -269,6 +275,23 @@ func (s *scanControlCenter) runScanAsync(req schema.ScanStartRequest, cfg *confi
 		completionMsg = "scan completed - " + coverageWarning
 	}
 	s.finishRun(runID, scanID, completionMsg)
+}
+
+// scanLogLimit caps the per-run log so a large scan cannot grow the status payload without bound.
+const scanLogLimit = 500
+
+// appendLog adds a timestamped line to the current run's log (for dashboard diagnostics).
+func (s *scanControlCenter) appendLog(runID, line string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.current.RunID != runID {
+		return
+	}
+	entry := time.Now().UTC().Format("15:04:05") + " " + line
+	s.current.Log = append(s.current.Log, entry)
+	if len(s.current.Log) > scanLogLimit {
+		s.current.Log = s.current.Log[len(s.current.Log)-scanLogLimit:]
+	}
 }
 
 func (s *scanControlCenter) updateRun(runID, status, stage, message string) {
@@ -311,6 +334,7 @@ func (s *scanControlCenter) failRun(runID, message string) {
 	s.current.Message = message
 	s.current.FinishedAt = now
 	s.current.LastUpdatedAt = now
+	s.current.Log = append(s.current.Log, now.Format("15:04:05")+" FAILED: "+message)
 	s.appendHistoryLocked(schema.ScanRunHistoryItem{
 		RunID:      s.current.RunID,
 		StartedAt:  s.current.StartedAt,
@@ -338,6 +362,7 @@ func (s *scanControlCenter) finishRun(runID, scanID, message string) {
 	s.current.ScanID = scanID
 	s.current.FinishedAt = now
 	s.current.LastUpdatedAt = now
+	s.current.Log = append(s.current.Log, now.Format("15:04:05")+" DONE: "+message)
 	s.appendHistoryLocked(schema.ScanRunHistoryItem{
 		RunID:      s.current.RunID,
 		StartedAt:  s.current.StartedAt,

@@ -27,12 +27,36 @@ type Coverage struct {
 // Complete reports whether every discovered account was successfully assumed.
 func (c Coverage) Complete() bool { return len(c.Failed) == 0 }
 
+// diagKey is the context key carrying an optional diagnostics sink.
+type diagKey struct{}
+
+// DiagFunc receives collector diagnostics (partial-failure details). The pipeline installs
+// one so these surface in scan progress and the dashboard, not only in server logs.
+type DiagFunc func(collector, message string)
+
+// WithDiagnostics returns a context carrying a diagnostics sink for collectors to report to.
+func WithDiagnostics(ctx context.Context, fn DiagFunc) context.Context {
+	if fn == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, diagKey{}, fn)
+}
+
+func reportDiag(ctx context.Context, collector, message string) {
+	if fn, ok := ctx.Value(diagKey{}).(DiagFunc); ok && fn != nil {
+		fn(collector, message)
+	}
+}
+
 // warnPartial logs (without aborting) when a collector produced partial results because
 // some per-account API calls failed. Collectors stay resilient: one account's missing
-// permission or throttle must not discard every other account's findings.
-func warnPartial(collector string, err error) {
+// permission or throttle must not discard every other account's findings. The error is
+// also forwarded to the diagnostics sink (if any) so operators can see the real cause
+// (e.g. AccessDenied) in the dashboard.
+func warnPartial(ctx context.Context, collector string, err error) {
 	if err != nil {
 		slog.Warn("collector produced partial results", "collector", collector, "error", err)
+		reportDiag(ctx, collector, err.Error())
 	}
 }
 
@@ -116,8 +140,20 @@ func CollectAccounts(ctx context.Context, cfg *config.Config, orgAPI Organizatio
 	cov := Coverage{Discovered: len(accounts), Scanned: scannedIDs, Failed: failed}
 	if len(failed) > 0 {
 		slog.Warn("account collection skipped accounts that could not be assumed", "failed", len(failed), "discovered", len(accounts))
+		// Surface the real reason (e.g. AccessDenied assuming the audit role) to operators.
+		reportDiag(ctx, "accounts", fmt.Sprintf("%d of %d accounts could not be assumed via role %q: %s",
+			len(failed), len(accounts), cfg.AWS.OrgRoleName, sampleReason(failed)))
 	}
 	return scanned, cov, nil
+}
+
+// sampleReason returns one representative failure reason from the failed map for operator
+// diagnostics (the reasons are typically identical, e.g. the same AccessDenied).
+func sampleReason(failed map[string]string) string {
+	for _, reason := range failed {
+		return reason
+	}
+	return "unknown error"
 }
 
 func tagValue(ctx context.Context, orgAPI OrganizationsAPI, accountID, key string) string {

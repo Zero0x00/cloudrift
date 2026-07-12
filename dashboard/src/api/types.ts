@@ -342,6 +342,7 @@ export interface ScanRunStatusResponse {
   started_at?: string;
   finished_at?: string;
   last_updated_at?: string;
+  log?: string[];
 }
 
 export interface ScanRunHistoryItem {

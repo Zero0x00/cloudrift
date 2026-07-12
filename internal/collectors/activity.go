@@ -80,7 +80,7 @@ func CollectActivityWithConfig(ctx context.Context, cfg *config.Config, accounts
 	}
 	wg.Wait()
 
-	warnPartial("activity", firstErr)
+	warnPartial(ctx, "activity", firstErr)
 
 	sort.Slice(all, func(i, j int) bool {
 		return all[i].RoleARN < all[j].RoleARN

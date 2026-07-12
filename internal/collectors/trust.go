@@ -85,7 +85,7 @@ func CollectTrustWithConfig(ctx context.Context, cfg *config.Config, accounts []
 	}
 	wg.Wait()
 
-	warnPartial("trust", firstErr)
+	warnPartial(ctx, "trust", firstErr)
 
 	nodes := make([]models.AssetNode, 0, len(nodeByARN))
 	for _, node := range nodeByARN {

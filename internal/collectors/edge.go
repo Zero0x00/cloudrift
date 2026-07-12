@@ -95,7 +95,7 @@ func CollectEdgeWithConfig(ctx context.Context, cfg *config.Config, accounts []A
 		}()
 	}
 	wg.Wait()
-	warnPartial("edge", firstErr)
+	warnPartial(ctx, "edge", firstErr)
 	return nodes, rels, nil
 }
 

@@ -61,6 +61,10 @@ type ScanRunStatusResponse struct {
 	StartedAt     time.Time `json:"started_at,omitempty"`
 	FinishedAt    time.Time `json:"finished_at,omitempty"`
 	LastUpdatedAt time.Time `json:"last_updated_at,omitempty"`
+	// Log is a chronological, human-readable trace of the current run (stage transitions
+	// plus collector warnings). Surfaced in the dashboard so failures are diagnosable
+	// without server-log access.
+	Log []string `json:"log,omitempty"`
 }
 
 type ScanRunHistoryItem struct {

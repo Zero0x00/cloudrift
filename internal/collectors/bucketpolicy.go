@@ -117,7 +117,7 @@ func CollectBucketPoliciesWithConfig(ctx context.Context, cfg *config.Config, ac
 		}()
 	}
 	wg.Wait()
-	warnPartial("bucket_policy", firstErr)
+	warnPartial(ctx, "bucket_policy", firstErr)
 	return principals, rels, failed, nil
 }
 
