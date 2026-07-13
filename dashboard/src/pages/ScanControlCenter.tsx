@@ -266,7 +266,7 @@ export function ScanControlCenterPage() {
               </button>
             </div>
             {exportNeo4j.isSuccess ? (
-              <p className="mt-3 text-sm text-emerald-300">
+              <p className="mt-3 text-sm text-emerald-700 dark:text-emerald-300">
                 Exported scan <code className="cr-mono">{exportNeo4j.data.scan_id}</code> to Neo4j
                 {exportNeo4j.data.clustered
                   ? " and clustered it (GDS Louvain communities + PageRank centrality written back)"
@@ -274,7 +274,7 @@ export function ScanControlCenterPage() {
                 {" "}— open the Blast Explorer to view the graph.
               </p>
             ) : null}
-            {exportNeo4j.isError ? <p className="mt-3 text-sm text-rose-300">{formatQueryError(exportNeo4j.error)}</p> : null}
+            {exportNeo4j.isError ? <p className="mt-3 text-sm text-rose-700 dark:text-rose-300">{formatQueryError(exportNeo4j.error)}</p> : null}
             <p className="mt-2 text-[11px] text-slate-500">
               Limitation: this control center currently supports a single active run at a time (latest run state is shared across tabs/users).
             </p>
@@ -320,19 +320,19 @@ export function ScanControlCenterPage() {
                   </button>
                 </div>
                 {ssoLogin.data && !ssoLogin.data.started ? (
-                  <p className="mt-2 text-xs text-rose-400">{ssoLogin.data.message}</p>
+                  <p className="mt-2 text-xs text-rose-700 dark:text-rose-400">{ssoLogin.data.message}</p>
                 ) : null}
               </div>
             ) : validateProfile.data ? (
-              <p className={`mt-3 text-sm ${validateProfile.data.ok ? "text-emerald-300" : "text-amber-300"}`}>
+              <p className={`mt-3 text-sm ${validateProfile.data.ok ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"}`}>
                 {validateProfile.data.message}
               </p>
             ) : null}
             {validateProfile.isError ? (
-              <p className="mt-3 text-sm text-rose-300">{formatQueryError(validateProfile.error)}</p>
+              <p className="mt-3 text-sm text-rose-700 dark:text-rose-300">{formatQueryError(validateProfile.error)}</p>
             ) : null}
-            {startScan.isSuccess ? <p className="mt-3 text-sm text-emerald-300">{startScan.data.message}</p> : null}
-            {startScan.isError ? <p className="mt-3 text-sm text-rose-300">{formatQueryError(startScan.error)}</p> : null}
+            {startScan.isSuccess ? <p className="mt-3 text-sm text-emerald-700 dark:text-emerald-300">{startScan.data.message}</p> : null}
+            {startScan.isError ? <p className="mt-3 text-sm text-rose-700 dark:text-rose-300">{formatQueryError(startScan.error)}</p> : null}
           </div>
 
           <div className="hs-card p-4">
@@ -379,7 +379,7 @@ export function ScanControlCenterPage() {
             {history.isLoading ? (
               <p className="mt-3 text-sm text-slate-500">Loading recent runs…</p>
             ) : history.isError ? (
-              <p className="mt-3 text-sm text-rose-300">{formatQueryError(history.error)}</p>
+              <p className="mt-3 text-sm text-rose-700 dark:text-rose-300">{formatQueryError(history.error)}</p>
             ) : historyItems.length === 0 ? (
               <p className="mt-3 text-sm text-slate-500">No recent runs recorded yet.</p>
             ) : (

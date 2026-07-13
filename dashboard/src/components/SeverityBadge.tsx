@@ -1,7 +1,7 @@
 const severityRing: Record<string, string> = {
-  critical: "bg-rose-950/80 text-rose-200 ring-rose-700/60",
-  high: "bg-orange-950/70 text-orange-200 ring-orange-700/50",
-  medium: "bg-amber-950/60 text-amber-100 ring-amber-700/40",
+  critical: "bg-rose-100 text-rose-800 ring-rose-300/60 dark:bg-rose-950/80 dark:text-rose-200 dark:ring-rose-700/60",
+  high: "bg-orange-100 text-orange-800 ring-orange-300/60 dark:bg-orange-950/70 dark:text-orange-200 dark:ring-orange-700/50",
+  medium: "bg-amber-100 text-amber-800 ring-amber-300/60 dark:bg-amber-950/60 dark:text-amber-100 dark:ring-amber-700/40",
   low: "bg-slate-200 text-slate-800 ring-slate-400/50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-600/50",
   info: "bg-slate-200 text-slate-700 ring-slate-400/50 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-600/50"
 };

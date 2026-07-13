@@ -203,7 +203,7 @@ export function BlastExplorerPage() {
         <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
           <div>
             {payload.summary.graph_available ? null : (
-              <p className="mb-2 rounded border border-amber-800/50 bg-amber-950/40 px-3 py-2 text-xs text-amber-200/90">
+              <p className="mb-2 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-200/90">
                 Graph data unavailable (
                 {payload.summary.graph_unavailable_reason || "neo4j_unconfigured"}). Summary below still applies for
                 operational context.

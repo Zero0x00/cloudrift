@@ -1,11 +1,15 @@
 import type { ScanSummaryResponse } from "../../api/types";
 import { formatCount } from "../../lib/format";
 
+// Each accent needs an explicit dark: variant: hs-card applies `dark:border-slate-700`
+// to all borders, and under `.dark` that two-class rule outranks a single-class
+// `border-l-*` accent - so without a `dark:border-l-*` the colored left edge is
+// overridden to slate and disappears in dark mode.
 const border: Record<string, string> = {
-  orange: "border-l-orange-500/80",
-  cyan: "border-l-cyan-500/70",
+  orange: "border-l-orange-500/80 dark:border-l-orange-500/80",
+  cyan: "border-l-cyan-500/70 dark:border-l-cyan-500/70",
   slate: "border-l-slate-300 dark:border-l-slate-600",
-  amber: "border-l-amber-500/75"
+  amber: "border-l-amber-500/75 dark:border-l-amber-500/75"
 };
 
 function MiniKpi({

@@ -319,7 +319,7 @@ export function ExternalEntitiesPage() {
                       {shortenArn(row.external_principal, 36, 16)}
                     </td>
                     <td className="px-3 py-2 text-xs">{row.principal_type}</td>
-                    <td className="px-3 py-2 font-mono text-xs text-slate-600">{row.external_account_id}</td>
+                    <td className="px-3 py-2 font-mono text-xs text-slate-600 dark:text-slate-400">{row.external_account_id}</td>
                     <td className="px-3 py-2">
                       <SeverityBadge severity={row.highest_severity} />
                     </td>
